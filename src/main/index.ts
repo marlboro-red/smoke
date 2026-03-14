@@ -1,8 +1,13 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
+import { PtyManager } from './pty/PtyManager'
+import { registerIpcHandlers } from './ipc/ipcHandlers'
+
+const ptyManager = new PtyManager()
+let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
@@ -15,7 +20,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow!.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -31,6 +36,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  registerIpcHandlers(ptyManager, () => mainWindow)
   createWindow()
 
   app.on('activate', () => {
@@ -38,6 +44,10 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
+})
+
+app.on('before-quit', () => {
+  ptyManager.killAll()
 })
 
 app.on('window-all-closed', () => {
