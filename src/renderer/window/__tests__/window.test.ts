@@ -120,6 +120,8 @@ describe('zoom compensation math', () => {
 
 describe('resize terminal size calculation', () => {
   // Inlined from useTerminal to avoid browser-dependent imports
+  const XTERM_PADDING = 8
+
   function calculateTerminalSize(
     widthPx: number,
     heightPx: number,
@@ -127,8 +129,8 @@ describe('resize terminal size calculation', () => {
     charHeight: number
   ): { cols: number; rows: number } {
     return {
-      cols: Math.max(2, Math.floor(widthPx / charWidth)),
-      rows: Math.max(1, Math.floor(heightPx / charHeight)),
+      cols: Math.max(2, Math.floor((widthPx - XTERM_PADDING) / charWidth)),
+      rows: Math.max(1, Math.floor((heightPx - XTERM_PADDING) / charHeight)),
     }
   }
 
@@ -144,9 +146,8 @@ describe('resize terminal size calculation', () => {
       charWidth,
       charHeight
     )
-    // (480 - 32) / 15.6 = 28.7... = 28 rows
-    expect(result.cols).toBe(Math.floor(640 / charWidth))
-    expect(result.rows).toBe(Math.floor(448 / charHeight))
+    expect(result.cols).toBe(Math.floor((640 - XTERM_PADDING) / charWidth))
+    expect(result.rows).toBe(Math.floor((448 - XTERM_PADDING) / charHeight))
   })
 
   it('handles minimum window size (200x160)', () => {
@@ -156,9 +157,8 @@ describe('resize terminal size calculation', () => {
       charWidth,
       charHeight
     )
-    // (160 - 32) / 15.6 = 8.2... = 8 rows
-    expect(result.cols).toBe(Math.floor(200 / charWidth))
-    expect(result.rows).toBe(Math.floor(128 / charHeight))
+    expect(result.cols).toBe(Math.floor((200 - XTERM_PADDING) / charWidth))
+    expect(result.rows).toBe(Math.floor((128 - XTERM_PADDING) / charHeight))
     expect(result.cols).toBeGreaterThanOrEqual(2)
     expect(result.rows).toBeGreaterThanOrEqual(1)
   })

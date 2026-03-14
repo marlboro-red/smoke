@@ -83,6 +83,13 @@ export function useViewportCulling(
     return unsub
   }, [recalculate])
 
+  // Recalculate on Electron/browser window resize
+  useEffect(() => {
+    const onResize = () => recalculate()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [recalculate])
+
   // Initial calculation
   useEffect(() => {
     recalculate()
