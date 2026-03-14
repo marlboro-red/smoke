@@ -70,10 +70,10 @@ export function useViewportCulling(
   // Subscribe to session store changes (create/delete/move)
   useEffect(() => {
     const unsub = sessionStore.subscribe(() => {
-      recalculate()
+      debouncedRecalculate()
     })
     return unsub
-  }, [recalculate])
+  }, [debouncedRecalculate])
 
   // Subscribe to canvas store changes (pan-end, zoom-end trigger store sync)
   useEffect(() => {

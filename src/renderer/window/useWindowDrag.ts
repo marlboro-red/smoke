@@ -23,6 +23,8 @@ export function useWindowDrag({
   const startPosRef = useRef({ x: 0, y: 0 })
   const windowElRef = useRef<HTMLElement | null>(null)
 
+  const livePosRef = useRef({ x: 0, y: 0 })
+
   const onPointerMove = useCallback(
     (e: PointerEvent) => {
       if (!isDraggingRef.current) return
@@ -31,11 +33,16 @@ export function useWindowDrag({
       const dy = (e.clientY - startMouseRef.current.y) / z
       const newX = startPosRef.current.x + dx
       const newY = startPosRef.current.y + dy
-      sessionStore.getState().updateSession(sessionId, {
-        position: { x: newX, y: newY },
-      })
+      livePosRef.current = { x: newX, y: newY }
+
+      // Update DOM directly to avoid Zustand re-renders during drag
+      const el = windowElRef.current
+      if (el) {
+        el.style.left = `${newX}px`
+        el.style.top = `${newY}px`
+      }
     },
-    [sessionId, zoom]
+    [zoom]
   )
 
   const onPointerUp = useCallback(
@@ -52,12 +59,9 @@ export function useWindowDrag({
         setTimeout(() => target.classList.remove('snapping'), 150)
       }
 
-      // Snap to grid
-      const session = sessionStore.getState().sessions.get(sessionId)
-      if (session) {
-        const snapped = snapPosition(session.position, gridSize)
-        sessionStore.getState().updateSession(sessionId, { position: snapped })
-      }
+      // Sync final position to store and snap to grid
+      const snapped = snapPosition(livePosRef.current, gridSize)
+      sessionStore.getState().updateSession(sessionId, { position: snapped })
 
       document.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('pointerup', onPointerUp)
