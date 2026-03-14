@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { useCanvasControls } from './useCanvasControls'
 import { useSessionList, type Session } from '../stores/sessionStore'
+import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import Grid from './Grid'
 import '../styles/canvas.css'
@@ -32,15 +33,16 @@ function SessionPlaceholder({ session }: { session: Session }): JSX.Element {
 
 export default function Canvas(): JSX.Element {
   const viewportRef = useRef<HTMLDivElement | null>(null)
-  const { zoomRef, rootRef } = useCanvasControls(viewportRef)
+  const { rootRef } = useCanvasControls(viewportRef)
   const sessions = useSessionList()
+  const storeZoom = useCanvasStore((s) => s.zoom)
   const gridSize = useGridStore((s) => s.gridSize)
   const showGrid = useGridStore((s) => s.showGrid)
 
   return (
     <div className="canvas-root" ref={rootRef}>
       <div className="canvas-viewport" ref={viewportRef}>
-        {showGrid && <Grid zoom={zoomRef.current} gridSize={gridSize} />}
+        {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         {sessions.map((session) => (
           <SessionPlaceholder key={session.id} session={session} />
         ))}
