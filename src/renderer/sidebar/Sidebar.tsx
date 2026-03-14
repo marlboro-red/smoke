@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useSessionList, useFocusedId, useHighlightedId, sessionStore } from '../stores/sessionStore'
 import SessionListItem from './SessionListItem'
 import { usePanToSession } from './useSidebarSync'
+import LayoutPanel from '../layout/LayoutPanel'
 import '../styles/sidebar.css'
 
 export default function Sidebar(): JSX.Element {
@@ -40,6 +41,7 @@ export default function Sidebar(): JSX.Element {
           />
         ))}
       </div>
+      <LayoutPanel />
     </div>
   )
 }

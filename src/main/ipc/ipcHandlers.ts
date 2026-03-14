@@ -1,5 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { PtyManager } from '../pty/PtyManager'
+import { configStore } from '../config/ConfigStore'
+import type { Layout } from '../config/ConfigStore'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -7,11 +9,18 @@ import {
   PTY_RESIZE,
   PTY_KILL,
   PTY_EXIT,
+  LAYOUT_SAVE,
+  LAYOUT_LOAD,
+  LAYOUT_LIST,
+  LAYOUT_DELETE,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
   PtyResizeMessage,
-  PtyKillMessage
+  PtyKillMessage,
+  LayoutSaveRequest,
+  LayoutLoadRequest,
+  LayoutDeleteRequest
 } from './channels'
 
 export function registerIpcHandlers(
@@ -56,5 +65,35 @@ export function registerIpcHandlers(
 
   ipcMain.on(PTY_KILL, (_event, message: PtyKillMessage) => {
     ptyManager.kill(message.id)
+  })
+
+  // Layout persistence handlers
+  ipcMain.handle(LAYOUT_SAVE, (_event, request: LayoutSaveRequest): void => {
+    if (request.name === '__default__') {
+      configStore.set('defaultLayout', request.layout)
+    } else {
+      const layouts = configStore.get('namedLayouts', {})
+      layouts[request.name] = request.layout
+      configStore.set('namedLayouts', layouts)
+    }
+  })
+
+  ipcMain.handle(LAYOUT_LOAD, (_event, request: LayoutLoadRequest): Layout | null => {
+    if (request.name === '__default__') {
+      return configStore.get('defaultLayout', null)
+    }
+    const layouts = configStore.get('namedLayouts', {})
+    return layouts[request.name] ?? null
+  })
+
+  ipcMain.handle(LAYOUT_LIST, (): string[] => {
+    const layouts = configStore.get('namedLayouts', {})
+    return Object.keys(layouts)
+  })
+
+  ipcMain.handle(LAYOUT_DELETE, (_event, request: LayoutDeleteRequest): void => {
+    const layouts = configStore.get('namedLayouts', {})
+    delete layouts[request.name]
+    configStore.set('namedLayouts', layouts)
   })
 }

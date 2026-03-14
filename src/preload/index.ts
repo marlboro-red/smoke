@@ -30,6 +30,13 @@ const smokeAPI: SmokeAPI = {
         ipcRenderer.removeListener('pty:exit', listener)
       }
     }
+  },
+
+  layout: {
+    save: (name, layout) => ipcRenderer.invoke('layout:save', { name, layout }),
+    load: (name) => ipcRenderer.invoke('layout:load', { name }),
+    list: () => ipcRenderer.invoke('layout:list'),
+    delete: (name) => ipcRenderer.invoke('layout:delete', { name }),
   }
 }
 

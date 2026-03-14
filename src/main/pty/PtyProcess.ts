@@ -1,5 +1,7 @@
 import { spawn as ptySpawn, IPty } from 'node-pty'
 import { EventEmitter } from 'events'
+import { existsSync } from 'fs'
+import { homedir } from 'os'
 
 export interface PtyProcessOptions {
   id: string
@@ -33,11 +35,13 @@ export class PtyProcess extends EventEmitter {
     const cols = options.cols ?? 80
     const rows = options.rows ?? 24
 
+    const cwd = existsSync(options.cwd) ? options.cwd : homedir()
+
     this.pty = ptySpawn(shell, args, {
       name: 'xterm-256color',
       cols,
       rows,
-      cwd: options.cwd,
+      cwd,
       env: { ...process.env, ...options.env } as Record<string, string>
     })
 
