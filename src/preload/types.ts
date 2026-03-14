@@ -38,6 +38,17 @@ export interface Layout {
   gridSize: number
 }
 
+export interface Preferences {
+  defaultShell: string
+  autoLaunchClaude: boolean
+  claudeCommand: string
+  gridSize: number
+  sidebarPosition: 'left' | 'right'
+  sidebarWidth: number
+  theme: string
+  defaultCwd: string
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -52,6 +63,10 @@ export interface SmokeAPI {
     load: (name: string) => Promise<Layout | null>
     list: () => Promise<string[]>
     delete: (name: string) => Promise<void>
+  }
+  config: {
+    get: () => Promise<Preferences>
+    set: (key: string, value: unknown) => Promise<void>
   }
 }
 

@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { PtyManager } from '../pty/PtyManager'
-import { configStore } from '../config/ConfigStore'
-import type { Layout } from '../config/ConfigStore'
+import { configStore, defaultPreferences } from '../config/ConfigStore'
+import type { Layout, Preferences, SmokeConfig } from '../config/ConfigStore'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -13,6 +13,8 @@ import {
   LAYOUT_LOAD,
   LAYOUT_LIST,
   LAYOUT_DELETE,
+  CONFIG_GET,
+  CONFIG_SET,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
@@ -20,7 +22,8 @@ import {
   PtyKillMessage,
   LayoutSaveRequest,
   LayoutLoadRequest,
-  LayoutDeleteRequest
+  LayoutDeleteRequest,
+  ConfigSetRequest
 } from './channels'
 
 export function registerIpcHandlers(
@@ -28,10 +31,15 @@ export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null
 ): void {
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
+    const preferences = configStore.get('preferences', defaultPreferences)
+
+    // Use configured default shell if no shell specified in request
+    const shell = request.shell || (preferences.defaultShell || undefined)
+
     const pty = ptyManager.spawn({
       id: request.id,
       cwd: request.cwd,
-      shell: request.shell,
+      shell,
       args: request.args,
       env: request.env,
       cols: request.cols,
@@ -51,6 +59,13 @@ export function registerIpcHandlers(
         win.webContents.send(PTY_EXIT, { id: pty.id, exitCode, signal })
       }
     })
+
+    // Auto-launch Claude Code if enabled
+    if (preferences.autoLaunchClaude && preferences.claudeCommand) {
+      setTimeout(() => {
+        pty.write(preferences.claudeCommand + '\n')
+      }, 100)
+    }
 
     return { id: pty.id, pid: pty.pid }
   })
@@ -95,5 +110,15 @@ export function registerIpcHandlers(
     const layouts = configStore.get('namedLayouts', {})
     delete layouts[request.name]
     configStore.set('namedLayouts', layouts)
+  })
+
+  // Config handlers
+  ipcMain.handle(CONFIG_GET, (): Preferences => {
+    return configStore.get('preferences', defaultPreferences)
+  })
+
+  ipcMain.handle(CONFIG_SET, (_event, request: ConfigSetRequest): void => {
+    const key = `preferences.${request.key}` as keyof SmokeConfig
+    configStore.set(key, request.value as never)
   })
 }

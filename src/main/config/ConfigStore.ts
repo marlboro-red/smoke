@@ -14,9 +14,32 @@ export interface Layout {
   gridSize: number
 }
 
+export interface Preferences {
+  defaultShell: string
+  autoLaunchClaude: boolean
+  claudeCommand: string
+  gridSize: number
+  sidebarPosition: 'left' | 'right'
+  sidebarWidth: number
+  theme: string
+  defaultCwd: string
+}
+
+export const defaultPreferences: Preferences = {
+  defaultShell: '',
+  autoLaunchClaude: false,
+  claudeCommand: 'claude',
+  gridSize: 20,
+  sidebarPosition: 'left',
+  sidebarWidth: 240,
+  theme: 'dark',
+  defaultCwd: '',
+}
+
 export interface SmokeConfig {
   defaultLayout: Layout | null
   namedLayouts: Record<string, Layout>
+  preferences: Preferences
 }
 
 const configStore = new Store<SmokeConfig>({
@@ -24,6 +47,7 @@ const configStore = new Store<SmokeConfig>({
   defaults: {
     defaultLayout: null,
     namedLayouts: {},
+    preferences: { ...defaultPreferences },
   },
 })
 

@@ -3,6 +3,7 @@ import { useSessionList, useFocusedId, useHighlightedId, sessionStore } from '..
 import SessionListItem from './SessionListItem'
 import { usePanToSession } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
+import ConfigPanel from '../config/ConfigPanel'
 import '../styles/sidebar.css'
 
 export default function Sidebar(): JSX.Element {
@@ -42,6 +43,7 @@ export default function Sidebar(): JSX.Element {
         ))}
       </div>
       <LayoutPanel />
+      <ConfigPanel />
     </div>
   )
 }
