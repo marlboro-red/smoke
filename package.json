@@ -8,7 +8,10 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "rebuild": "electron-rebuild -f -w node-pty",
-    "postinstall": "electron-vite build && electron-rebuild"
+    "postinstall": "electron-vite build && electron-rebuild",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win",
+    "package:all": "npm run build && electron-builder --mac --win"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -22,6 +25,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@electron/notarize": "^3.1.1",
     "@electron/rebuild": "^3.7.1",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -33,5 +37,58 @@
     "typescript": "^5.7.3",
     "vite": "^5.4.14",
     "vitest": "^4.1.0"
+  },
+  "build": {
+    "appId": "com.smoke.app",
+    "productName": "Smoke",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "node_modules/node-pty/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "afterSign": "scripts/notarize.js"
   }
 }
