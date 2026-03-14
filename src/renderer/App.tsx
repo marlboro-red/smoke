@@ -5,11 +5,11 @@ import { useLayoutAutoSave, useLayoutRestore } from './layout/useLayoutPersisten
 import { preferencesStore, usePreference } from './stores/preferencesStore'
 import { gridStore } from './stores/gridStore'
 import { canvasStore } from './stores/canvasStore'
-import { useSessionShortcuts } from './session/useSessionShortcuts'
+import { useKeyboardShortcuts } from './shortcuts/useKeyboardShortcuts'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
-  useSessionShortcuts()
+  useKeyboardShortcuts()
   const { restoreDefault } = useLayoutRestore()
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')

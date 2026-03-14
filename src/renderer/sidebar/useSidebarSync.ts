@@ -8,6 +8,60 @@ function easeOut(t: number): number {
 
 const ANIMATION_DURATION = 300
 
+// Module-level animation frame for standalone panToSession
+let _panAnimFrame: number | null = null
+
+/**
+ * Standalone (non-hook) pan-to-session function for use outside React components.
+ * Focuses the session, brings it to front, and animates pan to center it in viewport.
+ */
+export function panToSession(sessionId: string): void {
+  const session = sessionStore.getState().sessions.get(sessionId)
+  if (!session) return
+
+  if (_panAnimFrame !== null) {
+    cancelAnimationFrame(_panAnimFrame)
+  }
+
+  sessionStore.getState().focusSession(sessionId)
+  sessionStore.getState().bringToFront(sessionId)
+
+  const rootEl = getCanvasRootElement()
+  if (!rootEl) return
+  const rect = rootEl.getBoundingClientRect()
+  const viewportWidth = rect.width
+  const viewportHeight = rect.height
+
+  const zoom = getCurrentZoom()
+  const startPan = getCurrentPan()
+  const startX = startPan.x
+  const startY = startPan.y
+
+  const targetX = viewportWidth / 2 - (session.position.x + session.size.width / 2) * zoom
+  const targetY = viewportHeight / 2 - (session.position.y + session.size.height / 2) * zoom
+
+  const startTime = performance.now()
+
+  function animate(now: number): void {
+    const elapsed = now - startTime
+    const progress = Math.min(1, elapsed / ANIMATION_DURATION)
+    const eased = easeOut(progress)
+
+    const currentX = startX + (targetX - startX) * eased
+    const currentY = startY + (targetY - startY) * eased
+
+    setPanTo(currentX, currentY)
+
+    if (progress < 1) {
+      _panAnimFrame = requestAnimationFrame(animate)
+    } else {
+      _panAnimFrame = null
+    }
+  }
+
+  _panAnimFrame = requestAnimationFrame(animate)
+}
+
 export function usePanToSession(): (sessionId: string) => void {
   const animFrameRef = useRef<number | null>(null)
 

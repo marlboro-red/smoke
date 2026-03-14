@@ -1,7 +1,8 @@
 import { useRef, useEffect } from 'react'
 import { useTerminal } from './useTerminal'
 import { usePty } from './usePty'
-import { useFocusedId } from '../stores/sessionStore'
+import { useFocusedId, sessionStore } from '../stores/sessionStore'
+import { resolveShortcut } from '../shortcuts/shortcutMap'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'
 
@@ -45,6 +46,34 @@ export default function TerminalWidget({ sessionId, cols, rows, onCharDims, onSn
       terminal.blur()
     }
   }, [focusedId, sessionId, terminalRef])
+
+  // Intercept shortcut keys before xterm.js processes them
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) return
+
+    terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      // Only intercept keydown, not keyup
+      if (event.type !== 'keydown') return true
+
+      // Escape: unfocus terminal
+      if (event.key === 'Escape') {
+        sessionStore.getState().focusSession(null)
+        return false
+      }
+
+      // Modifier shortcuts: let the capture-phase document handler handle them
+      if (event.metaKey || event.ctrlKey) {
+        const action = resolveShortcut(event)
+        if (action) {
+          return false // prevent xterm from handling
+        }
+      }
+
+      // Let xterm handle everything else (arrows, Ctrl+C, Ctrl+D, etc.)
+      return true
+    })
+  }, [terminalRef])
 
   return <div ref={containerRef} className="terminal-container" />
 }
