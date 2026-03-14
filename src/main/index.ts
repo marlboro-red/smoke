@@ -31,6 +31,18 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // Disable native Electron/Chromium zoom so Ctrl+scroll only controls the canvas
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow!.webContents.setVisualZoomLevelLimits(1, 1)
+  })
+
+  // Block Ctrl+=/Ctrl+-/Ctrl+0 keyboard shortcuts that trigger native zoom
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if ((input.control || input.meta) && (input.key === '=' || input.key === '+' || input.key === '-' || input.key === '0')) {
+      _event.preventDefault()
+    }
+  })
+
   if (process.env.NODE_ENV !== 'production' && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
