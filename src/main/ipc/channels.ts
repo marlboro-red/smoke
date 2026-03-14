@@ -13,6 +13,10 @@ export const LAYOUT_LOAD = 'layout:load' as const
 export const LAYOUT_LIST = 'layout:list' as const
 export const LAYOUT_DELETE = 'layout:delete' as const
 
+// Config channels
+export const CONFIG_GET = 'config:get' as const
+export const CONFIG_SET = 'config:set' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -68,4 +72,10 @@ export interface LayoutLoadRequest {
 
 export interface LayoutDeleteRequest {
   name: string
+}
+
+// Config message types
+export interface ConfigSetRequest {
+  key: string
+  value: unknown
 }

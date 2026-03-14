@@ -37,6 +37,11 @@ const smokeAPI: SmokeAPI = {
     load: (name) => ipcRenderer.invoke('layout:load', { name }),
     list: () => ipcRenderer.invoke('layout:list'),
     delete: (name) => ipcRenderer.invoke('layout:delete', { name }),
+  },
+
+  config: {
+    get: () => ipcRenderer.invoke('config:get'),
+    set: (key, value) => ipcRenderer.invoke('config:set', { key, value }),
   }
 }
 

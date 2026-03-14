@@ -1,0 +1,107 @@
+.config-panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0;
+}
+
+.config-toggle-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.config-toggle-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.config-panel-content {
+  padding: 0 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.config-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.config-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  padding: 5px 8px;
+  outline: none;
+  font-family: inherit;
+}
+
+.config-input:focus {
+  border-color: rgba(108, 122, 237, 0.5);
+}
+
+.config-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.config-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.config-toggle-row input[type="checkbox"] {
+  accent-color: #6c7aed;
+  cursor: pointer;
+}
+
+.config-slider {
+  width: 100%;
+  accent-color: #6c7aed;
+  cursor: pointer;
+}
+
+.config-toggle-group {
+  display: flex;
+  gap: 4px;
+}
+
+.config-option-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.config-option-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.config-option-btn.active {
+  background: rgba(108, 122, 237, 0.2);
+  border-color: rgba(108, 122, 237, 0.4);
+  color: rgba(108, 122, 237, 0.9);
+}

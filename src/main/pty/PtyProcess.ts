@@ -1,6 +1,6 @@
 import { spawn as ptySpawn, IPty } from 'node-pty'
 import { EventEmitter } from 'events'
-import { existsSync } from 'fs'
+import { existsSync, accessSync, constants } from 'fs'
 import { homedir } from 'os'
 
 export interface PtyProcessOptions {
@@ -20,6 +20,22 @@ function getDefaultShell(): string {
   return process.env.SHELL || '/bin/bash'
 }
 
+function isExecutable(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function resolveShell(requested?: string): string {
+  if (requested && isExecutable(requested)) {
+    return requested
+  }
+  return getDefaultShell()
+}
+
 export class PtyProcess extends EventEmitter {
   readonly id: string
   readonly pid: number
@@ -30,7 +46,7 @@ export class PtyProcess extends EventEmitter {
     super()
 
     this.id = options.id
-    const shell = options.shell || getDefaultShell()
+    const shell = resolveShell(options.shell)
     const args = options.args || []
     const cols = options.cols ?? 80
     const rows = options.rows ?? 24
