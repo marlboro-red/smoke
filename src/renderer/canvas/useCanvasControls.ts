@@ -5,6 +5,32 @@ const MIN_ZOOM = 0.1
 const MAX_ZOOM = 3.0
 const ZOOM_SENSITIVITY = 0.002
 
+// Module-level controls exposed for cross-component use (e.g., sidebar pan-to)
+let _panRef: React.MutableRefObject<{ x: number; y: number }> | null = null
+let _zoomRef: React.MutableRefObject<number> | null = null
+let _applyTransform: (() => void) | null = null
+let _syncToStore: (() => void) | null = null
+let _rootRef: React.MutableRefObject<HTMLDivElement | null> | null = null
+
+export function setPanTo(x: number, y: number): void {
+  if (!_panRef) return
+  _panRef.current = { x, y }
+  _applyTransform?.()
+  _syncToStore?.()
+}
+
+export function getCurrentPan(): { x: number; y: number } {
+  return _panRef?.current ?? { x: 0, y: 0 }
+}
+
+export function getCurrentZoom(): number {
+  return _zoomRef?.current ?? 1
+}
+
+export function getCanvasRootElement(): HTMLDivElement | null {
+  return _rootRef?.current ?? null
+}
+
 interface CanvasControls {
   panRef: React.MutableRefObject<{ x: number; y: number }>
   zoomRef: React.MutableRefObject<number>
@@ -168,13 +194,27 @@ export function useCanvasControls(
     }
   }, [applyTransform, syncToStore, startPan, movePan, endPan])
 
-  // Initialize from store
+  // Initialize from store and expose module-level refs
   useEffect(() => {
     const state = canvasStore.getState()
     panRef.current = { x: state.panX, y: state.panY }
     zoomRef.current = state.zoom
     applyTransform()
-  }, [applyTransform])
+
+    _panRef = panRef
+    _zoomRef = zoomRef
+    _applyTransform = applyTransform
+    _syncToStore = syncToStore
+    _rootRef = rootRef
+
+    return () => {
+      _panRef = null
+      _zoomRef = null
+      _applyTransform = null
+      _syncToStore = null
+      _rootRef = null
+    }
+  }, [applyTransform, syncToStore])
 
   return { panRef, zoomRef, rootRef }
 }
