@@ -18,9 +18,7 @@ export default function Sidebar(): JSX.Element {
   const handleNewSession = useCallback(() => {
     const cwd = process.env.HOME || '/tmp'
     const session = sessionStore.getState().createSession(cwd)
-    window.smokeAPI?.pty.spawn({ cwd }).then((result) => {
-      sessionStore.getState().updateSession(session.id, { id: result.id })
-    })
+    window.smokeAPI?.pty.spawn({ id: session.id, cwd })
   }, [])
 
   return (
