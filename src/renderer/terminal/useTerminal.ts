@@ -2,6 +2,12 @@ import { useRef, useEffect, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
+import {
+  getTerminal,
+  registerTerminal,
+  markHidden,
+  reattachTerminal,
+} from './terminalRegistry'
 
 const TERMINAL_OPTIONS = {
   cursorBlink: true,
@@ -36,12 +42,12 @@ interface UseTerminalResult {
 
 export function useTerminal(
   containerRef: React.RefObject<HTMLDivElement | null>,
+  sessionId: string,
   cols?: number,
   rows?: number
 ): UseTerminalResult {
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
-  const webglAddonRef = useRef<WebglAddon | null>(null)
   const charDims = useRef({ width: 0, height: 0 })
 
   const getSnapshot = useCallback((): string[] => {
@@ -60,6 +66,37 @@ export function useTerminal(
     const container = containerRef.current
     if (!container) return
 
+    // Check if there's an existing terminal in the registry (reattach case)
+    const existing = getTerminal(sessionId)
+    if (existing) {
+      const terminal = reattachTerminal(sessionId, container)
+      if (terminal) {
+        terminalRef.current = terminal
+        charDims.current = existing.charDims
+
+        // Load FitAddon for this mount
+        const fitAddon = new FitAddon()
+        fitAddonRef.current = fitAddon
+        terminal.loadAddon(fitAddon)
+        try {
+          fitAddon.fit()
+        } catch {
+          // fit may fail if container has zero dimensions
+        }
+
+        return () => {
+          // On unmount: mark hidden but don't dispose (keep scrollback)
+          if (fitAddonRef.current) {
+            fitAddonRef.current.dispose()
+            fitAddonRef.current = null
+          }
+          markHidden(sessionId)
+          terminalRef.current = null
+        }
+      }
+    }
+
+    // Create new terminal
     const terminal = new Terminal({
       ...TERMINAL_OPTIONS,
       cols: cols ?? 80,
@@ -76,7 +113,6 @@ export function useTerminal(
     terminal.open(container)
 
     // Measure character dimensions once at creation and cache them.
-    // This avoids the CSS-transform getBoundingClientRect() issue.
     const cellEl = container.querySelector('.xterm-char-measure-element')
     if (cellEl) {
       const rect = cellEl.getBoundingClientRect()
@@ -106,35 +142,38 @@ export function useTerminal(
     }
 
     // Load WebGL addon AFTER open (requires canvas context)
+    let webglAddon: WebglAddon | null = null
     try {
-      const webglAddon = new WebglAddon()
-      webglAddonRef.current = webglAddon
+      webglAddon = new WebglAddon()
 
       // Handle WebGL context loss — dispose addon, xterm falls back to canvas renderer
       webglAddon.onContextLoss(() => {
-        webglAddon.dispose()
-        webglAddonRef.current = null
+        webglAddon?.dispose()
+        webglAddon = null
+        // Update registry
+        const entry = getTerminal(sessionId)
+        if (entry) entry.webglAddon = null
       })
 
       terminal.loadAddon(webglAddon)
     } catch {
       // WebGL not available — xterm uses canvas renderer automatically
-      webglAddonRef.current = null
+      webglAddon = null
     }
 
+    // Register in the terminal registry
+    registerTerminal(sessionId, terminal, webglAddon, charDims.current)
+
     return () => {
-      if (webglAddonRef.current) {
-        webglAddonRef.current.dispose()
-        webglAddonRef.current = null
-      }
+      // On unmount: mark hidden but don't dispose (keep scrollback)
       if (fitAddonRef.current) {
         fitAddonRef.current.dispose()
         fitAddonRef.current = null
       }
-      terminal.dispose()
+      markHidden(sessionId)
       terminalRef.current = null
     }
-  }, [containerRef, cols, rows])
+  }, [containerRef, sessionId, cols, rows])
 
   return { terminalRef, getSnapshot, charDims }
 }

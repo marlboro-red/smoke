@@ -14,7 +14,7 @@ interface TerminalWidgetProps {
 
 export default function TerminalWidget({ sessionId, cols, rows, onCharDims, onSnapshot }: TerminalWidgetProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const { terminalRef, getSnapshot, charDims } = useTerminal(containerRef, cols, rows)
+  const { terminalRef, getSnapshot, charDims } = useTerminal(containerRef, sessionId, cols, rows)
   usePty(sessionId, terminalRef)
 
   // Expose getSnapshot to parent
