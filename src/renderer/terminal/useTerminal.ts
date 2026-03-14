@@ -80,6 +80,11 @@ export function useTerminal(
         terminal.loadAddon(fitAddon)
         try {
           fitAddon.fit()
+          // Sync PTY dimensions after fit — the container size may have
+          // changed while the terminal was off-screen.
+          if (window.smokeAPI?.pty?.resize) {
+            window.smokeAPI.pty.resize(sessionId, terminal.cols, terminal.rows)
+          }
         } catch {
           // fit may fail if container has zero dimensions
         }
@@ -137,6 +142,12 @@ export function useTerminal(
     // Initial fit
     try {
       fitAddon.fit()
+      // Sync PTY dimensions — fit may have changed cols/rows from the
+      // values passed to spawn, causing the PTY to format output for the
+      // wrong terminal width and overwrite existing content.
+      if (window.smokeAPI?.pty?.resize) {
+        window.smokeAPI.pty.resize(sessionId, terminal.cols, terminal.rows)
+      }
     } catch {
       // fit may fail if container has zero dimensions
     }
