@@ -1,15 +1,35 @@
-import { useRef } from 'react'
+import { useRef, useCallback } from 'react'
 import { useCanvasControls } from './useCanvasControls'
-import { useSessionList, type Session } from '../stores/sessionStore'
+import { useSessionList, useHighlightedId, sessionStore, type Session } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import Grid from './Grid'
 import TerminalWidget from '../terminal/TerminalWidget'
 import '../styles/canvas.css'
 
-function SessionWindow({ session }: { session: Session }): JSX.Element {
+function SessionWindow({ session, isHighlighted }: { session: Session; isHighlighted: boolean }): JSX.Element {
+  const handleMouseDown = useCallback(() => {
+    sessionStore.getState().focusSession(session.id)
+    sessionStore.getState().bringToFront(session.id)
+  }, [session.id])
+
+  const handleMouseEnter = useCallback(() => {
+    sessionStore.getState().highlightSession(session.id)
+  }, [session.id])
+
+  const handleMouseLeave = useCallback(() => {
+    sessionStore.getState().highlightSession(null)
+  }, [])
+
+  let className = 'session-window'
+  if (isHighlighted) className += ' highlighted'
+
   return (
     <div
+      className={className}
+      onMouseDown={handleMouseDown}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{
         position: 'absolute',
         left: session.position.x,
@@ -37,6 +57,7 @@ export default function Canvas(): JSX.Element {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const { rootRef } = useCanvasControls(viewportRef)
   const sessions = useSessionList()
+  const highlightedId = useHighlightedId()
   const storeZoom = useCanvasStore((s) => s.zoom)
   const gridSize = useGridStore((s) => s.gridSize)
   const showGrid = useGridStore((s) => s.showGrid)
@@ -46,7 +67,11 @@ export default function Canvas(): JSX.Element {
       <div className="canvas-viewport" ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         {sessions.map((session) => (
-          <SessionWindow key={session.id} session={session} />
+          <SessionWindow
+            key={session.id}
+            session={session}
+            isHighlighted={highlightedId === session.id}
+          />
         ))}
       </div>
     </div>
