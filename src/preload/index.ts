@@ -44,6 +44,11 @@ const smokeAPI: SmokeAPI = {
     set: (key, value) => ipcRenderer.invoke('config:set', { key, value }),
   },
 
+  fs: {
+    readdir: (path) => ipcRenderer.invoke('fs:readdir', { path }),
+    readfile: (path, maxSize?) => ipcRenderer.invoke('fs:readfile', { path, maxSize }),
+  },
+
   app: {
     getLaunchCwd: () => ipcRenderer.invoke('app:get-launch-cwd'),
   }

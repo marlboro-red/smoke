@@ -1,4 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
+import * as fs from 'fs/promises'
+import * as path from 'path'
 import { PtyManager } from '../pty/PtyManager'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Preferences, SmokeConfig } from '../config/ConfigStore'
@@ -15,6 +17,8 @@ import {
   LAYOUT_DELETE,
   CONFIG_GET,
   CONFIG_SET,
+  FS_READDIR,
+  FS_READFILE,
   APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
   PtySpawnResponse,
@@ -24,7 +28,11 @@ import {
   LayoutSaveRequest,
   LayoutLoadRequest,
   LayoutDeleteRequest,
-  ConfigSetRequest
+  ConfigSetRequest,
+  FsReaddirRequest,
+  FsReaddirEntry,
+  FsReadfileRequest,
+  FsReadfileResponse,
 } from './channels'
 
 export function registerIpcHandlers(
@@ -128,6 +136,51 @@ export function registerIpcHandlers(
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig
     configStore.set(key, request.value as never)
+  })
+
+  // File system handlers
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB default max
+
+  ipcMain.handle(FS_READDIR, async (_event, request: FsReaddirRequest): Promise<FsReaddirEntry[]> => {
+    const dirPath = path.resolve(request.path)
+    const entries = await fs.readdir(dirPath, { withFileTypes: true })
+    const results: FsReaddirEntry[] = []
+
+    for (const entry of entries) {
+      let type: FsReaddirEntry['type'] = 'other'
+      let size = 0
+
+      if (entry.isFile()) {
+        type = 'file'
+        try {
+          const stat = await fs.stat(path.join(dirPath, entry.name))
+          size = stat.size
+        } catch {
+          // stat may fail for broken symlinks, etc.
+        }
+      } else if (entry.isDirectory()) {
+        type = 'directory'
+      } else if (entry.isSymbolicLink()) {
+        type = 'symlink'
+      }
+
+      results.push({ name: entry.name, type, size })
+    }
+
+    return results
+  })
+
+  ipcMain.handle(FS_READFILE, async (_event, request: FsReadfileRequest): Promise<FsReadfileResponse> => {
+    const filePath = path.resolve(request.path)
+    const maxSize = request.maxSize ?? MAX_FILE_SIZE
+
+    const stat = await fs.stat(filePath)
+    if (stat.size > maxSize) {
+      throw new Error(`File too large: ${stat.size} bytes (max ${maxSize})`)
+    }
+
+    const content = await fs.readFile(filePath, 'utf-8')
+    return { content, size: stat.size }
   })
 
   // App info handlers

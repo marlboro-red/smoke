@@ -17,6 +17,10 @@ export const LAYOUT_DELETE = 'layout:delete' as const
 export const CONFIG_GET = 'config:get' as const
 export const CONFIG_SET = 'config:set' as const
 
+// File system channels
+export const FS_READDIR = 'fs:readdir' as const
+export const FS_READFILE = 'fs:readfile' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -81,4 +85,25 @@ export interface LayoutDeleteRequest {
 export interface ConfigSetRequest {
   key: string
   value: unknown
+}
+
+// File system message types
+export interface FsReaddirRequest {
+  path: string
+}
+
+export interface FsReaddirEntry {
+  name: string
+  type: 'file' | 'directory' | 'symlink' | 'other'
+  size: number
+}
+
+export interface FsReadfileRequest {
+  path: string
+  maxSize?: number
+}
+
+export interface FsReadfileResponse {
+  content: string
+  size: number
 }

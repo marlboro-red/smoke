@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
+import * as fs from 'fs/promises'
+import * as path from 'path'
+import * as os from 'os'
 
 // Mock electron
 const handlers: Record<string, (...args: any[]) => any> = {}
@@ -253,6 +256,68 @@ describe('registerIpcHandlers', () => {
     it('returns the launch cwd', () => {
       const result = handlers['app:get-launch-cwd']()
       expect(result).toBe('/home/user/project')
+    })
+  })
+
+  describe('FS_READDIR', () => {
+    let tmpDir: string
+
+    beforeAll(async () => {
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-test-'))
+      await fs.writeFile(path.join(tmpDir, 'hello.txt'), 'hello world')
+      await fs.mkdir(path.join(tmpDir, 'subdir'))
+    })
+
+    afterAll(async () => {
+      await fs.rm(tmpDir, { recursive: true, force: true })
+    })
+
+    it('lists directory contents with types and sizes', async () => {
+      const result = await handlers['fs:readdir']({}, { path: tmpDir })
+      const sorted = [...result].sort((a: any, b: any) => a.name.localeCompare(b.name))
+
+      expect(sorted).toEqual([
+        { name: 'hello.txt', type: 'file', size: 11 },
+        { name: 'subdir', type: 'directory', size: 0 },
+      ])
+    })
+
+    it('throws for nonexistent directory', async () => {
+      await expect(
+        handlers['fs:readdir']({}, { path: path.join(tmpDir, 'nope') })
+      ).rejects.toThrow()
+    })
+  })
+
+  describe('FS_READFILE', () => {
+    let tmpDir: string
+
+    beforeAll(async () => {
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-test-'))
+      await fs.writeFile(path.join(tmpDir, 'test.txt'), 'file content here')
+    })
+
+    afterAll(async () => {
+      await fs.rm(tmpDir, { recursive: true, force: true })
+    })
+
+    it('reads file content and returns size', async () => {
+      const filePath = path.join(tmpDir, 'test.txt')
+      const result = await handlers['fs:readfile']({}, { path: filePath })
+      expect(result).toEqual({ content: 'file content here', size: 17 })
+    })
+
+    it('throws for file exceeding maxSize', async () => {
+      const filePath = path.join(tmpDir, 'test.txt')
+      await expect(
+        handlers['fs:readfile']({}, { path: filePath, maxSize: 5 })
+      ).rejects.toThrow(/File too large/)
+    })
+
+    it('throws for nonexistent file', async () => {
+      await expect(
+        handlers['fs:readfile']({}, { path: path.join(tmpDir, 'nope.txt') })
+      ).rejects.toThrow()
     })
   })
 })
