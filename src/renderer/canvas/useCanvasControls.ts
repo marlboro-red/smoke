@@ -31,6 +31,27 @@ export function getCanvasRootElement(): HTMLDivElement | null {
   return _rootRef?.current ?? null
 }
 
+const ZOOM_STEP = 1.2
+const MIN_ZOOM_CONST = 0.1
+const MAX_ZOOM_CONST = 3.0
+
+export function setZoomTo(zoom: number): void {
+  if (!_zoomRef) return
+  _zoomRef.current = Math.max(MIN_ZOOM_CONST, Math.min(MAX_ZOOM_CONST, zoom))
+  _applyTransform?.()
+  _syncToStore?.()
+}
+
+export function zoomIn(): void {
+  if (!_zoomRef) return
+  setZoomTo(_zoomRef.current * ZOOM_STEP)
+}
+
+export function zoomOut(): void {
+  if (!_zoomRef) return
+  setZoomTo(_zoomRef.current / ZOOM_STEP)
+}
+
 interface CanvasControls {
   panRef: React.MutableRefObject<{ x: number; y: number }>
   zoomRef: React.MutableRefObject<number>
