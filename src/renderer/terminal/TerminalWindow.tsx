@@ -1,10 +1,10 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { sessionStore, useFocusedId, useHighlightedId, type Session } from '../stores/sessionStore'
 import { snapshotStore } from '../stores/snapshotStore'
-import { unregisterTerminal } from './terminalRegistry'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
+import { closeSession } from '../session/useSessionClose'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import TerminalWidget from './TerminalWidget'
@@ -59,12 +59,7 @@ export default function TerminalWindow({
   )
 
   const handleClose = useCallback(() => {
-    if (window.smokeAPI?.pty?.kill) {
-      window.smokeAPI.pty.kill(session.id)
-    }
-    unregisterTerminal(session.id)
-    sessionStore.getState().removeSession(session.id)
-    snapshotStore.getState().removeSnapshot(session.id)
+    closeSession(session.id)
   }, [session.id])
 
   const handleSnapshotReady = useCallback(

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
-import { useSessionList, useFocusedId, useHighlightedId, sessionStore } from '../stores/sessionStore'
+import { useSessionList, useFocusedId, useHighlightedId } from '../stores/sessionStore'
+import { createNewSession } from '../session/useSessionCreation'
 import SessionListItem from './SessionListItem'
 import { usePanToSession } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
@@ -18,9 +19,7 @@ export default function Sidebar(): JSX.Element {
   )
 
   const handleNewSession = useCallback(() => {
-    const cwd = process.env.HOME || '/tmp'
-    const session = sessionStore.getState().createSession(cwd)
-    window.smokeAPI?.pty.spawn({ id: session.id, cwd })
+    createNewSession()
   }, [])
 
   return (

@@ -1,10 +1,11 @@
 import { useRef, useCallback } from 'react'
 import { useCanvasControls } from './useCanvasControls'
 import { useViewportCulling } from './useViewportCulling'
-import { useSessionList, type Session } from '../stores/sessionStore'
+import { useSessionList, sessionStore, type Session } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
+import { createNewSession } from '../session/useSessionCreation'
 import Grid from './Grid'
 import TerminalWindow from '../terminal/TerminalWindow'
 import TerminalThumbnail from '../terminal/TerminalThumbnail'
@@ -31,8 +32,40 @@ export default function Canvas(): JSX.Element {
 
   const getZoom = useCallback(() => zoomRef.current, [zoomRef])
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Only on empty canvas, not on terminal windows
+      if ((e.target as HTMLElement).closest('.terminal-window')) return
+
+      const root = rootRef.current
+      if (!root) return
+
+      // Convert screen -> canvas coordinates
+      const rect = root.getBoundingClientRect()
+      const canvasX = (e.clientX - rect.left - panRef.current.x) / zoomRef.current
+      const canvasY = (e.clientY - rect.top - panRef.current.y) / zoomRef.current
+
+      createNewSession({ x: canvasX, y: canvasY })
+    },
+    [rootRef, panRef, zoomRef]
+  )
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Only unfocus when clicking empty canvas, not terminal windows
+      if ((e.target as HTMLElement).closest('.terminal-window')) return
+      sessionStore.getState().focusSession(null)
+    },
+    []
+  )
+
   return (
-    <div className="canvas-root" ref={rootRef}>
+    <div
+      className="canvas-root"
+      ref={rootRef}
+      onDoubleClick={handleDoubleClick}
+      onClick={handleClick}
+    >
       <div className="canvas-viewport" ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         {sessions.map((session) => {

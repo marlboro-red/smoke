@@ -23,7 +23,7 @@ interface SessionStore {
   createSession: (cwd: string, position?: { x: number; y: number }) => Session
   removeSession: (id: string) => void
   updateSession: (id: string, patch: Partial<Session>) => void
-  focusSession: (id: string) => void
+  focusSession: (id: string | null) => void
   highlightSession: (id: string | null) => void
   bringToFront: (id: string) => void
 }
@@ -76,7 +76,7 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
     })
   },
 
-  focusSession: (id: string) => {
+  focusSession: (id: string | null) => {
     set({ focusedId: id })
   },
 
