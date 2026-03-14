@@ -118,6 +118,12 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle(CONFIG_SET, (_event, request: ConfigSetRequest): void => {
+    const validKeys: Array<keyof Preferences> = [
+      'defaultShell', 'autoLaunchClaude', 'claudeCommand',
+      'gridSize', 'sidebarPosition', 'sidebarWidth',
+      'theme', 'defaultCwd',
+    ]
+    if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig
     configStore.set(key, request.value as never)
   })
