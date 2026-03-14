@@ -49,6 +49,17 @@ export interface Preferences {
   defaultCwd: string
 }
 
+export interface FsReaddirEntry {
+  name: string
+  type: 'file' | 'directory' | 'symlink' | 'other'
+  size: number
+}
+
+export interface FsReadfileResult {
+  content: string
+  size: number
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -67,6 +78,10 @@ export interface SmokeAPI {
   config: {
     get: () => Promise<Preferences>
     set: (key: string, value: unknown) => Promise<void>
+  }
+  fs: {
+    readdir: (path: string) => Promise<FsReaddirEntry[]>
+    readfile: (path: string, maxSize?: number) => Promise<FsReadfileResult>
   }
   app: {
     getLaunchCwd: () => Promise<string>
