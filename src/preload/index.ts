@@ -1,9 +1,36 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent } from './types'
 
-export interface SmokeAPI {
-  // Empty for now — will be populated by smoke-n5y (PTY Backend)
+const smokeAPI: SmokeAPI = {
+  pty: {
+    spawn: (options) => ipcRenderer.invoke('pty:spawn', options),
+
+    write: (id, data) => ipcRenderer.send('pty:data:to-pty', { id, data }),
+
+    resize: (id, cols, rows) => ipcRenderer.send('pty:resize', { id, cols, rows }),
+
+    kill: (id) => ipcRenderer.send('pty:kill', { id }),
+
+    onData: (callback: (event: PtyDataEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: PtyDataEvent): void => {
+        callback(data)
+      }
+      ipcRenderer.on('pty:data:from-pty', listener)
+      return () => {
+        ipcRenderer.removeListener('pty:data:from-pty', listener)
+      }
+    },
+
+    onExit: (callback: (event: PtyExitEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: PtyExitEvent): void => {
+        callback(data)
+      }
+      ipcRenderer.on('pty:exit', listener)
+      return () => {
+        ipcRenderer.removeListener('pty:exit', listener)
+      }
+    }
+  }
 }
-
-const smokeAPI: SmokeAPI = {}
 
 contextBridge.exposeInMainWorld('smokeAPI', smokeAPI)
