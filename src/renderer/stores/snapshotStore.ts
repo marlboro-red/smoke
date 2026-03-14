@@ -27,8 +27,10 @@ export const snapshotStore = createStore<SnapshotStore>((set) => ({
   },
 }))
 
+const EMPTY_LINES: string[] = []
+
 export const useSnapshot = (sessionId: string): string[] =>
-  useStore(snapshotStore, (state) => state.snapshots.get(sessionId) ?? [])
+  useStore(snapshotStore, (state) => state.snapshots.get(sessionId) ?? EMPTY_LINES)
 
 export const useSnapshotStore = <T>(selector: (state: SnapshotStore) => T): T =>
   useStore(snapshotStore, selector)

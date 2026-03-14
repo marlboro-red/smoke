@@ -1,5 +1,6 @@
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import { v4 as uuidv4 } from 'uuid'
 
 export interface Session {
@@ -95,9 +96,10 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
   },
 }))
 
-// Array selector for React list rendering
+// Array selector for React list rendering — useShallow prevents infinite loop
+// from new array references on every getSnapshot call
 export const useSessionList = (): Session[] =>
-  useStore(sessionStore, (state) => Array.from(state.sessions.values()))
+  useStore(sessionStore, useShallow((state) => Array.from(state.sessions.values())))
 
 export const useSession = (id: string): Session | undefined =>
   useStore(sessionStore, (state) => state.sessions.get(id))

@@ -1,4 +1,3 @@
-
 # Dolt database files (added by bd init)
 .dolt/
 *.db
@@ -13,16 +12,48 @@ dist/
 # electron-vite
 *.js.map
 
+# electron-builder
+*.dmg
+*.snap
+*.AppImage
+*.exe
+*.msi
+*.deb
+*.rpm
+
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Native module build artifacts
+build/Release/
+prebuilds/
+
+# Electron
+.electron/
+
+# Testing
+coverage/
+
+# Misc
+.cache/
+*.tsbuildinfo

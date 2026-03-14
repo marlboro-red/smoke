@@ -21,8 +21,9 @@ function getViewportCenter(): { x: number; y: number } {
 
 function getDefaultCwd(): string {
   const prefs = preferencesStore.getState().preferences
-  if (prefs.defaultCwd) return prefs.defaultCwd
-  return process.env.HOME || '/tmp'
+  // Return configured cwd or empty string; the main process PtyProcess
+  // falls back to os.homedir() when cwd is missing or invalid.
+  return prefs.defaultCwd || ''
 }
 
 export function createNewSession(position?: { x: number; y: number }): void {
