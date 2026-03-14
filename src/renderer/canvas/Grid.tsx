@@ -31,11 +31,11 @@ const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
           height={gridSize}
           patternUnits="userSpaceOnUse"
         >
-          <path
-            d={`M ${gridSize} 0 L 0 0 0 ${gridSize}`}
-            fill="none"
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="1"
+          <circle
+            cx={gridSize}
+            cy={gridSize}
+            r="1"
+            fill="rgba(255,255,255,0.15)"
           />
         </pattern>
       </defs>
