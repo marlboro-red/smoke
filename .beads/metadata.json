@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "smoke",
+  "project_id": "2f1e2e5a-3c58-48e7-89c5-703540776a29"
+}
