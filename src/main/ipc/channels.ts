@@ -7,6 +7,12 @@ export const PTY_RESIZE = 'pty:resize' as const
 export const PTY_KILL = 'pty:kill' as const
 export const PTY_EXIT = 'pty:exit' as const
 
+// Layout persistence channels
+export const LAYOUT_SAVE = 'layout:save' as const
+export const LAYOUT_LOAD = 'layout:load' as const
+export const LAYOUT_LIST = 'layout:list' as const
+export const LAYOUT_DELETE = 'layout:delete' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -48,4 +54,18 @@ export interface PtyExitMessage {
   id: string
   exitCode: number
   signal?: number
+}
+
+// Layout message types
+export interface LayoutSaveRequest {
+  name: string
+  layout: import('../config/ConfigStore').Layout
+}
+
+export interface LayoutLoadRequest {
+  name: string
+}
+
+export interface LayoutDeleteRequest {
+  name: string
 }
