@@ -21,6 +21,17 @@ function App(): JSX.Element {
     }
   }, [restoreDefault])
 
+  // Prevent Ctrl+scroll from triggering native Chromium zoom anywhere in the app
+  useEffect(() => {
+    const preventNativeZoom = (e: WheelEvent): void => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+      }
+    }
+    document.addEventListener('wheel', preventNativeZoom, { passive: false })
+    return () => document.removeEventListener('wheel', preventNativeZoom)
+  }, [])
+
   // Load preferences and launch cwd on mount
   useEffect(() => {
     window.smokeAPI?.config.get().then((prefs) => {
