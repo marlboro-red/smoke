@@ -42,6 +42,10 @@ const smokeAPI: SmokeAPI = {
   config: {
     get: () => ipcRenderer.invoke('config:get'),
     set: (key, value) => ipcRenderer.invoke('config:set', { key, value }),
+  },
+
+  app: {
+    getLaunchCwd: () => ipcRenderer.invoke('app:get-launch-cwd'),
   }
 }
 

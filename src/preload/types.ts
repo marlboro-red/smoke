@@ -68,6 +68,9 @@ export interface SmokeAPI {
     get: () => Promise<Preferences>
     set: (key: string, value: unknown) => Promise<void>
   }
+  app: {
+    getLaunchCwd: () => Promise<string>
+  }
 }
 
 declare global {

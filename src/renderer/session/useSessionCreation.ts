@@ -20,10 +20,10 @@ function getViewportCenter(): { x: number; y: number } {
 }
 
 function getDefaultCwd(): string {
-  const prefs = preferencesStore.getState().preferences
-  // Return configured cwd or empty string; the main process PtyProcess
-  // falls back to os.homedir() when cwd is missing or invalid.
-  return prefs.defaultCwd || ''
+  const { preferences, launchCwd } = preferencesStore.getState()
+  // Prefer configured defaultCwd, then the directory smoke was launched from.
+  // PtyProcess falls back to os.homedir() when cwd is empty or invalid.
+  return preferences.defaultCwd || launchCwd || ''
 }
 
 export function createNewSession(position?: { x: number; y: number }): void {

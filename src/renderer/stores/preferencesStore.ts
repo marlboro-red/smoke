@@ -15,18 +15,25 @@ const defaultPreferences: Preferences = {
 
 interface PreferencesStore {
   preferences: Preferences
+  launchCwd: string
   loaded: boolean
 
   setPreferences: (prefs: Preferences) => void
+  setLaunchCwd: (cwd: string) => void
   updatePreference: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void
 }
 
 export const preferencesStore = createStore<PreferencesStore>((set) => ({
   preferences: defaultPreferences,
+  launchCwd: '',
   loaded: false,
 
   setPreferences: (prefs: Preferences) => {
     set({ preferences: prefs, loaded: true })
+  },
+
+  setLaunchCwd: (cwd: string) => {
+    set({ launchCwd: cwd })
   },
 
   updatePreference: <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
