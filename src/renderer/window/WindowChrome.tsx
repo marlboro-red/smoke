@@ -88,6 +88,7 @@ export default function WindowChrome({
       )}
       <button
         className="window-chrome-close"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={handleCloseClick}
       >
         &times;
