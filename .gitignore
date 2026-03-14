@@ -2,3 +2,27 @@
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+
+# electron-vite
+*.js.map
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local

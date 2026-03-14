@@ -1,0 +1,36 @@
+{
+  "name": "smoke",
+  "version": "0.1.0",
+  "description": "Smoke — spatial terminal canvas",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "rebuild": "electron-rebuild -f -w node-pty",
+    "postinstall": "electron-vite build && electron-rebuild"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "node-pty": "^1.0.0",
+    "electron-store": "^10.0.0",
+    "uuid": "^11.1.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "electron": "^33.3.1",
+    "electron-vite": "^2.3.0",
+    "@electron/rebuild": "^3.7.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/uuid": "^10.0.0",
+    "vite": "^5.4.14",
+    "@vitejs/plugin-react": "^4.3.4"
+  }
+}
