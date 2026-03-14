@@ -1,5 +1,6 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { sessionStore, useFocusedId, useHighlightedId, type Session } from '../stores/sessionStore'
+import { snapshotStore } from '../stores/snapshotStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -7,6 +8,8 @@ import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import TerminalWidget from './TerminalWidget'
 import '../styles/window.css'
+
+const SNAPSHOT_INTERVAL = 5000
 
 interface TerminalWindowProps {
   session: Session
@@ -22,6 +25,7 @@ export default function TerminalWindow({
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
   const charDimsRef = useRef({ width: 8, height: 16 })
+  const getSnapshotRef = useRef<(() => string[]) | null>(null)
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
@@ -58,6 +62,40 @@ export default function TerminalWindow({
       window.smokeAPI.pty.kill(session.id)
     }
     sessionStore.getState().removeSession(session.id)
+    snapshotStore.getState().removeSnapshot(session.id)
+  }, [session.id])
+
+  const handleSnapshotReady = useCallback(
+    (getSnapshot: () => string[]) => {
+      getSnapshotRef.current = getSnapshot
+    },
+    []
+  )
+
+  // Periodically capture snapshots for thumbnail mode
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (getSnapshotRef.current) {
+        const lines = getSnapshotRef.current()
+        if (lines.length > 0) {
+          snapshotStore.getState().setSnapshot(session.id, lines)
+        }
+      }
+    }, SNAPSHOT_INTERVAL)
+
+    return () => clearInterval(interval)
+  }, [session.id])
+
+  // Capture snapshot on unmount (transitioning to thumbnail)
+  useEffect(() => {
+    return () => {
+      if (getSnapshotRef.current) {
+        const lines = getSnapshotRef.current()
+        if (lines.length > 0) {
+          snapshotStore.getState().setSnapshot(session.id, lines)
+        }
+      }
+    }
   }, [session.id])
 
   const classNames = [
@@ -99,6 +137,7 @@ export default function TerminalWindow({
           onCharDims={(dims) => {
             charDimsRef.current = dims
           }}
+          onSnapshot={handleSnapshotReady}
         />
       </div>
       <ResizeHandle direction="e" onResizeStart={onResizeStart} />
