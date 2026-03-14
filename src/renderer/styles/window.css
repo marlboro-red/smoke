@@ -1,0 +1,124 @@
+/* Terminal Window */
+.terminal-window {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(26, 26, 46, 0.95);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.terminal-window.focused {
+  border-color: rgba(100, 140, 255, 0.5);
+  box-shadow: 0 0 0 1px rgba(100, 140, 255, 0.2);
+}
+
+.terminal-window.highlighted {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.terminal-window.dragging {
+  opacity: 0.9;
+  cursor: grabbing;
+}
+
+.terminal-window.snapping {
+  transition: left 150ms ease-out, top 150ms ease-out,
+    width 150ms ease-out, height 150ms ease-out;
+}
+
+/* Window Chrome (title bar) */
+.window-chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: grab;
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.window-chrome:active {
+  cursor: grabbing;
+}
+
+.window-chrome-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.window-chrome-status.running {
+  background: #4ade80;
+}
+
+.window-chrome-status.exited {
+  background: #6b7280;
+}
+
+.window-chrome-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 32px;
+}
+
+.window-chrome-title-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(100, 140, 255, 0.4);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  padding: 2px 4px;
+  outline: none;
+}
+
+.window-chrome-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.window-chrome-close:hover {
+  background: rgba(255, 80, 80, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Terminal body */
+.terminal-body {
+  overflow: hidden;
+}
+
+/* Resize Handles */
+.resize-handle {
+  background: transparent;
+  z-index: 1;
+}
+
+.resize-handle:hover {
+  background: rgba(100, 140, 255, 0.15);
+}
+
+.resize-handle-se {
+  border-radius: 0 0 6px 0;
+}
+
+.resize-handle-se:hover {
+  background: rgba(100, 140, 255, 0.25);
+}
