@@ -17,6 +17,9 @@ export const LAYOUT_DELETE = 'layout:delete' as const
 export const CONFIG_GET = 'config:get' as const
 export const CONFIG_SET = 'config:set' as const
 
+// App channels
+export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
+
 // Message types
 
 export interface PtySpawnRequest {

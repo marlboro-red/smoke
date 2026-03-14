@@ -21,13 +21,18 @@ function App(): JSX.Element {
     }
   }, [restoreDefault])
 
-  // Load preferences on mount and apply grid size
+  // Load preferences and launch cwd on mount
   useEffect(() => {
     window.smokeAPI?.config.get().then((prefs) => {
       if (prefs) {
         preferencesStore.getState().setPreferences(prefs)
         gridStore.getState().setGridSize(prefs.gridSize)
         canvasStore.getState().setGridSize(prefs.gridSize)
+      }
+    })
+    window.smokeAPI?.app.getLaunchCwd().then((cwd) => {
+      if (cwd) {
+        preferencesStore.getState().setLaunchCwd(cwd)
       }
     })
   }, [])

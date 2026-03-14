@@ -15,6 +15,7 @@ import {
   LAYOUT_DELETE,
   CONFIG_GET,
   CONFIG_SET,
+  APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
@@ -28,7 +29,8 @@ import {
 
 export function registerIpcHandlers(
   ptyManager: PtyManager,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  launchCwd: string
 ): void {
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
     const preferences = configStore.get('preferences', defaultPreferences)
@@ -126,5 +128,10 @@ export function registerIpcHandlers(
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig
     configStore.set(key, request.value as never)
+  })
+
+  // App info handlers
+  ipcMain.handle(APP_GET_LAUNCH_CWD, (): string => {
+    return launchCwd
   })
 }

@@ -3,6 +3,9 @@ import { join } from 'path'
 import { PtyManager } from './pty/PtyManager'
 import { registerIpcHandlers } from './ipc/ipcHandlers'
 
+// Capture before Electron changes cwd
+const launchCwd = process.cwd()
+
 const ptyManager = new PtyManager()
 let mainWindow: BrowserWindow | null = null
 
@@ -36,7 +39,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  registerIpcHandlers(ptyManager, () => mainWindow)
+  registerIpcHandlers(ptyManager, () => mainWindow, launchCwd)
   createWindow()
 
   app.on('activate', () => {
