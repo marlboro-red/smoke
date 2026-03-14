@@ -24,6 +24,20 @@ export interface PtyExitEvent {
   signal?: number
 }
 
+export interface LayoutSession {
+  title: string
+  cwd: string
+  position: { x: number; y: number }
+  size: { width: number; height: number; cols: number; rows: number }
+}
+
+export interface Layout {
+  name: string
+  sessions: LayoutSession[]
+  viewport: { panX: number; panY: number; zoom: number }
+  gridSize: number
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -32,6 +46,12 @@ export interface SmokeAPI {
     kill: (id: string) => void
     onData: (callback: (event: PtyDataEvent) => void) => () => void
     onExit: (callback: (event: PtyExitEvent) => void) => () => void
+  }
+  layout: {
+    save: (name: string, layout: Layout) => Promise<void>
+    load: (name: string) => Promise<Layout | null>
+    list: () => Promise<string[]>
+    delete: (name: string) => Promise<void>
   }
 }
 
