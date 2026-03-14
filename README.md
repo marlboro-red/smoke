@@ -1,102 +1,68 @@
 # Smoke
 
-A spatial terminal canvas. Arrange multiple terminal windows on an infinite 2D plane with pan, zoom, and grid snapping.
+Infinite canvas terminal manager for orchestrating multiple Claude Code sessions.
 
 ![Electron](https://img.shields.io/badge/Electron-33-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows-lightgrey)
 
+<!-- TODO: Add screenshot/GIF showing the canvas with multiple terminals -->
+
 ## Features
 
 - **Infinite canvas** — pan and zoom freely across a 2D workspace
 - **Multiple terminals** — spawn terminal windows anywhere on the canvas
 - **Grid snapping** — align windows to a configurable grid
+- **Real PTY terminals** — full terminal emulation via node-pty and xterm.js with WebGL rendering
 - **Viewport culling** — only renders visible terminals for smooth performance at scale
 - **Thumbnail mode** — zoomed-out terminals display text snapshots instead of live renders
 - **Layout persistence** — auto-saves your workspace; save/load named layouts
 - **Sidebar** — browse, reorder, and focus sessions from a session list
+- **Auto-launch Claude Code** — optionally start Claude Code in every new terminal
 - **Configurable** — choose your shell, grid size, sidebar position, default working directory
 - **Cross-platform** — packaged for macOS (DMG/ZIP, x64 + arm64) and Windows (NSIS installer)
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) 20+
 - npm
 
-### Install
+### Install & Run
 
 ```bash
-git clone <repo-url>
+git clone <repo-url> smoke
 cd smoke
 npm install
+npm run dev
 ```
 
 The `postinstall` script automatically builds the project and rebuilds the native `node-pty` module for your platform.
 
-### Development
-
-```bash
-npm run dev
-```
-
-Opens the app in development mode with hot reload for the renderer process.
-
-### Build & Package
-
-```bash
-# Compile TypeScript
-npm run build
-
-# Package for macOS
-npm run package:mac
-
-# Package for Windows
-npm run package:win
-
-# Package for both
-npm run package:all
-```
-
-Packaged apps are output to the `dist/` directory.
-
-### Rebuild native modules
-
-If you switch Node or Electron versions:
-
-```bash
-npm run rebuild
-```
-
 ## Usage
+
+### Creating Terminals
+
+- **Double-click** on the canvas to create a new terminal at that position
+- **Cmd/Ctrl+N** to create a new terminal at the center of the viewport
+- Click **"+ New"** in the sidebar
 
 ### Canvas Navigation
 
 | Action | Input |
 |---|---|
-| Pan | Click and drag on empty canvas |
-| Zoom | Scroll wheel / pinch |
+| Pan | Scroll, middle-click drag, or Space+drag |
+| Zoom | Ctrl+Scroll (zooms toward cursor) |
 | New terminal | Double-click empty canvas |
 
-### Keyboard Shortcuts
+### Managing Sessions
 
-All shortcuts use `Cmd` on macOS and `Ctrl` on Windows/Linux.
-
-| Shortcut | Action |
-|---|---|
-| `Mod+N` | New session |
-| `Mod+W` | Close focused session |
-| `Mod+Tab` | Next session |
-| `Shift+Mod+Tab` | Previous session |
-| `Mod+1` – `Mod+9` | Focus session by index |
-| `Mod+0` | Reset zoom |
-| `Mod+=` | Zoom in |
-| `Mod+-` | Zoom out |
-| `Mod+S` | Save layout |
-| `Mod+,` | Open settings |
-| `Esc` | Unfocus terminal |
+- Click a terminal to focus it — keystrokes go to that terminal's shell
+- Press **Escape** to unfocus and return to canvas navigation
+- Click a session in the sidebar to focus and pan to it
+- Double-click a terminal's title bar to rename it
 
 ### Window Management
 
@@ -104,15 +70,58 @@ All shortcuts use `Cmd` on macOS and `Ctrl` on Windows/Linux.
 - **Resize** — drag the edge handles
 - **Focus** — click a terminal window or use sidebar/shortcuts
 
-### Settings
+### Layouts
 
-Open with `Mod+,` or from the sidebar. Configurable options:
+- Layouts auto-save on every change
+- Open the **Layouts** panel in the sidebar to save, load, or delete named layouts
+- **Cmd/Ctrl+S** to quick-save the current layout
 
-- Default shell
-- Default working directory
-- Grid size (10–50px)
-- Sidebar position (left/right)
-- Auto-launch Claude on new terminals
+### Auto-Launch Claude Code
+
+1. Open **Settings** in the sidebar
+2. Toggle **Auto-Launch Claude** on
+3. Optionally change the command (default: `claude`)
+4. New terminals will now auto-run the Claude command after shell init
+
+## Keyboard Shortcuts
+
+All shortcuts use `Cmd` on macOS and `Ctrl` on Windows.
+
+| Shortcut | Action |
+|---|---|
+| `Cmd/Ctrl+N` | New session |
+| `Cmd/Ctrl+W` | Close focused session |
+| `Cmd/Ctrl+Tab` | Cycle to next session |
+| `Cmd/Ctrl+Shift+Tab` | Cycle to previous session |
+| `Cmd/Ctrl+1`–`9` | Focus session by index (creation order) |
+| `Cmd/Ctrl+0` | Reset zoom to 100% |
+| `Cmd/Ctrl+=` | Zoom in |
+| `Cmd/Ctrl+-` | Zoom out |
+| `Cmd/Ctrl+S` | Save layout |
+| `Cmd/Ctrl+,` | Open settings |
+| `Escape` | Unfocus terminal (return to canvas) |
+| `Space+Drag` | Pan canvas (when no terminal focused) |
+| `Middle-click+Drag` | Pan canvas |
+| `Ctrl+Scroll` | Zoom toward cursor |
+
+## Configuration
+
+Settings are accessible from the sidebar's **Settings** panel or via `Cmd/Ctrl+,`.
+
+| Option | Default | Description |
+|---|---|---|
+| Default Shell | System default | Shell to spawn (e.g., `/bin/zsh`, `powershell.exe`) |
+| Auto-Launch Claude | `false` | Run Claude Code command in every new terminal |
+| Claude Command | `claude` | Command to execute for Claude Code |
+| Grid Size | `20` px | Grid cell size for snapping (10–50 px) |
+| Sidebar Position | `left` | Sidebar placement (`left` or `right`) |
+| Default CWD | App's CWD | Default working directory for new terminals |
+
+Config is stored as JSON by [electron-store](https://github.com/sindresorhus/electron-store) at:
+- **macOS:** `~/Library/Application Support/Smoke/smoke-config.json`
+- **Windows:** `%APPDATA%/Smoke/smoke-config.json`
+
+The config file is human-readable and can be edited by hand.
 
 ## Architecture
 
@@ -137,7 +146,11 @@ Smoke is an Electron app with three process layers:
 └─────────────────────────────────────────────────┘
 ```
 
-### Key directories
+Data flows: `keystroke → xterm.js → IPC → PTY → IPC → xterm.js → screen`
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture guide.
+
+### Key Directories
 
 ```
 src/
@@ -150,7 +163,7 @@ src/
     ├── canvas/     #   Canvas, grid, viewport culling
     ├── terminal/   #   xterm.js widget, registry, thumbnails
     ├── window/     #   Window chrome, drag, resize, snap
-    ├── session/    #   Session create/close/shortcuts
+    ├── session/    #   Session create/close
     ├── sidebar/    #   Session list sidebar
     ├── layout/     #   Layout save/load panel
     ├── config/     #   Settings panel
@@ -159,7 +172,7 @@ src/
     └── styles/     #   CSS
 ```
 
-### State management
+### State Management
 
 Zustand stores in `src/renderer/stores/`:
 
@@ -182,25 +195,59 @@ Zustand stores in `src/renderer/stores/`:
 
 | Layer | Technology |
 |---|---|
-| Desktop framework | Electron 33 |
+| Framework | Electron 33 |
+| Build Tool | electron-vite (Vite 5) |
 | UI | React 18 |
 | State | Zustand 5 |
-| Terminal emulator | xterm.js 5 (WebGL + fit addons) |
-| PTY | node-pty |
-| Persistence | electron-store |
-| Build | electron-vite + Vite |
-| Packaging | electron-builder |
-| Language | TypeScript 5.7 |
-| Tests | Vitest |
+| Terminal | xterm.js 5 (WebGL + fit addons) |
+| PTY | node-pty 1.0 |
+| Persistence | electron-store 10 |
+| Language | TypeScript 5.7 (strict) |
+| Tests | Vitest 4 |
+| Packaging | electron-builder 25 |
+
+## Building from Source
+
+### Development
+
+```bash
+npm run dev          # Start with HMR (renderer + main hot-reload)
+```
+
+### Production Build
+
+```bash
+npm run build        # Build main, preload, and renderer bundles
+npm run start        # Preview the production build
+```
+
+### Packaging
+
+```bash
+npm run package:mac  # macOS DMG + ZIP (x64 + arm64)
+npm run package:win  # Windows NSIS installer (x64)
+npm run package:all  # Both platforms
+```
+
+Build artifacts are output to `dist/`.
+
+### Native Module Rebuild
+
+If you switch Node or Electron versions:
+
+```bash
+npm run rebuild      # Rebuild node-pty against current Electron headers
+```
 
 ## Testing
 
 ```bash
-npx vitest
+npx vitest           # Watch mode
+npx vitest run       # Run all tests once
 ```
 
 Tests cover stores, canvas logic, viewport culling, terminal registry, window interactions, layout persistence, config, sidebar, shortcuts, and session lifecycle.
 
 ## License
 
-Private — all rights reserved.
+MIT
