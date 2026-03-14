@@ -4,9 +4,10 @@ import { useSessionList, type Session } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import Grid from './Grid'
+import TerminalWidget from '../terminal/TerminalWidget'
 import '../styles/canvas.css'
 
-function SessionPlaceholder({ session }: { session: Session }): JSX.Element {
+function SessionWindow({ session }: { session: Session }): JSX.Element {
   return (
     <div
       style={{
@@ -19,14 +20,15 @@ function SessionPlaceholder({ session }: { session: Session }): JSX.Element {
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: 4,
         background: 'rgba(26, 26, 46, 0.8)',
-        color: '#e0e0e0',
-        fontFamily: 'monospace',
-        fontSize: 12,
-        padding: 8,
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
-      {session.title}
+      <TerminalWidget
+        sessionId={session.id}
+        cols={session.size.cols}
+        rows={session.size.rows}
+      />
     </div>
   )
 }
@@ -44,7 +46,7 @@ export default function Canvas(): JSX.Element {
       <div className="canvas-viewport" ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         {sessions.map((session) => (
-          <SessionPlaceholder key={session.id} session={session} />
+          <SessionWindow key={session.id} session={session} />
         ))}
       </div>
     </div>
