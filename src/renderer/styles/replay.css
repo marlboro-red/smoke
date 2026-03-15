@@ -155,7 +155,6 @@
 .replay-panel {
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
   padding: var(--space-sm) 0;
 }
