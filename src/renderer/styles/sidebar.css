@@ -288,6 +288,25 @@
   box-shadow: 0 0 5px rgba(251, 191, 36, 0.35);
 }
 
+/* Activity indicator for off-screen terminals with new output */
+.status-dot.activity {
+  animation: activity-pulse 1.5s ease-in-out infinite;
+}
+
+.session-list-item.has-activity .session-title {
+  color: var(--accent);
+}
+
+@keyframes activity-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--accent);
+  }
+  50% {
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent), 0 0 3px var(--accent);
+  }
+}
+
 /* Context Menu */
 
 .sidebar-context-menu {

@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '../stores/sessionStore'
 import { sessionStore } from '../stores/sessionStore'
+import { useHasActivity, activityStore } from '../stores/activityStore'
 
 interface SessionListItemProps {
   session: Session
@@ -23,6 +24,7 @@ function shortenPath(path: string): string {
 
 function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup, isRenaming, onPanTo, onContextMenu, onStartRename, onFinishRename }: SessionListItemProps): JSX.Element {
   const isExited = session.type === 'terminal' && session.status === 'exited'
+  const hasActivity = useHasActivity(session.id)
   const [editValue, setEditValue] = useState(session.title)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -61,7 +63,10 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
   }, [])
 
   const handleClick = useCallback(() => {
-    if (!isRenaming) onPanTo(session.id)
+    if (!isRenaming) {
+      activityStore.getState().clearActive(session.id)
+      onPanTo(session.id)
+    }
   }, [session.id, onPanTo, isRenaming])
 
   const handleDoubleClick = useCallback(() => {
@@ -78,6 +83,7 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
   if (isHighlighted) className += ' highlighted'
   if (isExited) className += ' exited'
   if (isInBroadcastGroup) className += ' broadcasting'
+  if (hasActivity) className += ' has-activity'
 
   return (
     <div
@@ -87,7 +93,7 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : session.type === 'webview' ? 'webview' : session.type === 'image' ? 'image' : session.type === 'snippet' ? 'snippet' : isExited ? 'exited' : 'running'}`} />
+      <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : session.type === 'webview' ? 'webview' : session.type === 'image' ? 'image' : session.type === 'snippet' ? 'snippet' : isExited ? 'exited' : 'running'}${hasActivity ? ' activity' : ''}`} />
       <div className="session-info">
         {isRenaming ? (
           <input

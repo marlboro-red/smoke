@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { sessionStore, useSessionList } from '../stores/sessionStore'
 import { useCanvasStore, canvasStore } from '../stores/canvasStore'
+import { activityStore, useActiveIds } from '../stores/activityStore'
 import { setPanTo, getCanvasRootElement } from './useCanvasControls'
 import '../styles/minimap.css'
 
@@ -49,6 +50,8 @@ export default function Minimap(): JSX.Element | null {
   const panX = useCanvasStore((s) => s.panX)
   const panY = useCanvasStore((s) => s.panY)
   const zoom = useCanvasStore((s) => s.zoom)
+  const activeIds = useActiveIds()
+  const animFrameRef = useRef<number>(0)
 
   // Store latest bounds for click handler
   const boundsRef = useRef<Bounds>({ minX: 0, minY: 0, maxX: 1, maxY: 1 })
@@ -90,6 +93,7 @@ export default function Minimap(): JSX.Element | null {
     ctx.clearRect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT)
 
     // Draw elements
+    const currentActiveIds = activityStore.getState().activeIds
     for (const s of allSessions) {
       const x = (s.position.x - bounds.minX) * scale + offsetX
       const y = (s.position.y - bounds.minY) * scale + offsetY
@@ -97,6 +101,20 @@ export default function Minimap(): JSX.Element | null {
       const h = Math.max(s.size.height * scale, 2)
       ctx.fillStyle = TYPE_COLORS[s.type] || 'rgba(255,255,255,0.5)'
       ctx.fillRect(x, y, w, h)
+
+      // Draw activity indicator for off-screen terminals with new output
+      if (currentActiveIds.has(s.id)) {
+        const pulse = (Math.sin(Date.now() / 400) + 1) / 2 // 0..1 oscillation
+        const radius = 3 + pulse * 2
+        const alpha = 0.6 + pulse * 0.4
+        ctx.beginPath()
+        ctx.arc(x + w, y, radius, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(124, 140, 245, ${alpha})`
+        ctx.fill()
+        ctx.strokeStyle = `rgba(124, 140, 245, ${alpha * 0.6})`
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
     }
 
     // Draw viewport rectangle
@@ -109,11 +127,26 @@ export default function Minimap(): JSX.Element | null {
     ctx.strokeRect(vx, vy, vw, vh)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
     ctx.fillRect(vx, vy, vw, vh)
-  }, [panX, panY, zoom, sessions])
+  }, [panX, panY, zoom, sessions, activeIds])
 
+  // Animate minimap when there are active (pulsing) indicators
   useEffect(() => {
-    draw()
-  }, [draw])
+    if (activeIds.size === 0) {
+      draw()
+      return
+    }
+    let running = true
+    const animate = (): void => {
+      if (!running) return
+      draw()
+      animFrameRef.current = requestAnimationFrame(animate)
+    }
+    animate()
+    return () => {
+      running = false
+      cancelAnimationFrame(animFrameRef.current)
+    }
+  }, [draw, activeIds])
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
