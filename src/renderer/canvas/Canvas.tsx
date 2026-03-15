@@ -35,6 +35,9 @@ import { useFileWatchManager } from '../fileviewer/useFileWatcher'
 import { useGraphInvalidation } from '../depgraph/useGraphInvalidation'
 import { useDirectoryClusters } from './useDirectoryClusters'
 import { useConnectorList } from '../stores/connectorStore'
+import { useSuggestionEngine } from '../suggestions/useSuggestionEngine'
+import { useSuggestions } from '../stores/suggestionStore'
+import GhostSuggestion from '../suggestions/GhostSuggestion'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -94,6 +97,8 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
 
   useFileWatchManager(visibleIds)
   useGraphInvalidation(visibleIds)
+  useSuggestionEngine()
+  const suggestions = useSuggestions()
 
   // Build set of session IDs hidden by collapsed groups
   const collapsedMemberIds = useMemo(() => {
@@ -281,6 +286,9 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
         ))}
         {collapsedGroups.map((group) => (
           <GroupCollapsedCard key={group.id} group={group} />
+        ))}
+        {suggestions.map((suggestion) => (
+          <GhostSuggestion key={suggestion.id} suggestion={suggestion} />
         ))}
       </div>
       {/* Pinned elements layer — rendered outside the canvas viewport transform */}
