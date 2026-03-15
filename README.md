@@ -87,6 +87,15 @@ Infinite canvas workspace for orchestrating terminals, files, code snippets, web
 - [Node.js](https://nodejs.org/) 20+
 - npm
 
+#### Windows Additional Requirements
+
+Building `node-pty` from source on Windows requires a C++ toolchain:
+
+1. Install [Visual Studio 2022](https://visualstudio.microsoft.com/) (Community edition is free) with the **"Desktop development with C++"** workload
+2. Ensure the **MSVC v143 build tools** and **Windows SDK** are selected
+
+The `postinstall` script automatically patches `node-pty` to disable Spectre mitigation (`/Qspectre`), so you do **not** need to install Spectre-mitigated libraries. If you prefer to keep Spectre mitigation enabled, install the mitigated libs via **Visual Studio Installer → Individual Components → search "Spectre" → install for MSVC v143 x64**, and remove the patch step from the `postinstall` script.
+
 ### Install & Run
 
 ```bash
@@ -479,7 +488,7 @@ Build artifacts are output to `dist/`.
 If you switch Node or Electron versions:
 
 ```bash
-npm run rebuild      # Rebuild node-pty against current Electron headers
+npm run rebuild      # Patch Spectre flags (Windows) + rebuild node-pty for Electron
 ```
 
 ## Testing
