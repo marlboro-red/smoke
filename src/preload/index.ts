@@ -53,6 +53,7 @@ const smokeAPI: SmokeAPI = {
   fs: {
     readdir: (path) => ipcRenderer.invoke('fs:readdir', { path }),
     readfile: (path, maxSize?) => ipcRenderer.invoke('fs:readfile', { path, maxSize }),
+    readfileBase64: (path, maxSize?) => ipcRenderer.invoke('fs:readfile-base64', { path, maxSize }),
     writefile: (path, content) => ipcRenderer.invoke('fs:writefile', { path, content }),
   },
 

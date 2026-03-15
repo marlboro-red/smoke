@@ -87,7 +87,8 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : session.type === 'webview' ? 'webview' : isExited ? 'exited' : 'running'}`} />
+      <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : session.type === 'webview' ? 'webview' : session.type === 'image' ? 'image' : isExited ? 'exited' : 'running'}`} />
+>>>>>>> be76e6d (Add image and media preview canvas element (smoke-qx0))
       <div className="session-info">
         {isRenaming ? (
           <input
@@ -112,6 +113,9 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
         )}
         {session.type === 'webview' && (
           <span className="session-cwd">{session.url}</span>
+        )}
+        {session.type === 'image' && (
+          <span className="session-cwd">{shortenPath(session.filePath)}</span>
         )}
       </div>
     </div>

@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { connectorStore } from './connectorStore'
 import { preferencesStore } from './preferencesStore'
 
-export type ElementType = 'terminal' | 'file' | 'note' | 'webview'
+export type ElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image'
 
 export interface BaseSession {
   id: string
@@ -46,7 +46,16 @@ export interface WebviewSession extends BaseSession {
   canGoForward: boolean
 }
 
-export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession
+export interface ImageSession extends BaseSession {
+  type: 'image'
+  filePath: string
+  dataUrl: string
+  naturalWidth: number
+  naturalHeight: number
+  aspectRatio: number
+}
+
+export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession | ImageSession
 
 interface SessionStore {
   sessions: Map<string, Session>
@@ -58,6 +67,7 @@ interface SessionStore {
 
   createSession: (cwd: string, position?: { x: number; y: number }) => Session
   createFileSession: (filePath: string, content: string, language: string, position?: { x: number; y: number }) => FileViewerSession
+  createImageSession: (filePath: string, dataUrl: string, naturalWidth: number, naturalHeight: number, position?: { x: number; y: number }) => ImageSession
   createNoteSession: (position?: { x: number; y: number }, color?: string) => NoteSession
   createWebviewSession: (url?: string, position?: { x: number; y: number }) => WebviewSession
   removeSession: (id: string) => void
@@ -118,6 +128,47 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       language,
       position: position ?? { x: 0, y: 0 },
       size: { cols: 80, rows: 24, width: 640, height: 480 },
+      zIndex: nextZIndex,
+      createdAt: Date.now(),
+    }
+    set((state) => {
+      const sessions = new Map(state.sessions)
+      sessions.set(session.id, session)
+      return { sessions, nextZIndex: nextZIndex + 1 }
+    })
+    return session
+  },
+
+  createImageSession: (filePath: string, dataUrl: string, naturalWidth: number, naturalHeight: number, position?: { x: number; y: number }): ImageSession => {
+    const { nextZIndex } = get()
+    const { launchCwd } = preferencesStore.getState()
+    let title: string
+    if (launchCwd && filePath.startsWith(launchCwd + '/')) {
+      title = filePath.slice(launchCwd.length + 1)
+    } else {
+      title = filePath.split('/').pop() || filePath
+    }
+    const aspectRatio = naturalWidth / naturalHeight
+    // Scale to fit within 640x480 while preserving aspect ratio
+    let width = Math.min(naturalWidth, 640)
+    let height = width / aspectRatio
+    if (height > 480) {
+      height = 480
+      width = height * aspectRatio
+    }
+    width = Math.max(200, Math.round(width))
+    height = Math.max(150, Math.round(height))
+    const session: ImageSession = {
+      id: uuidv4(),
+      type: 'image',
+      title,
+      filePath,
+      dataUrl,
+      naturalWidth,
+      naturalHeight,
+      aspectRatio,
+      position: position ?? { x: 0, y: 0 },
+      size: { cols: 0, rows: 0, width, height },
       zIndex: nextZIndex,
       createdAt: Date.now(),
     }
@@ -194,7 +245,7 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       const existing = state.sessions.get(id)
       if (!existing) return state
       const sessions = new Map(state.sessions)
-      sessions.set(id, { ...existing, ...patch })
+      sessions.set(id, { ...existing, ...patch } as Session)
       return { sessions }
     })
   },
@@ -281,6 +332,15 @@ export function getGroupSessionIds(groupId: string): string[] {
 export function findFileSessionByPath(filePath: string): FileViewerSession | undefined {
   for (const session of sessionStore.getState().sessions.values()) {
     if (session.type === 'file' && session.filePath === filePath) {
+      return session
+    }
+  }
+  return undefined
+}
+
+export function findImageSessionByPath(filePath: string): ImageSession | undefined {
+  for (const session of sessionStore.getState().sessions.values()) {
+    if (session.type === 'image' && session.filePath === filePath) {
       return session
     }
   }

@@ -24,7 +24,7 @@ export interface PtyExitEvent {
   signal?: number
 }
 
-export type LayoutElementType = 'terminal' | 'file' | 'note' | 'webview'
+export type LayoutElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image'
 
 export interface LayoutSession {
   type?: LayoutElementType
@@ -35,6 +35,7 @@ export interface LayoutSession {
   content?: string
   color?: string
   url?: string
+  aspectRatio?: number
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }
@@ -94,6 +95,12 @@ export interface FsReaddirEntry {
 export interface FsReadfileResult {
   content: string
   size: number
+}
+
+export interface FsReadfileBase64Result {
+  dataUrl: string
+  size: number
+  mimeType: string
 }
 
 export interface FsWritefileResult {
@@ -232,6 +239,7 @@ export interface SmokeAPI {
   fs: {
     readdir: (path: string) => Promise<FsReaddirEntry[]>
     readfile: (path: string, maxSize?: number) => Promise<FsReadfileResult>
+    readfileBase64: (path: string, maxSize?: number) => Promise<FsReadfileBase64Result>
     writefile: (path: string, content: string) => Promise<FsWritefileResult>
   }
   app: {

@@ -18,7 +18,7 @@ export interface CanvasEvent<T extends CanvasEventType = CanvasEventType> {
 export interface CanvasEventPayloadMap {
   session_created: {
     sessionId: string
-    type: 'terminal' | 'file' | 'note' | 'webview'
+    type: 'terminal' | 'file' | 'note' | 'webview' | 'image'
     title: string
     cwd?: string
     filePath?: string
