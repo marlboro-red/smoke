@@ -115,6 +115,35 @@ export default function ConfigPanel(): JSX.Element {
               onChange={(e) => updatePref('defaultCwd', e.target.value)}
             />
           </div>
+
+          <div className="config-section-divider" />
+          <div className="config-section-title">AI</div>
+
+          <div className="config-group">
+            <label className="config-label">Anthropic API Key</label>
+            <input
+              className="config-input"
+              type="password"
+              placeholder="sk-ant-..."
+              value={prefs.aiApiKey}
+              onChange={(e) => updatePref('aiApiKey', e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+
+          <div className="config-group">
+            <label className="config-label">Model</label>
+            <select
+              className="config-input"
+              value={prefs.aiModel}
+              onChange={(e) => updatePref('aiModel', e.target.value)}
+            >
+              <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+              <option value="claude-opus-4-20250514">Claude Opus 4</option>
+              <option value="claude-haiku-4-20250506">Claude Haiku 4</option>
+            </select>
+          </div>
         </div>
       )}
     </div>

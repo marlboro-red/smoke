@@ -30,6 +30,8 @@ const mockConfig: Record<string, any> = {
     sidebarWidth: 240,
     theme: 'dark',
     defaultCwd: '',
+    aiApiKey: '',
+    aiModel: 'claude-sonnet-4-20250514',
   },
   defaultLayout: null,
   namedLayouts: {},
@@ -67,6 +69,8 @@ vi.mock('../../config/ConfigStore', () => ({
     sidebarWidth: 240,
     theme: 'dark',
     defaultCwd: '',
+    aiApiKey: '',
+    aiModel: 'claude-sonnet-4-20250514',
   },
 }))
 
@@ -93,6 +97,8 @@ describe('registerIpcHandlers', () => {
       sidebarWidth: 240,
       theme: 'dark',
       defaultCwd: '',
+      aiApiKey: '',
+      aiModel: 'claude-sonnet-4-20250514',
     }
     mockConfig.defaultLayout = null
     mockConfig.namedLayouts = {}

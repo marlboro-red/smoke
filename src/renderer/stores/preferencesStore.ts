@@ -11,6 +11,8 @@ const defaultPreferences: Preferences = {
   sidebarWidth: 240,
   theme: 'dark',
   defaultCwd: '',
+  aiApiKey: '',
+  aiModel: 'claude-sonnet-4-20250514',
 }
 
 interface PreferencesStore {
