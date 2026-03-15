@@ -17,7 +17,7 @@ function shortenCwd(cwd: string): string {
 }
 
 function SessionListItem({ session, isFocused, isHighlighted, onPanTo }: SessionListItemProps): JSX.Element {
-  const isExited = session.status === 'exited'
+  const isExited = session.type === 'terminal' && session.status === 'exited'
 
   const handleMouseEnter = useCallback(() => {
     sessionStore.getState().highlightSession(session.id)
@@ -46,7 +46,9 @@ function SessionListItem({ session, isFocused, isHighlighted, onPanTo }: Session
       <span className={`status-dot ${isExited ? 'exited' : 'running'}`} />
       <div className="session-info">
         <span className="session-title">{session.title}</span>
-        <span className="session-cwd">{shortenCwd(session.cwd)}</span>
+        {session.type === 'terminal' && (
+          <span className="session-cwd">{shortenCwd(session.cwd)}</span>
+        )}
       </div>
     </div>
   )

@@ -34,6 +34,7 @@ describe('serializeCurrentLayout', () => {
     const layout = serializeCurrentLayout('my-layout')
     expect(layout.sessions).toHaveLength(1)
     expect(layout.sessions[0]).toEqual({
+      type: 'terminal',
       title: 'My Project',
       cwd: '/home/user/project',
       position: { x: 100, y: 200 },
@@ -165,7 +166,7 @@ describe('layout data model', () => {
     const layout = serializeCurrentLayout('transient-test')
     const session = layout.sessions[0]
     const keys = Object.keys(session)
-    expect(keys).toEqual(['title', 'cwd', 'position', 'size'])
+    expect(keys).toEqual(['type', 'title', 'cwd', 'position', 'size'])
     expect(session).not.toHaveProperty('id')
     expect(session).not.toHaveProperty('zIndex')
     expect(session).not.toHaveProperty('status')

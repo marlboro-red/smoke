@@ -17,6 +17,12 @@ export function closeSession(sessionId: string): void {
     return
   }
 
+  // Non-terminal elements can be cleaned up immediately
+  if (session.type !== 'terminal') {
+    cleanupSession(sessionId)
+    return
+  }
+
   // If already exited, clean up immediately
   if (session.status === 'exited') {
     cleanupSession(sessionId)

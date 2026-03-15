@@ -24,7 +24,10 @@ export interface PtyExitEvent {
   signal?: number
 }
 
+export type LayoutElementType = 'terminal'
+
 export interface LayoutSession {
+  type?: LayoutElementType
   title: string
   cwd: string
   position: { x: number; y: number }

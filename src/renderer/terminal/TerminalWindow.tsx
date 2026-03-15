@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react'
-import { sessionStore, useFocusedId, useHighlightedId, type Session } from '../stores/sessionStore'
+import { sessionStore, useFocusedId, useHighlightedId, type TerminalSession } from '../stores/sessionStore'
 import { snapshotStore } from '../stores/snapshotStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
@@ -13,7 +13,7 @@ import '../styles/window.css'
 const SNAPSHOT_INTERVAL = 5000
 
 interface TerminalWindowProps {
-  session: Session
+  session: TerminalSession
   zoom: () => number
   gridSize: number
 }

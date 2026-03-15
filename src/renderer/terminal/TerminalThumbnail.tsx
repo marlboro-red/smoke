@@ -1,9 +1,9 @@
-import { type Session } from '../stores/sessionStore'
+import { type TerminalSession } from '../stores/sessionStore'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import '../styles/thumbnail.css'
 
 interface TerminalThumbnailProps {
-  session: Session
+  session: TerminalSession
   textSnapshot: string[]
 }
 

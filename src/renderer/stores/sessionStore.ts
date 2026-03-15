@@ -3,17 +3,26 @@ import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { v4 as uuidv4 } from 'uuid'
 
-export interface Session {
+export type ElementType = 'terminal'
+
+export interface BaseSession {
   id: string
+  type: ElementType
   title: string
-  cwd: string
   position: { x: number; y: number }
   size: { cols: number; rows: number; width: number; height: number }
   zIndex: number
-  status: 'running' | 'exited'
-  exitCode?: number
   createdAt: number
 }
+
+export interface TerminalSession extends BaseSession {
+  type: 'terminal'
+  cwd: string
+  status: 'running' | 'exited'
+  exitCode?: number
+}
+
+export type Session = TerminalSession
 
 interface SessionStore {
   sessions: Map<string, Session>
@@ -39,6 +48,7 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
     const { nextZIndex } = get()
     const session: Session = {
       id: uuidv4(),
+      type: 'terminal',
       title: cwd.split('/').pop() || cwd,
       cwd,
       position: position ?? { x: 0, y: 0 },
