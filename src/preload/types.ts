@@ -385,6 +385,18 @@ export interface RelevanceScoringResult {
   keywords: string[]
 }
 
+// Task parser types
+export type TaskIntent = 'fix' | 'add' | 'refactor' | 'investigate' | 'test' | 'document' | 'configure' | 'style'
+export type FileCategory = 'source' | 'test' | 'config' | 'style' | 'docs' | 'types'
+
+export interface ParsedTask {
+  intent: TaskIntent
+  keywords: string[]
+  filePatterns: string[]
+  includeFileTypes: FileCategory[]
+  usedAi: boolean
+}
+
 // Workspace layout planner types
 export interface WorkspaceFileInput {
   filePath: string
@@ -480,6 +492,9 @@ export interface SmokeAPI {
     assignGroup: (agentId: string, groupId: string | null, memberSessionIds?: string[]) => Promise<void>
     setRole: (agentId: string, role: string | null) => Promise<void>
     updateScope: (agentId: string, sessionIds: string[]) => Promise<void>
+  }
+  task: {
+    parse: (taskDescription: string, useAi?: boolean) => Promise<ParsedTask>
   }
   relevance: {
     score: (

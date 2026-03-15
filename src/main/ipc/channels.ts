@@ -94,6 +94,9 @@ export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
 export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
 export const CODEGRAPH_PLAN_WORKSPACE = 'codegraph:plan-workspace' as const
 
+// Task parsing channels
+export const TASK_PARSE = 'task:parse' as const
+
 // Relevance scoring channels
 export const RELEVANCE_SCORE = 'relevance:score' as const
 
@@ -460,6 +463,23 @@ export interface CodeGraphIndexStats {
 export interface TabStateData {
   tabs: Array<{ id: string; name: string }>
   activeTabId: string
+}
+
+// Task parsing message types
+export interface TaskParseRequest {
+  taskDescription: string
+  useAi?: boolean
+}
+
+export type TaskIntent = 'fix' | 'add' | 'refactor' | 'investigate' | 'test' | 'document' | 'configure' | 'style'
+export type FileCategory = 'source' | 'test' | 'config' | 'style' | 'docs' | 'types'
+
+export interface TaskParseResponse {
+  intent: TaskIntent
+  keywords: string[]
+  filePatterns: string[]
+  includeFileTypes: FileCategory[]
+  usedAi: boolean
 }
 
 // Relevance scoring message types
