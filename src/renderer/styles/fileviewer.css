@@ -1,0 +1,58 @@
+/* File Viewer Window */
+.file-viewer-window .window-chrome-status {
+  background: #60a5fa;
+}
+
+.file-viewer-body {
+  overflow: auto;
+}
+
+.file-viewer-content {
+  height: 100%;
+  overflow: auto;
+}
+
+.file-viewer-highlighted {
+  height: 100%;
+  overflow: auto;
+}
+
+.file-viewer-highlighted pre {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: Menlo, Monaco, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: visible;
+}
+
+.file-viewer-highlighted code {
+  font-family: inherit;
+  counter-reset: line;
+}
+
+.file-viewer-highlighted .line {
+  display: block;
+}
+
+.file-viewer-plaintext {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: Menlo, Monaco, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e0e0e0;
+  white-space: pre;
+  overflow: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.file-viewer-plaintext code {
+  font-family: inherit;
+}
+
+/* Thumbnail status dot for file type */
+.thumbnail-status.file {
+  background: #60a5fa;
+}

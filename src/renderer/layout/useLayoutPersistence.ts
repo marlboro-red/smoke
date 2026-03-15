@@ -11,18 +11,24 @@ function serializeCurrentLayout(name: string): Layout {
 
   return {
     name,
-    sessions: Array.from(sessions.values()).map((s) => ({
-      type: s.type,
-      title: s.title,
-      cwd: s.type === 'terminal' ? s.cwd : '',
-      position: { x: s.position.x, y: s.position.y },
-      size: {
-        width: s.size.width,
-        height: s.size.height,
-        cols: s.size.cols,
-        rows: s.size.rows,
-      },
-    })),
+    sessions: Array.from(sessions.values()).map((s) => {
+      const base = {
+        type: s.type,
+        title: s.title,
+        cwd: s.type === 'terminal' ? s.cwd : '',
+        position: { x: s.position.x, y: s.position.y },
+        size: {
+          width: s.size.width,
+          height: s.size.height,
+          cols: s.size.cols,
+          rows: s.size.rows,
+        },
+      }
+      if (s.type === 'file') {
+        return { ...base, filePath: s.filePath, language: s.language }
+      }
+      return base
+    }),
     viewport: { panX, panY, zoom },
     gridSize,
   }
@@ -96,6 +102,28 @@ export function useLayoutRestore(): {
             cols: saved.size.cols,
             rows: saved.size.rows,
           })
+          break
+        }
+        case 'file': {
+          if (saved.filePath) {
+            try {
+              const result = await window.smokeAPI?.fs.readfile(saved.filePath)
+              if (result) {
+                const session = sessionStore.getState().createFileSession(
+                  saved.filePath,
+                  result.content,
+                  saved.language || 'text',
+                  saved.position
+                )
+                sessionStore.getState().updateSession(session.id, {
+                  title: saved.title,
+                  size: saved.size,
+                })
+              }
+            } catch {
+              // File may no longer exist — skip silently
+            }
+          }
           break
         }
       }

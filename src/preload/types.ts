@@ -24,12 +24,14 @@ export interface PtyExitEvent {
   signal?: number
 }
 
-export type LayoutElementType = 'terminal'
+export type LayoutElementType = 'terminal' | 'file'
 
 export interface LayoutSession {
   type?: LayoutElementType
   title: string
   cwd: string
+  filePath?: string
+  language?: string
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }

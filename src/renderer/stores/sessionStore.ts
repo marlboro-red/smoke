@@ -3,7 +3,7 @@ import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { v4 as uuidv4 } from 'uuid'
 
-export type ElementType = 'terminal'
+export type ElementType = 'terminal' | 'file'
 
 export interface BaseSession {
   id: string
@@ -22,7 +22,14 @@ export interface TerminalSession extends BaseSession {
   exitCode?: number
 }
 
-export type Session = TerminalSession
+export interface FileViewerSession extends BaseSession {
+  type: 'file'
+  filePath: string
+  content: string
+  language: string
+}
+
+export type Session = TerminalSession | FileViewerSession
 
 interface SessionStore {
   sessions: Map<string, Session>
@@ -31,6 +38,7 @@ interface SessionStore {
   nextZIndex: number
 
   createSession: (cwd: string, position?: { x: number; y: number }) => Session
+  createFileSession: (filePath: string, content: string, language: string, position?: { x: number; y: number }) => FileViewerSession
   removeSession: (id: string) => void
   updateSession: (id: string, patch: Partial<Session>) => void
   focusSession: (id: string | null) => void
@@ -55,6 +63,29 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       size: { cols: 80, rows: 24, width: 640, height: 480 },
       zIndex: nextZIndex,
       status: 'running',
+      createdAt: Date.now(),
+    }
+    set((state) => {
+      const sessions = new Map(state.sessions)
+      sessions.set(session.id, session)
+      return { sessions, nextZIndex: nextZIndex + 1 }
+    })
+    return session
+  },
+
+  createFileSession: (filePath: string, content: string, language: string, position?: { x: number; y: number }): FileViewerSession => {
+    const { nextZIndex } = get()
+    const fileName = filePath.split('/').pop() || filePath
+    const session: FileViewerSession = {
+      id: uuidv4(),
+      type: 'file',
+      title: fileName,
+      filePath,
+      content,
+      language,
+      position: position ?? { x: 0, y: 0 },
+      size: { cols: 80, rows: 24, width: 640, height: 480 },
+      zIndex: nextZIndex,
       createdAt: Date.now(),
     }
     set((state) => {
