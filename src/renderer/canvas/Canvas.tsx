@@ -1,4 +1,4 @@
-import { useRef, useCallback, useMemo } from 'react'
+import React, { useRef, useCallback, useMemo } from 'react'
 import { useCanvasControls } from './useCanvasControls'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
@@ -117,16 +117,19 @@ export default function Canvas(): JSX.Element {
                 />
               )
             case 'file':
-              if (isThumbnailMode) {
-                return <FileViewerThumbnail key={session.id} session={session} />
-              }
               return (
-                <FileViewerWindow
-                  key={session.id}
-                  session={session}
-                  zoom={getZoom}
-                  gridSize={gridSize}
-                />
+                <React.Fragment key={session.id}>
+                  <FileViewerThumbnail
+                    session={session}
+                    className={isThumbnailMode ? 'file-crossfade file-crossfade-active' : 'file-crossfade file-crossfade-inactive'}
+                  />
+                  <FileViewerWindow
+                    session={session}
+                    zoom={getZoom}
+                    gridSize={gridSize}
+                    className={isThumbnailMode ? 'file-crossfade file-crossfade-inactive' : 'file-crossfade file-crossfade-active'}
+                  />
+                </React.Fragment>
               )
             case 'note':
               if (isThumbnailMode) {
