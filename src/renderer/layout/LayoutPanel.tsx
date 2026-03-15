@@ -6,7 +6,7 @@ export default function LayoutPanel(): JSX.Element {
   const [layouts, setLayouts] = useState<string[]>([])
   const [newName, setNewName] = useState('')
   const [expanded, setExpanded] = useState(false)
-  const { loadLayout } = useLayoutRestore()
+  const { loadLayout, resetLayout } = useLayoutRestore()
 
   const refreshList = useCallback(async () => {
     const names = await window.smokeAPI?.layout.list()
@@ -65,6 +65,9 @@ export default function LayoutPanel(): JSX.Element {
               Save
             </button>
           </div>
+          <button className="layout-reset-btn" onClick={resetLayout}>
+            Reset Layout
+          </button>
           {layouts.length > 0 && (
             <div className="layout-list">
               {layouts.map((name) => (
