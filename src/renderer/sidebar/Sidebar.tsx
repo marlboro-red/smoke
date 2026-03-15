@@ -97,17 +97,19 @@ export default function Sidebar(): JSX.Element {
     <div className="sidebar">
       <div className="sidebar-header">
         <span className="sidebar-title">Sessions</span>
-        <button className="sidebar-new-btn" onClick={handleNewNote}>
-          + Note
+        <button className="sidebar-settings-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
+          &#9881;
         </button>
+      </div>
+      <div className="sidebar-actions">
         <button className="sidebar-new-btn" onClick={handleNewSession}>
           + New
         </button>
+        <button className="sidebar-new-btn" onClick={handleNewNote}>
+          + Note
+        </button>
         <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout (⌘⇧A)">
           Layout
-        </button>
-        <button className="sidebar-settings-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
-          &#9881;
         </button>
       </div>
       <div className="session-list">
