@@ -24,6 +24,8 @@ export function parseImports(content: string, language: string): ParsedImport[] 
       return parseGo(content)
     case 'rust':
       return parseRust(content)
+    case 'csharp':
+      return parseCSharp(content)
     default:
       return []
   }
@@ -144,6 +146,24 @@ function parseRust(content: string): ParsedImport[] {
     if (crate && !seen.has(crate)) {
       seen.add(crate)
       imports.push({ specifier: crate, type: 'use' })
+    }
+  }
+
+  return imports
+}
+
+function parseCSharp(content: string): ParsedImport[] {
+  const imports: ParsedImport[] = []
+  const seen = new Set<string>()
+
+  // using System; using static System.Math; using MyAlias = Some.Namespace;
+  const usingRe = /^using\s+(?:static\s+)?(?:\w+\s*=\s*)?([\w.]+)(?:<[^>]*>)?\s*;/gm
+  let m: RegExpExecArray | null
+  while ((m = usingRe.exec(content)) !== null) {
+    const ns = m[1]
+    if (ns && !seen.has(ns)) {
+      seen.add(ns)
+      imports.push({ specifier: ns, type: 'use' })
     }
   }
 

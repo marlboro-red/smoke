@@ -95,6 +95,41 @@ use tokio::fs;
     })
   })
 
+  describe('C#', () => {
+    it('parses using statements', () => {
+      const code = `
+using System;
+using System.Collections.Generic;
+`
+      const result = parseImports(code, 'csharp')
+      expect(result).toEqual([
+        { specifier: 'System', type: 'use' },
+        { specifier: 'System.Collections.Generic', type: 'use' },
+      ])
+    })
+
+    it('parses using static', () => {
+      const code = `using static System.Math;`
+      const result = parseImports(code, 'csharp')
+      expect(result).toEqual([{ specifier: 'System.Math', type: 'use' }])
+    })
+
+    it('parses using alias', () => {
+      const code = `using MyList = System.Collections.Generic.List<int>;`
+      const result = parseImports(code, 'csharp')
+      expect(result).toEqual([{ specifier: 'System.Collections.Generic.List', type: 'use' }])
+    })
+
+    it('deduplicates', () => {
+      const code = `
+using System;
+using System;
+`
+      const result = parseImports(code, 'csharp')
+      expect(result).toHaveLength(1)
+    })
+  })
+
   describe('unsupported language', () => {
     it('returns empty array', () => {
       expect(parseImports('anything', 'haskell')).toEqual([])
@@ -110,6 +145,7 @@ describe('detectLanguage', () => {
     expect(detectLanguage('/foo/bar.py')).toBe('python')
     expect(detectLanguage('/foo/bar.go')).toBe('go')
     expect(detectLanguage('/foo/bar.rs')).toBe('rust')
+    expect(detectLanguage('/foo/bar.cs')).toBe('csharp')
   })
 
   it('returns text for unknown extensions', () => {

@@ -37,6 +37,7 @@ const SUPPORTED_LANGUAGES = [
   'java',
   'c',
   'cpp',
+  'csharp',
   'sql',
   'yaml',
   'xml',

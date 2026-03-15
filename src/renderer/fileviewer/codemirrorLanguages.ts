@@ -13,6 +13,7 @@ import { yaml } from '@codemirror/lang-yaml'
 import { xml } from '@codemirror/lang-xml'
 import { sql } from '@codemirror/lang-sql'
 import { php } from '@codemirror/lang-php'
+import { csharp } from '@replit/codemirror-lang-csharp'
 
 /**
  * Map Shiki language identifiers to CodeMirror language extensions.
@@ -55,6 +56,8 @@ export function getLanguageExtension(language: string): Extension[] {
       return [sql()]
     case 'php':
       return [php()]
+    case 'csharp':
+      return [csharp()]
     default:
       return []
   }

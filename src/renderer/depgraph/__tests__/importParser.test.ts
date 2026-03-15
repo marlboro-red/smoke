@@ -120,6 +120,32 @@ use crate::utils;
     })
   })
 
+  describe('C#', () => {
+    it('parses using statements', () => {
+      const code = `
+using System;
+using System.Collections.Generic;
+`
+      const result = parseImports(code, 'csharp')
+      expect(result).toEqual([
+        { specifier: 'System', type: 'use' },
+        { specifier: 'System.Collections.Generic', type: 'use' },
+      ])
+    })
+
+    it('parses using static', () => {
+      const code = `using static System.Math;`
+      const result = parseImports(code, 'csharp')
+      expect(result).toEqual([{ specifier: 'System.Math', type: 'use' }])
+    })
+
+    it('parses using alias', () => {
+      const code = `using MyList = System.Collections.Generic.List;`
+      const result = parseImports(code, 'csharp')
+      expect(result).toEqual([{ specifier: 'System.Collections.Generic.List', type: 'use' }])
+    })
+  })
+
   describe('unsupported language', () => {
     it('returns empty array', () => {
       expect(parseImports('some code', 'text')).toEqual([])

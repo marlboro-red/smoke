@@ -33,6 +33,8 @@ export function parseImports(content: string, language: string): ParsedImport[] 
       return parseGo(snippet)
     case 'rust':
       return parseRust(snippet)
+    case 'csharp':
+      return parseCSharp(snippet)
     default:
       return []
   }
@@ -44,7 +46,7 @@ export function detectLanguage(filePath: string): string {
   const langMap: Record<string, string> = {
     ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
     mjs: 'javascript', cjs: 'javascript',
-    py: 'python', rs: 'rust', go: 'go',
+    py: 'python', rs: 'rust', go: 'go', cs: 'csharp',
   }
   return langMap[ext] || 'text'
 }
@@ -149,6 +151,25 @@ function parseRust(content: string): ParsedImport[] {
     if (crate && !seen.has(crate)) {
       seen.add(crate)
       imports.push({ specifier: crate, type: 'use' })
+    }
+  }
+
+  return imports
+}
+
+function parseCSharp(content: string): ParsedImport[] {
+  const imports: ParsedImport[] = []
+  const seen = new Set<string>()
+
+  // using System; using System.Collections.Generic; using static System.Math;
+  // using MyAlias = Some.Namespace;
+  const usingRe = /^using\s+(?:static\s+)?(?:\w+\s*=\s*)?([\w.]+)(?:<[^>]*>)?\s*;/gm
+  let m: RegExpExecArray | null
+  while ((m = usingRe.exec(content)) !== null) {
+    const ns = m[1]
+    if (ns && !seen.has(ns)) {
+      seen.add(ns)
+      imports.push({ specifier: ns, type: 'use' })
     }
   }
 
