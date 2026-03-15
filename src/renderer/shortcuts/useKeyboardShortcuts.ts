@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
 import { resolveShortcut, getSortedSessionIds, type ShortcutAction } from './shortcutMap'
 import { sessionStore } from '../stores/sessionStore'
+import { splitPaneStore } from '../stores/splitPaneStore'
 import { aiStore } from '../stores/aiStore'
 import { findGroupByElementId, groupStore } from '../stores/groupStore'
 import { createNewSession, createTerminalAtFileDir } from '../session/useSessionCreation'
-import { closeSession } from '../session/useSessionClose'
+import { closeSession, closeSplitPane } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
 import { setZoomTo, zoomIn, zoomOut, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
@@ -17,6 +18,7 @@ import { presentationStore } from '../presentation/presentationStore'
 import { exportCanvasPng } from '../canvas/exportCanvas'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
 import type { FileViewerSession } from '../stores/sessionStore'
+import { preferencesStore } from '../stores/preferencesStore'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -198,6 +200,47 @@ function executeShortcut(action: ShortcutAction): void {
     case 'startPresentation':
       presentationStore.getState().startPresentation()
       break
+
+    case 'splitHorizontal':
+    case 'splitVertical': {
+      if (state.focusedId) {
+        const session = state.sessions.get(state.focusedId)
+        if (session?.type === 'terminal') {
+          const direction = action === 'splitHorizontal' ? 'horizontal' : 'vertical'
+          const newPaneId = splitPaneStore.getState().split(state.focusedId, direction)
+          if (newPaneId) {
+            const cwd = (session as { cwd: string }).cwd ||
+              preferencesStore.getState().preferences.defaultCwd ||
+              preferencesStore.getState().launchCwd || ''
+            window.smokeAPI?.pty.spawn({ id: newPaneId, cwd })
+          }
+        }
+      }
+      break
+    }
+
+    case 'navigatePaneLeft':
+    case 'navigatePaneRight':
+    case 'navigatePaneUp':
+    case 'navigatePaneDown': {
+      if (state.focusedId) {
+        const dirMap = {
+          navigatePaneLeft: 'left' as const,
+          navigatePaneRight: 'right' as const,
+          navigatePaneUp: 'up' as const,
+          navigatePaneDown: 'down' as const,
+        }
+        splitPaneStore.getState().navigate(state.focusedId, dirMap[action])
+      }
+      break
+    }
+
+    case 'closePane': {
+      if (state.focusedId) {
+        closeSplitPane(state.focusedId)
+      }
+      break
+    }
 
     case 'escape':
       sessionStore.getState().focusSession(null)

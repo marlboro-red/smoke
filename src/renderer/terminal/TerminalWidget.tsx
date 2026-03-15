@@ -10,16 +10,18 @@ interface TerminalWidgetProps {
   sessionId: string
   cols?: number
   rows?: number
+  isFocused?: boolean
   onCharDims?: (dims: { width: number; height: number }) => void
   onSnapshot?: (getSnapshot: () => string[]) => void
 }
 
-export default function TerminalWidget({ sessionId, cols, rows, onCharDims, onSnapshot }: TerminalWidgetProps): JSX.Element {
+export default function TerminalWidget({ sessionId, cols, rows, isFocused: isFocusedProp, onCharDims, onSnapshot }: TerminalWidgetProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const { terminalRef, getSnapshot, charDims } = useTerminal(containerRef, sessionId, cols, rows)
   usePty(sessionId, terminalRef)
 
   const focusedId = useFocusedId()
+  const derivedFocused = isFocusedProp !== undefined ? isFocusedProp : focusedId === sessionId
 
   // Expose getSnapshot to parent
   useEffect(() => {
@@ -35,17 +37,17 @@ export default function TerminalWidget({ sessionId, cols, rows, onCharDims, onSn
     }
   }, [onCharDims, charDims])
 
-  // Focus/blur xterm.js based on focusedId
+  // Focus/blur xterm.js based on derived focus state
   useEffect(() => {
     const terminal = terminalRef.current
     if (!terminal) return
 
-    if (focusedId === sessionId) {
+    if (derivedFocused) {
       terminal.focus()
     } else {
       terminal.blur()
     }
-  }, [focusedId, sessionId, terminalRef])
+  }, [derivedFocused, terminalRef])
 
   // Intercept shortcut keys before xterm.js processes them
   useEffect(() => {
