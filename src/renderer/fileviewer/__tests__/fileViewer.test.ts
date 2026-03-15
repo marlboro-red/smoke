@@ -3,6 +3,7 @@ import { sessionStore, findFileSessionByPath } from '../../stores/sessionStore'
 import type { FileViewerSession } from '../../stores/sessionStore'
 import { canvasStore } from '../../stores/canvasStore'
 import { gridStore } from '../../stores/gridStore'
+import { preferencesStore } from '../../stores/preferencesStore'
 import { serializeCurrentLayout } from '../../layout/useLayoutPersistence'
 
 describe('FileViewerSession', () => {
@@ -13,6 +14,7 @@ describe('FileViewerSession', () => {
       highlightedId: null,
       nextZIndex: 1,
     })
+    preferencesStore.setState({ launchCwd: '' })
   })
 
   it('creates a file session with correct type and fields', () => {
@@ -59,13 +61,33 @@ describe('FileViewerSession', () => {
     expect(session.size).toEqual({ cols: 80, rows: 24, width: 640, height: 480 })
   })
 
-  it('derives title from filename', () => {
+  it('derives title from filename when launchCwd is not set', () => {
     const session = sessionStore.getState().createFileSession(
       '/a/b/c/MyComponent.tsx',
       '',
       'tsx'
     )
     expect(session.title).toBe('MyComponent.tsx')
+  })
+
+  it('derives title as relative path from launchCwd', () => {
+    preferencesStore.setState({ launchCwd: '/home/user/project' })
+    const session = sessionStore.getState().createFileSession(
+      '/home/user/project/src/components/App.tsx',
+      '',
+      'tsx'
+    )
+    expect(session.title).toBe('src/components/App.tsx')
+  })
+
+  it('falls back to filename when filePath is outside launchCwd', () => {
+    preferencesStore.setState({ launchCwd: '/home/user/project' })
+    const session = sessionStore.getState().createFileSession(
+      '/other/path/file.ts',
+      '',
+      'typescript'
+    )
+    expect(session.title).toBe('file.ts')
   })
 
   it('stores file sessions in the same sessions Map', () => {
