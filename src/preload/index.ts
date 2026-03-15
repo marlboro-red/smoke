@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -51,6 +51,10 @@ const smokeAPI: SmokeAPI = {
 
   app: {
     getLaunchCwd: () => ipcRenderer.invoke('app:get-launch-cwd'),
+  },
+
+  recording: {
+    flush: (log: EventLogData) => ipcRenderer.invoke('recording:flush', log),
   },
 
   ai: {
