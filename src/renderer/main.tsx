@@ -3,9 +3,10 @@ import './styles/tokens.css'
 import App from './App'
 import { sessionStore } from './stores/sessionStore'
 import { connectorStore } from './stores/connectorStore'
+import { goToLineStore } from './fileviewer/goToLineStore'
 
-// Expose stores on window for E2E test access
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore }
+// Expose stores on window for E2E testing
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
