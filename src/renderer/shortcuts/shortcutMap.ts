@@ -21,6 +21,7 @@ export type ShortcutAction =
   | 'toggleGroupCollapse'
   | 'toggleBroadcast'
   | 'autoLayout'
+  | 'showShortcutsHelp'
   | 'escape'
 
 export interface ShortcutDef {
@@ -73,6 +74,8 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
     case 'a':
       if (e.shiftKey) return 'autoLayout'
       break
+    case '/':
+      return 'showShortcutsHelp'
     default:
       break
   }

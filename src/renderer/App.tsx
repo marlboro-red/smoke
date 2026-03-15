@@ -14,6 +14,7 @@ import { useEventRecording } from './recording/useEventRecording'
 import { useIsReplaying } from './replay/replayStore'
 import ReplayControls from './replay/ReplayControls'
 import SettingsModal from './config/SettingsModal'
+import ShortcutsOverlay from './shortcuts/ShortcutsOverlay'
 import { applyTheme } from './themes/applyTheme'
 
 function App(): JSX.Element {
@@ -75,6 +76,7 @@ function App(): JSX.Element {
       <Canvas readOnly={isReplaying} />
       {aiPanelOpen && !isReplaying && <AiChatPanel />}
       <SettingsModal />
+      <ShortcutsOverlay />
       {isReplaying && (
         <>
           <div className="replay-read-only-overlay">
