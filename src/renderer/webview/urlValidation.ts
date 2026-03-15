@@ -1,12 +1,8 @@
-const ALLOWED_LOCALHOST_PATTERNS = [
-  /^https?:\/\/localhost(:\d+)?(\/.*)?$/,
-  /^https?:\/\/127\.0\.0\.1(:\d+)?(\/.*)?$/,
-  /^https?:\/\/\[::1\](:\d+)?(\/.*)?$/,
-  /^https?:\/\/0\.0\.0\.0(:\d+)?(\/.*)?$/,
-]
+const BLOCKED_PROTOCOLS = /^(file|javascript|data|blob|chrome|chrome-extension|devtools|electron):\/\//i
 
 export function isAllowedUrl(url: string): boolean {
-  return ALLOWED_LOCALHOST_PATTERNS.some((pattern) => pattern.test(url))
+  if (BLOCKED_PROTOCOLS.test(url)) return false
+  return /^https?:\/\/.+/i.test(url)
 }
 
 export function normalizeUrl(input: string): string {
