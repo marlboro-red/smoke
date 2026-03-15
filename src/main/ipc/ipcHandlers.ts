@@ -9,7 +9,7 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
-import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance } from '../codegraph'
+import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout } from '../codegraph'
 import { SearchIndex } from '../codegraph/SearchIndex'
 import { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
 import {
@@ -71,6 +71,7 @@ import {
   CODEGRAPH_INDEX_STATS,
   CODEGRAPH_INVALIDATE,
   RELEVANCE_SCORE,
+  CODEGRAPH_PLAN_WORKSPACE,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
@@ -802,6 +803,13 @@ export function registerIpcHandlers(
     RELEVANCE_SCORE,
     async (_event, request: RelevanceScoringRequest): Promise<RelevanceScoringResponse> => {
       return scoreRelevance(request)
+    }
+  )
+
+  ipcMain.handle(
+    CODEGRAPH_PLAN_WORKSPACE,
+    (_event, request: { files: Array<{ filePath: string; relevance: number; imports: string[]; importedBy: string[] }> }) => {
+      return computeWorkspaceLayout(request.files)
     }
   )
 }

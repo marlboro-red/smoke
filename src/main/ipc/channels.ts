@@ -92,6 +92,7 @@ export const CODEGRAPH_GET_IMPORTS = 'codegraph:get-imports' as const
 export const CODEGRAPH_RESOLVE_IMPORT = 'codegraph:resolve-import' as const
 export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
 export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
+export const CODEGRAPH_PLAN_WORKSPACE = 'codegraph:plan-workspace' as const
 
 // Relevance scoring channels
 export const RELEVANCE_SCORE = 'relevance:score' as const

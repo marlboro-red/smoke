@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -176,6 +176,9 @@ const smokeAPI: SmokeAPI = {
         .then((r: { resolvedPath: string | null }) => r.resolvedPath),
     indexStats: () => ipcRenderer.invoke('codegraph:index-stats'),
     invalidateIndex: () => ipcRenderer.invoke('codegraph:invalidate'),
+    planWorkspace: (files: WorkspaceFileInput[]) =>
+      ipcRenderer.invoke('codegraph:plan-workspace', { files })
+        .then((r: WorkspaceLayoutResult) => r),
   },
 
   search: {
