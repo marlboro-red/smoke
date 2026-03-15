@@ -3,6 +3,7 @@ import {
   sessionStore,
   useFocusedId,
   useHighlightedId,
+  useSelectedIds,
   type NoteSession,
 } from '../stores/sessionStore'
 import { useWindowDrag } from '../window/useWindowDrag'
@@ -27,10 +28,12 @@ export default function NoteWindow({
 }: NoteWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
+  const selectedIds = useSelectedIds()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
+  const isSelected = selectedIds.has(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -44,7 +47,14 @@ export default function NoteWindow({
     gridSize,
   })
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const isMod = e.metaKey || e.ctrlKey
+    if (isMod) {
+      e.stopPropagation()
+      sessionStore.getState().toggleSelectSession(session.id)
+      return
+    }
+    sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
   }, [session.id])
@@ -88,6 +98,7 @@ export default function NoteWindow({
     'note-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    isSelected && 'multi-selected',
   ]
     .filter(Boolean)
     .join(' ')

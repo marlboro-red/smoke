@@ -3,6 +3,7 @@ import {
   sessionStore,
   useFocusedId,
   useHighlightedId,
+  useSelectedIds,
   type FileViewerSession,
 } from '../stores/sessionStore'
 import { useWindowDrag } from '../window/useWindowDrag'
@@ -30,10 +31,12 @@ export default function FileViewerWindow({
 }: FileViewerWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
+  const selectedIds = useSelectedIds()
   const [editing, setEditing] = useState(false)
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
+  const isSelected = selectedIds.has(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -47,7 +50,14 @@ export default function FileViewerWindow({
     gridSize,
   })
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const isMod = e.metaKey || e.ctrlKey
+    if (isMod) {
+      e.stopPropagation()
+      sessionStore.getState().toggleSelectSession(session.id)
+      return
+    }
+    sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
   }, [session.id])
@@ -99,6 +109,7 @@ export default function FileViewerWindow({
     session.isDirty && 'file-viewer-dirty',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    isSelected && 'multi-selected',
     extraClassName,
   ]
     .filter(Boolean)

@@ -1,0 +1,66 @@
+/* Alignment Toolbar — appears when 2+ elements are selected */
+.alignment-toolbar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  user-select: none;
+}
+
+.alignment-toolbar-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.alignment-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-subtle);
+  margin: 0 2px;
+}
+
+.alignment-toolbar-group {
+  display: flex;
+  gap: 2px;
+}
+
+.alignment-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.alignment-toolbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.alignment-toolbar-btn:active {
+  background: var(--bg-active);
+}
+
+/* Multi-selection highlight on windows */
+.terminal-window.multi-selected {
+  border-color: var(--accent-muted);
+  box-shadow: 0 0 0 1px var(--accent-muted), var(--shadow-window);
+}

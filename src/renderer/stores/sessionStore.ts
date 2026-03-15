@@ -52,6 +52,7 @@ interface SessionStore {
   sessions: Map<string, Session>
   focusedId: string | null
   highlightedId: string | null
+  selectedIds: Set<string>
   nextZIndex: number
   broadcastGroupId: string | null
 
@@ -65,12 +66,16 @@ interface SessionStore {
   highlightSession: (id: string | null) => void
   bringToFront: (id: string) => void
   toggleBroadcast: (groupId: string | null) => void
+  toggleSelectSession: (id: string) => void
+  setSelectedIds: (ids: Set<string>) => void
+  clearSelection: () => void
 }
 
 export const sessionStore = createStore<SessionStore>((set, get) => ({
   sessions: new Map(),
   focusedId: null,
   highlightedId: null,
+  selectedIds: new Set<string>(),
   nextZIndex: 1,
   broadcastGroupId: null,
 
@@ -173,8 +178,11 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
     set((state) => {
       const sessions = new Map(state.sessions)
       sessions.delete(id)
+      const selectedIds = new Set(state.selectedIds)
+      selectedIds.delete(id)
       return {
         sessions,
+        selectedIds,
         focusedId: state.focusedId === id ? null : state.focusedId,
         highlightedId: state.highlightedId === id ? null : state.highlightedId,
       }
@@ -214,6 +222,26 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       broadcastGroupId: state.broadcastGroupId === groupId ? null : groupId,
     }))
   },
+
+  toggleSelectSession: (id: string) => {
+    set((state) => {
+      const selectedIds = new Set(state.selectedIds)
+      if (selectedIds.has(id)) {
+        selectedIds.delete(id)
+      } else {
+        selectedIds.add(id)
+      }
+      return { selectedIds }
+    })
+  },
+
+  setSelectedIds: (ids: Set<string>) => {
+    set({ selectedIds: ids })
+  },
+
+  clearSelection: () => {
+    set({ selectedIds: new Set<string>() })
+  },
 }))
 
 // Array selector for React list rendering — useShallow prevents infinite loop
@@ -235,6 +263,9 @@ export const useSessionStore = <T>(selector: (state: SessionStore) => T): T =>
 
 export const useBroadcastGroupId = (): string | null =>
   useStore(sessionStore, (state) => state.broadcastGroupId)
+
+export const useSelectedIds = (): Set<string> =>
+  useStore(sessionStore, (state) => state.selectedIds)
 
 export function getGroupSessionIds(groupId: string): string[] {
   const sessions = sessionStore.getState().sessions
