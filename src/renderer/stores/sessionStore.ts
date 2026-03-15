@@ -17,6 +17,9 @@ export interface BaseSession {
   createdAt: number
   groupId?: string
   locked?: boolean
+  isPinned?: boolean
+  /** Viewport-relative position when pinned (screen pixels) */
+  pinnedViewportPos?: { x: number; y: number }
 }
 
 export interface TerminalSession extends BaseSession {
@@ -86,6 +89,7 @@ interface SessionStore {
   highlightSession: (id: string | null) => void
   bringToFront: (id: string) => void
   toggleBroadcast: (groupId: string | null) => void
+  togglePin: (id: string, viewportPos?: { x: number; y: number }) => void
   toggleSelectSession: (id: string) => void
   setSelectedIds: (ids: Set<string>) => void
   clearSelection: () => void
@@ -305,6 +309,21 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
     set((state) => ({
       broadcastGroupId: state.broadcastGroupId === groupId ? null : groupId,
     }))
+  },
+
+  togglePin: (id: string, viewportPos?: { x: number; y: number }) => {
+    set((state) => {
+      const existing = state.sessions.get(id)
+      if (!existing) return state
+      const sessions = new Map(state.sessions)
+      const nowPinned = !existing.isPinned
+      sessions.set(id, {
+        ...existing,
+        isPinned: nowPinned,
+        pinnedViewportPos: nowPinned ? viewportPos : undefined,
+      } as Session)
+      return { sessions }
+    })
   },
 
   toggleSelectSession: (id: string) => {

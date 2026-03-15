@@ -39,6 +39,8 @@ export interface LayoutSession {
   aspectRatio?: number
   startupCommand?: string
   locked?: boolean
+  isPinned?: boolean
+  pinnedViewportPos?: { x: number; y: number }
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }

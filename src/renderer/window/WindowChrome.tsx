@@ -7,12 +7,14 @@ interface WindowChromeProps {
   isBroadcasting?: boolean
   isDirty?: boolean
   isLocked?: boolean
+  isPinned?: boolean
   agentColor?: string | null
   agentRole?: string | null
   onTitleChange: (title: string) => void
   onClose: () => void
   onDragStart: (e: React.PointerEvent) => void
   onToggleLock?: () => void
+  onTogglePin?: () => void
   children?: React.ReactNode
 }
 
@@ -22,12 +24,14 @@ export default function WindowChrome({
   isBroadcasting,
   isDirty,
   isLocked,
+  isPinned,
   agentColor,
   agentRole,
   onTitleChange,
   onClose,
   onDragStart,
   onToggleLock,
+  onTogglePin,
   children,
 }: WindowChromeProps): JSX.Element {
   const [editing, setEditing] = useState(false)
@@ -131,6 +135,19 @@ export default function WindowChrome({
           title={isLocked ? 'Unlock position' : 'Lock position'}
         >
           {isLocked ? '\u{1F512}' : '\u{1F513}'}
+        </button>
+      )}
+      {onTogglePin && (
+        <button
+          className={`window-chrome-pin${isPinned ? ' pinned' : ''}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onTogglePin()
+          }}
+          title={isPinned ? 'Unpin from viewport' : 'Pin to viewport'}
+        >
+          {isPinned ? '\u25C9' : '\u25CB'}
         </button>
       )}
       <button

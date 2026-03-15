@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react'
 import { sessionStore } from '../stores/sessionStore'
 import { snapPreviewStore } from '../stores/snapPreviewStore'
 import { snapPosition } from './useSnapping'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 
 interface UseWindowDragOptions {
   sessionId: string
@@ -23,6 +24,7 @@ export function useWindowDrag({
   const startMouseRef = useRef({ x: 0, y: 0 })
   const startPosRef = useRef({ x: 0, y: 0 })
   const windowElRef = useRef<HTMLElement | null>(null)
+  const isPinnedDragRef = useRef(false)
 
   const livePosRef = useRef({ x: 0, y: 0 })
   // Multi-select drag: track other selected elements' start positions and DOM refs
@@ -32,6 +34,24 @@ export function useWindowDrag({
   const onPointerMove = useCallback(
     (e: PointerEvent) => {
       if (!isDraggingRef.current) return
+
+      if (isPinnedDragRef.current) {
+        // Pinned elements: move in screen/viewport pixels (no zoom scaling)
+        const dx = e.clientX - startMouseRef.current.x
+        const dy = e.clientY - startMouseRef.current.y
+        const newX = startPosRef.current.x + dx
+        const newY = startPosRef.current.y + dy
+        livePosRef.current = { x: newX, y: newY }
+
+        // Update the pinned-element-wrapper (parent of .terminal-window)
+        const el = windowElRef.current
+        if (el) {
+          el.style.left = `${newX}px`
+          el.style.top = `${newY}px`
+        }
+        return
+      }
+
       const z = zoom()
       const dx = (e.clientX - startMouseRef.current.x) / z
       const dy = (e.clientY - startMouseRef.current.y) / z
@@ -74,6 +94,24 @@ export function useWindowDrag({
     (e: PointerEvent) => {
       if (!isDraggingRef.current) return
       isDraggingRef.current = false
+
+      if (isPinnedDragRef.current) {
+        isPinnedDragRef.current = false
+        const target = windowElRef.current
+        if (target) {
+          target.releasePointerCapture(e.pointerId)
+          target.classList.remove('dragging')
+        }
+
+        // Save the viewport position for pinned elements
+        sessionStore.getState().updateSession(sessionId, {
+          pinnedViewportPos: { ...livePosRef.current },
+        })
+
+        document.removeEventListener('pointermove', onPointerMove)
+        document.removeEventListener('pointerup', onPointerUp)
+        return
+      }
 
       const z = zoom()
       const dx = (e.clientX - startMouseRef.current.x) / z
@@ -124,14 +162,31 @@ export function useWindowDrag({
 
       isDraggingRef.current = true
       startMouseRef.current = { x: e.clientX, y: e.clientY }
-      startPosRef.current = { ...session.position }
 
-      // Capture on the terminal-window element (parent of chrome)
-      const windowEl = (e.currentTarget as HTMLElement).closest('.terminal-window') as HTMLElement
-      windowElRef.current = windowEl
-      if (windowEl) {
-        windowEl.setPointerCapture(e.pointerId)
-        windowEl.classList.add('dragging')
+      if (session.isPinned) {
+        isPinnedDragRef.current = true
+        // For pinned elements, start from current viewport position
+        const wrapper = (e.currentTarget as HTMLElement).closest('.pinned-element-wrapper') as HTMLElement
+        if (wrapper) {
+          startPosRef.current = {
+            x: parseFloat(wrapper.style.left) || 0,
+            y: parseFloat(wrapper.style.top) || 0,
+          }
+          windowElRef.current = wrapper
+          wrapper.setPointerCapture(e.pointerId)
+          wrapper.classList.add('dragging')
+        }
+      } else {
+        isPinnedDragRef.current = false
+        startPosRef.current = { ...session.position }
+
+        // Capture on the terminal-window element (parent of chrome)
+        const windowEl = (e.currentTarget as HTMLElement).closest('.terminal-window') as HTMLElement
+        windowElRef.current = windowEl
+        if (windowEl) {
+          windowEl.setPointerCapture(e.pointerId)
+          windowEl.classList.add('dragging')
+        }
       }
 
       sessionStore.getState().bringToFront(sessionId)

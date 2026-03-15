@@ -4,6 +4,7 @@ import { EditorState, type Extension } from '@codemirror/state'
 import { basicSetup } from 'codemirror'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { getLanguageExtension } from '../fileviewer/codemirrorLanguages'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
   useFocusedId,
@@ -111,6 +112,19 @@ export default function SnippetWindow({
     sessionStore.getState().toggleLock(session.id)
   }, [session.id])
 
+  const handleTogglePin = useCallback(() => {
+    if (!session.isPinned) {
+      const pan = getCurrentPan()
+      const z = getCurrentZoom()
+      sessionStore.getState().togglePin(session.id, {
+        x: session.position.x * z + pan.x,
+        y: session.position.y * z + pan.y,
+      })
+    } else {
+      sessionStore.getState().togglePin(session.id)
+    }
+  }, [session.id, session.isPinned, session.position.x, session.position.y])
+
   const handleLanguageChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       sessionStore.getState().updateSession(session.id, { language: e.target.value })
@@ -184,6 +198,7 @@ export default function SnippetWindow({
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
     session.locked && 'locked',
+    session.isPinned && 'pinned',
   ]
     .filter(Boolean)
     .join(' ')
@@ -206,10 +221,12 @@ export default function SnippetWindow({
         title={session.title}
         status="running"
         isLocked={session.locked}
+        isPinned={session.isPinned}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
         onToggleLock={handleToggleLock}
+        onTogglePin={handleTogglePin}
       >
         <select
           className="snippet-lang-select"

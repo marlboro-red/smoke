@@ -199,6 +199,38 @@
   color: var(--color-error);
 }
 
+/* Pin button */
+.window-chrome-pin {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.window-chrome-pin:hover {
+  background: var(--accent-dim);
+  color: var(--accent-strong);
+}
+
+.window-chrome-pin.pinned {
+  color: var(--color-info, #3b82f6);
+}
+
+.window-chrome-pin.pinned:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-info, #3b82f6);
+}
+
 /* Terminal body */
 .terminal-body {
   overflow: hidden;

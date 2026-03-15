@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { sessionStore, useFocusedId, useHighlightedId, useSelectedIds, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
 import { useFocusModeActiveIds } from '../stores/focusModeStore'
 import { snapshotStore } from '../stores/snapshotStore'
@@ -104,6 +105,20 @@ export default function TerminalWindow({
     sessionStore.getState().toggleLock(session.id)
   }, [session.id])
 
+  const handleTogglePin = useCallback(() => {
+    if (!session.isPinned) {
+      const pan = getCurrentPan()
+      const z = getCurrentZoom()
+      const viewportPos = {
+        x: session.position.x * z + pan.x,
+        y: session.position.y * z + pan.y,
+      }
+      sessionStore.getState().togglePin(session.id, viewportPos)
+    } else {
+      sessionStore.getState().togglePin(session.id)
+    }
+  }, [session.id, session.isPinned, session.position.x, session.position.y])
+
   const handleSnapshotReady = useCallback(
     (getSnapshot: () => string[]) => {
       getSnapshotRef.current = getSnapshot
@@ -159,6 +174,7 @@ export default function TerminalWindow({
     isBroadcasting && 'broadcasting',
     isDimmedByFocusMode && 'focus-mode-dimmed',
     session.locked && 'locked',
+    session.isPinned && 'pinned',
   ]
     .filter(Boolean)
     .join(' ')
@@ -184,12 +200,14 @@ export default function TerminalWindow({
         status={session.status}
         isBroadcasting={isBroadcasting}
         isLocked={session.locked}
+        isPinned={session.isPinned}
         agentColor={assignedAgent?.color}
         agentRole={assignedAgent?.role}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
         onToggleLock={handleToggleLock}
+        onTogglePin={handleTogglePin}
       />
       <div
         className="terminal-body"

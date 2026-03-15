@@ -3,7 +3,7 @@ import { preferencesStore } from '../stores/preferencesStore'
 import { createNewSession } from '../session/useSessionCreation'
 import { closeSession } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
-import { setZoomTo, zoomIn, zoomOut } from '../canvas/useCanvasControls'
+import { setZoomTo, zoomIn, zoomOut, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
 import { settingsModalStore } from '../config/settingsStore'
 import { shortcutsOverlayStore } from '../shortcuts/shortcutsOverlayStore'
@@ -13,7 +13,6 @@ import { applyTheme } from '../themes/applyTheme'
 import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import { getSortedSessionIds } from '../shortcuts/shortcutMap'
 import { presentationStore } from '../presentation/presentationStore'
-import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { regionStore } from '../stores/regionStore'
 
 export interface PaletteItem {
@@ -184,6 +183,28 @@ function getActionItems(): PaletteItem[] {
       category: 'Canvas',
       icon: '0',
       action: () => setZoomTo(1.0),
+    },
+    {
+      id: 'action:toggle-pin',
+      title: 'Pin/Unpin Focused Element to Viewport',
+      category: 'Canvas',
+      icon: 'P',
+      action: () => {
+        const { focusedId, sessions } = sessionStore.getState()
+        if (focusedId) {
+          const session = sessions.get(focusedId)
+          if (session && !session.isPinned) {
+            const pan = getCurrentPan()
+            const z = getCurrentZoom()
+            sessionStore.getState().togglePin(focusedId, {
+              x: session.position.x * z + pan.x,
+              y: session.position.y * z + pan.y,
+            })
+          } else {
+            sessionStore.getState().togglePin(focusedId)
+          }
+        }
+      },
     },
     {
       id: 'action:shortcuts-help',

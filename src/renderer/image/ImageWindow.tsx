@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
   useFocusedId,
@@ -77,6 +78,19 @@ export default function ImageWindow({
     sessionStore.getState().toggleLock(session.id)
   }, [session.id])
 
+  const handleTogglePin = useCallback(() => {
+    if (!session.isPinned) {
+      const pan = getCurrentPan()
+      const z = getCurrentZoom()
+      sessionStore.getState().togglePin(session.id, {
+        x: session.position.x * z + pan.x,
+        y: session.position.y * z + pan.y,
+      })
+    } else {
+      sessionStore.getState().togglePin(session.id)
+    }
+  }, [session.id, session.isPinned, session.position.x, session.position.y])
+
   const classNames = [
     'terminal-window',
     'image-window',
@@ -84,6 +98,7 @@ export default function ImageWindow({
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
     session.locked && 'locked',
+    session.isPinned && 'pinned',
   ]
     .filter(Boolean)
     .join(' ')
@@ -106,10 +121,12 @@ export default function ImageWindow({
         title={session.title}
         status="running"
         isLocked={session.locked}
+        isPinned={session.isPinned}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
         onToggleLock={handleToggleLock}
+        onTogglePin={handleTogglePin}
       />
       <div
         className="image-body"
