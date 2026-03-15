@@ -1,0 +1,46 @@
+.image-window {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.image-body {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary, #1a1a2e);
+}
+
+.image-content {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+.image-thumbnail-body {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary, #1a1a2e);
+}
+
+.image-thumbnail-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.8;
+  user-select: none;
+  pointer-events: none;
+}
+
+.thumbnail-status.image {
+  background: #9b59b6;
+}
+
+.thumbnail-ext-badge.ext-image {
+  background: rgba(155, 89, 182, 0.3);
+  color: #c39bd3;
+}

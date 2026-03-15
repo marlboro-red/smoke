@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useMemo } from 'react'
 import { useCanvasControls } from './useCanvasControls'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
-import type { Session, TerminalSession, FileViewerSession, NoteSession, WebviewSession } from '../stores/sessionStore'
+import type { Session, TerminalSession, FileViewerSession, NoteSession, WebviewSession, ImageSession } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
@@ -19,6 +19,8 @@ import NoteWindow from '../note/NoteWindow'
 import NoteThumbnail from '../note/NoteThumbnail'
 import WebviewWindow from '../webview/WebviewWindow'
 import WebviewThumbnail from '../webview/WebviewThumbnail'
+import ImageWindow from '../image/ImageWindow'
+import ImageThumbnail from '../image/ImageThumbnail'
 import GroupCollapsedCard from './GroupCollapsedCard'
 import SnapPreview from './SnapPreview'
 import Minimap from './Minimap'
@@ -163,6 +165,19 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
               }
               return (
                 <WebviewWindow
+                  key={session.id}
+                  session={session}
+                  zoom={getZoom}
+                  gridSize={gridSize}
+                />
+              )
+            case 'image':
+              if (!isVisible) return null
+              if (isThumbnailMode) {
+                return <ImageThumbnail key={session.id} session={session} />
+              }
+              return (
+                <ImageWindow
                   key={session.id}
                   session={session}
                   zoom={getZoom}

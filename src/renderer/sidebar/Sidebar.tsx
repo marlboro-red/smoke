@@ -4,6 +4,7 @@ import type { Session } from '../stores/sessionStore'
 import { useGroupList } from '../stores/groupStore'
 import { createNewSession } from '../session/useSessionCreation'
 import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
+import { isImageFile, openImageOrPanToExisting } from '../image/useImageCreation'
 import SessionListItem from './SessionListItem'
 import ContextMenu from './ContextMenu'
 import type { ContextMenuState } from './ContextMenu'
@@ -137,11 +138,15 @@ export default function Sidebar(): JSX.Element {
   }, [])
 
   const handleFileOpen = useCallback((filePath: string) => {
-    const existing = findFileSessionByPath(filePath)
-    if (existing) {
-      panToSessionStandalone(existing.id)
+    if (isImageFile(filePath)) {
+      openImageOrPanToExisting(filePath)
     } else {
-      createFileViewerSession(filePath)
+      const existing = findFileSessionByPath(filePath)
+      if (existing) {
+        panToSessionStandalone(existing.id)
+      } else {
+        createFileViewerSession(filePath)
+      }
     }
   }, [])
 

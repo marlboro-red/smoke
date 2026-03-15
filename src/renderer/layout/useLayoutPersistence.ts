@@ -33,6 +33,9 @@ function serializeCurrentLayout(name: string): Layout {
       if (s.type === 'webview') {
         return { ...base, url: s.url }
       }
+      if (s.type === 'image') {
+        return { ...base, filePath: s.filePath, aspectRatio: s.aspectRatio }
+      }
       return base
     }),
     viewport: { panX, panY, zoom },
@@ -153,6 +156,35 @@ export function useLayoutRestore(): {
             title: saved.title,
             size: saved.size,
           })
+          break
+        }
+        case 'image': {
+          if (saved.filePath) {
+            try {
+              const result = await window.smokeAPI?.fs.readfileBase64(saved.filePath)
+              if (result) {
+                const img = new window.Image()
+                await new Promise<void>((resolve, reject) => {
+                  img.onload = () => resolve()
+                  img.onerror = () => reject(new Error('Failed to load image'))
+                  img.src = result.dataUrl
+                })
+                const session = sessionStore.getState().createImageSession(
+                  saved.filePath,
+                  result.dataUrl,
+                  img.naturalWidth,
+                  img.naturalHeight,
+                  saved.position
+                )
+                sessionStore.getState().updateSession(session.id, {
+                  title: saved.title,
+                  size: saved.size,
+                })
+              }
+            } catch {
+              // Image file may no longer exist — skip silently
+            }
+          }
           break
         }
       }

@@ -25,6 +25,7 @@ import {
   CONFIG_SET,
   FS_READDIR,
   FS_READFILE,
+  FS_READFILE_BASE64,
   FS_WRITEFILE,
   TERMINAL_BUFFER_READ,
   TERMINAL_BUFFER_READ_LINES,
@@ -60,6 +61,8 @@ import {
   FsReaddirEntry,
   FsReadfileRequest,
   FsReadfileResponse,
+  FsReadfileBase64Request,
+  FsReadfileBase64Response,
   FsWritefileRequest,
   FsWritefileResponse,
   TerminalBufferReadRequest,
@@ -272,6 +275,36 @@ export function registerIpcHandlers(
 
     const content = await fs.readFile(filePath, 'utf-8')
     return { content, size: stat.size }
+  })
+
+  const MIME_TYPES: Record<string, string> = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp',
+    '.ico': 'image/x-icon',
+  }
+
+  ipcMain.handle(FS_READFILE_BASE64, async (_event, request: FsReadfileBase64Request): Promise<FsReadfileBase64Response> => {
+    const filePath = path.resolve(request.path)
+    const maxSize = request.maxSize ?? MAX_FILE_SIZE
+
+    const stat = await fs.stat(filePath)
+    if (stat.size > maxSize) {
+      throw new Error(`File too large: ${stat.size} bytes (max ${maxSize})`)
+    }
+
+    const ext = path.extname(filePath).toLowerCase()
+    const mimeType = MIME_TYPES[ext] || 'application/octet-stream'
+
+    const buffer = await fs.readFile(filePath)
+    const base64 = buffer.toString('base64')
+    const dataUrl = `data:${mimeType};base64,${base64}`
+
+    return { dataUrl, size: stat.size, mimeType }
   })
 
   ipcMain.handle(FS_WRITEFILE, async (_event, request: FsWritefileRequest): Promise<FsWritefileResponse> => {

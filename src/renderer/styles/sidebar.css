@@ -159,6 +159,11 @@
   box-shadow: 0 0 5px rgba(251, 191, 36, 0.35);
 }
 
+.status-dot.image {
+  background: #9b59b6;
+  box-shadow: 0 0 5px rgba(155, 89, 182, 0.35);
+}
+
 .session-info {
   display: flex;
   flex-direction: column;
