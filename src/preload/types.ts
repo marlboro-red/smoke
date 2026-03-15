@@ -100,8 +100,6 @@ export interface Preferences {
   sidebarSectionSizes: SidebarSectionSizes
   theme: string
   defaultCwd: string
-  aiApiKey: string
-  aiModel: string
   terminalOpacity: number
   fontFamily: string
   fontSize: number
@@ -130,14 +128,6 @@ export interface FsReadfileBase64Result {
 
 export interface FsWritefileResult {
   size: number
-}
-
-// AI types — defined here so both main and renderer can import them
-
-export interface AiConfig {
-  model: string
-  apiKey: string
-  maxTokens: number
 }
 
 export type CanvasActionType =
@@ -496,8 +486,6 @@ export interface SmokeAPI {
     send: (agentId: string, message: string, conversationId?: string) => Promise<{ conversationId: string; error?: string }>
     abort: (agentId: string, conversationId?: string) => Promise<void>
     clear: (agentId: string, conversationId?: string) => Promise<void>
-    getConfig: () => Promise<AiConfig>
-    setConfig: (key: string, value: unknown) => Promise<void>
     onStream: (callback: (event: AiStreamEvent) => void) => () => void
     onCanvasAction: (callback: (event: AiStreamCanvasAction) => void) => () => void
   }

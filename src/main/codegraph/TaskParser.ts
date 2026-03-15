@@ -212,89 +212,6 @@ export function parseTaskHeuristic(taskDescription: string): ParsedTask {
 // ---------------------------------------------------------------------------
 // AI-powered parsing
 // ---------------------------------------------------------------------------
-
-const AI_SYSTEM_PROMPT = `You are a task parser for a code editor. Given a natural language task description, extract structured information to help find relevant source files.
-
-Respond with ONLY a JSON object (no markdown, no explanation) with these fields:
-- "intent": one of "fix", "add", "refactor", "investigate", "test", "document", "configure", "style"
-- "keywords": array of domain-specific keywords (NOT action words like "fix" or "add", but domain terms like "payment", "retry", "authentication")
-- "filePatterns": array of likely filename/path fragments to search for (e.g., "payment", "retry", "PaymentService")
-- "includeFileTypes": array of file categories from ["source", "test", "config", "style", "docs", "types"]
-
-Rules:
-- "intent" should reflect the PRIMARY action the user wants to take
-- "keywords" should be domain terms that would appear in relevant source code
-- "filePatterns" should include likely filenames, class names, or directory names
-- "includeFileTypes" should match what the user needs to look at for this task
-- For "fix" intent, always include "source" and "test"
-- For "add" intent, include "source", "test", and "types"
-- For "investigate", just "source" is usually enough`
-
-/**
- * Parse a task description using a single Claude API call.
- * Falls back to heuristic parsing if the API call fails.
- */
-async function parseTaskWithAi(
-  taskDescription: string,
-  apiKey: string,
-  model: string,
-): Promise<ParsedTask> {
-  // Dynamic import to avoid hard dependency at module load time
-  const { default: Anthropic } = await import('@anthropic-ai/sdk')
-  const client = new Anthropic({ apiKey })
-
-  const response = await client.messages.create({
-    model,
-    max_tokens: 512,
-    system: AI_SYSTEM_PROMPT,
-    messages: [
-      { role: 'user', content: taskDescription },
-    ],
-  })
-
-  // Extract text from response
-  const textBlock = response.content.find(b => b.type === 'text')
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('No text response from AI')
-  }
-
-  const parsed = JSON.parse(textBlock.text) as {
-    intent: string
-    keywords: string[]
-    filePatterns: string[]
-    includeFileTypes: string[]
-  }
-
-  // Validate and normalize the response
-  const validIntents: TaskIntent[] = ['fix', 'add', 'refactor', 'investigate', 'test', 'document', 'configure', 'style']
-  const validFileTypes: FileCategory[] = ['source', 'test', 'config', 'style', 'docs', 'types']
-
-  const intent: TaskIntent = validIntents.includes(parsed.intent as TaskIntent)
-    ? (parsed.intent as TaskIntent)
-    : detectIntent(taskDescription)
-
-  const keywords = Array.isArray(parsed.keywords)
-    ? parsed.keywords.filter((k): k is string => typeof k === 'string' && k.length > 0)
-    : extractDomainKeywords(taskDescription)
-
-  const filePatterns = Array.isArray(parsed.filePatterns)
-    ? parsed.filePatterns.filter((p): p is string => typeof p === 'string' && p.length > 0)
-    : deriveFilePatterns(keywords)
-
-  const includeFileTypes = Array.isArray(parsed.includeFileTypes)
-    ? parsed.includeFileTypes.filter((t): t is FileCategory => validFileTypes.includes(t as FileCategory))
-    : INTENT_FILE_TYPES[intent]
-
-  return {
-    intent,
-    keywords,
-    filePatterns,
-    includeFileTypes: includeFileTypes.length > 0 ? includeFileTypes : INTENT_FILE_TYPES[intent],
-    usedAi: true,
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
@@ -317,20 +234,9 @@ export async function parseTask(request: TaskParseRequest): Promise<ParsedTask> 
     }
   }
 
-  if (useAi) {
-    try {
-      const { configStore, defaultPreferences } = await import('../config/ConfigStore')
-      const prefs = configStore.get('preferences', defaultPreferences) as Record<string, unknown>
-      const apiKey = prefs.aiApiKey as string
-      const model = (prefs.aiModel as string) || 'claude-sonnet-4-20250514'
-
-      if (apiKey) {
-        return await parseTaskWithAi(taskDescription, apiKey, model)
-      }
-    } catch {
-      // Fall through to heuristic
-    }
-  }
+  // AI-enhanced parsing via direct API calls has been removed.
+  // Claude Code now handles all AI interactions via MCP.
+  // Task parsing always uses the heuristic path.
 
   return parseTaskHeuristic(taskDescription)
 }

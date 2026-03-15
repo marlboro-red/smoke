@@ -40,7 +40,6 @@ export const AI_SEND = 'ai:send' as const
 export const AI_ABORT = 'ai:abort' as const
 export const AI_CLEAR = 'ai:clear' as const
 export const AI_STREAM = 'ai:stream' as const
-export const AI_CONFIG = 'ai:config' as const
 export const AI_CANVAS_ACTION = 'ai:canvas-action' as const
 
 // Recording channels
@@ -304,16 +303,6 @@ export interface AgentInfo {
   color: string
 }
 
-export interface AiConfigGetResponse {
-  model: string
-  apiKey: string
-  maxTokens: number
-}
-
-export interface AiConfigSetRequest {
-  key: string
-  value: unknown
-}
 
 // Recording message types
 export interface RecordingFlushRequest {

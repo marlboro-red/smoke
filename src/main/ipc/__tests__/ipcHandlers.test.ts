@@ -33,6 +33,17 @@ vi.mock('../../codegraph/StructureAnalyzer', () => ({
   StructureAnalyzer: function StructureAnalyzer() { return mockStructureAnalyzer },
 }))
 
+// Mock child_process (used by ClaudeCodeManager)
+vi.mock('child_process', () => ({
+  spawn: vi.fn(),
+}))
+
+// Mock fs (sync methods used by ClaudeCodeManager for MCP config)
+vi.mock('fs', () => ({
+  existsSync: vi.fn().mockReturnValue(false),
+  writeFileSync: vi.fn(),
+}))
+
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn((channel: string, handler: any) => {
@@ -63,8 +74,6 @@ const mockConfig: Record<string, any> = {
     sidebarWidth: 240,
     theme: 'dark',
     defaultCwd: '',
-    aiApiKey: '',
-    aiModel: 'claude-sonnet-4-20250514',
   },
   defaultLayout: null,
   namedLayouts: {},
@@ -102,8 +111,6 @@ vi.mock('../../config/ConfigStore', () => ({
     sidebarWidth: 240,
     theme: 'dark',
     defaultCwd: '',
-    aiApiKey: '',
-    aiModel: 'claude-sonnet-4-20250514',
   },
 }))
 
@@ -115,7 +122,7 @@ describe('registerIpcHandlers', () => {
   let mockWindow: any
   let getMainWindow: () => any
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset handlers
     Object.keys(handlers).forEach(k => delete handlers[k])
     Object.keys(listeners).forEach(k => delete listeners[k])
@@ -164,7 +171,7 @@ describe('registerIpcHandlers', () => {
     mockStructureAnalyzer.getCached.mockReset()
     mockStructureAnalyzer.getModule.mockReset()
 
-    registerIpcHandlers(ptyManager, getMainWindow, '/home/user/project')
+    await registerIpcHandlers(ptyManager, getMainWindow, '/home/user/project')
   })
 
   describe('PTY_SPAWN', () => {

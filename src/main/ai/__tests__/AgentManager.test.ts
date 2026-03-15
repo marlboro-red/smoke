@@ -2,17 +2,32 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AgentManager, AGENT_COLORS } from '../AgentManager'
 import type { BrowserWindow } from 'electron'
 
-// Mock dependencies
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: vi.fn(),
+// Mock child_process (used by ClaudeCodeManager)
+vi.mock('child_process', () => ({
+  spawn: vi.fn(),
+}))
+
+// Mock electron app (used by ClaudeCodeManager)
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false,
+  },
+  ipcMain: {
+    handle: vi.fn(),
+    on: vi.fn(),
+  },
+}))
+
+// Mock fs (used by ClaudeCodeManager for MCP config)
+vi.mock('fs', () => ({
+  existsSync: vi.fn().mockReturnValue(false),
+  writeFileSync: vi.fn(),
 }))
 
 vi.mock('../../config/ConfigStore', () => ({
   configStore: {
     get: vi.fn().mockReturnValue({
-      aiModel: 'claude-sonnet-4-20250514',
-      aiApiKey: 'test-key',
-      aiMaxTokens: 4096,
+      claudeCommand: 'claude',
     }),
     set: vi.fn(),
   },
@@ -24,6 +39,17 @@ vi.mock('uuid', () => ({
     let counter = 0
     return () => `uuid-${++counter}`
   })(),
+}))
+
+// Mock TerminalOutputBuffer
+vi.mock('../TerminalOutputBuffer', () => ({
+  terminalOutputBuffer: {
+    sessions: vi.fn().mockReturnValue([]),
+    size: vi.fn().mockReturnValue(0),
+    append: vi.fn(),
+    delete: vi.fn(),
+    readLines: vi.fn().mockReturnValue(''),
+  },
 }))
 
 function createMockWindow(): BrowserWindow {

@@ -1,11 +1,7 @@
 /**
- * AI tool definitions and executor functions.
+ * AI tool executor functions.
  *
- * v1 tools: get_canvas_state, list_sessions, read_terminal_output,
- * spawn_terminal, write_to_terminal, close_terminal, move_element,
- * resize_element, read_file, list_directory, pan_canvas.
- *
- * Each tool returns a string result to the AI.
+ * Each tool returns a string result.
  * Write tools push canvas_action events to the renderer.
  *
  * When an agent is assigned to a group, tools are scoped:
@@ -18,7 +14,6 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { v4 as uuid } from 'uuid'
 import type { BrowserWindow } from 'electron'
-import type { AiService, ToolDefinition, ToolExecutor } from './AiService'
 import { terminalOutputBuffer } from './TerminalOutputBuffer'
 import type { PtyManager } from '../pty/PtyManager'
 import { AI_CANVAS_ACTION, PTY_DATA_FROM_PTY, PTY_EXIT } from '../ipc/channels'
@@ -27,6 +22,8 @@ import type { AiStreamCanvasAction } from '../../preload/types'
 import { buildCodeGraph, collectContext, computeWorkspaceLayout } from '../codegraph'
 import type { SearchIndex } from '../codegraph/SearchIndex'
 import type { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
+
+export type ToolExecutor = (input: Record<string, unknown>) => Promise<string>
 
 /** Context for scope-aware tool execution. */
 export interface AgentScopeProvider {
@@ -37,478 +34,8 @@ export interface AgentScopeProvider {
   getColor: () => string
 }
 
-// ── Tool definitions ────────────────────────────────────────────────
-
-const tools: Array<{ definition: ToolDefinition; executor: string }> = [
-  {
-    definition: {
-      name: 'get_canvas_state',
-      description:
-        'Get the current canvas viewport state including pan position, zoom level, and grid size.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {},
-        required: [],
-      },
-    },
-    executor: 'get_canvas_state',
-  },
-  {
-    definition: {
-      name: 'list_sessions',
-      description:
-        'List all active terminal sessions with their IDs, titles, working directories, positions, sizes, and buffer sizes.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {},
-        required: [],
-      },
-    },
-    executor: 'list_sessions',
-  },
-  {
-    definition: {
-      name: 'read_terminal_output',
-      description:
-        'Read the buffered output from a terminal session. Returns the last N lines of stripped (no ANSI codes) terminal output.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          session_id: {
-            type: 'string',
-            description: 'The terminal session ID to read from.',
-          },
-          lines: {
-            type: 'number',
-            description:
-              'Number of lines to read from the end of the buffer. Defaults to 100.',
-          },
-        },
-        required: ['session_id'],
-      },
-    },
-    executor: 'read_terminal_output',
-  },
-  {
-    definition: {
-      name: 'spawn_terminal',
-      description:
-        'Spawn a new terminal session on the canvas. Returns the session ID. The terminal appears at the specified position with the given working directory.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          cwd: {
-            type: 'string',
-            description:
-              'Working directory for the new terminal. Defaults to the configured default.',
-          },
-          position: {
-            type: 'object',
-            description:
-              'Canvas position {x, y} for the terminal. Defaults to {x: 100, y: 100}.',
-            properties: {
-              x: { type: 'number' },
-              y: { type: 'number' },
-            },
-            required: ['x', 'y'],
-          },
-          cols: {
-            type: 'number',
-            description: 'Number of columns. Defaults to 80.',
-          },
-          rows: {
-            type: 'number',
-            description: 'Number of rows. Defaults to 24.',
-          },
-        },
-        required: [],
-      },
-    },
-    executor: 'spawn_terminal',
-  },
-  {
-    definition: {
-      name: 'write_to_terminal',
-      description:
-        'Write text (keystrokes) to a terminal session. Use this to run commands by appending "\\n" to the text.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          session_id: {
-            type: 'string',
-            description: 'The terminal session ID to write to.',
-          },
-          text: {
-            type: 'string',
-            description:
-              'The text to write. Include "\\n" for Enter key.',
-          },
-        },
-        required: ['session_id', 'text'],
-      },
-    },
-    executor: 'write_to_terminal',
-  },
-  {
-    definition: {
-      name: 'close_terminal',
-      description: 'Close (kill) a terminal session and remove it from the canvas.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          session_id: {
-            type: 'string',
-            description: 'The terminal session ID to close.',
-          },
-        },
-        required: ['session_id'],
-      },
-    },
-    executor: 'close_terminal',
-  },
-  {
-    definition: {
-      name: 'move_element',
-      description: 'Move a terminal session to a new position on the canvas.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          session_id: {
-            type: 'string',
-            description: 'The session ID to move.',
-          },
-          position: {
-            type: 'object',
-            description: 'New canvas position {x, y}.',
-            properties: {
-              x: { type: 'number' },
-              y: { type: 'number' },
-            },
-            required: ['x', 'y'],
-          },
-        },
-        required: ['session_id', 'position'],
-      },
-    },
-    executor: 'move_element',
-  },
-  {
-    definition: {
-      name: 'resize_element',
-      description: 'Resize a terminal session on the canvas.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          session_id: {
-            type: 'string',
-            description: 'The session ID to resize.',
-          },
-          cols: {
-            type: 'number',
-            description: 'New column count.',
-          },
-          rows: {
-            type: 'number',
-            description: 'New row count.',
-          },
-          width: {
-            type: 'number',
-            description:
-              'New pixel width. If omitted, calculated from cols (cols * 8).',
-          },
-          height: {
-            type: 'number',
-            description:
-              'New pixel height. If omitted, calculated from rows (rows * 18).',
-          },
-        },
-        required: ['session_id', 'cols', 'rows'],
-      },
-    },
-    executor: 'resize_element',
-  },
-  {
-    definition: {
-      name: 'read_file',
-      description:
-        'Read the contents of a file from the filesystem. Returns the file content as text. Limited to 5MB by default.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          path: {
-            type: 'string',
-            description: 'Absolute or relative path to the file.',
-          },
-        },
-        required: ['path'],
-      },
-    },
-    executor: 'read_file',
-  },
-  {
-    definition: {
-      name: 'list_directory',
-      description:
-        'List the contents of a directory. Returns file names, types, and sizes.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          path: {
-            type: 'string',
-            description: 'Absolute or relative path to the directory.',
-          },
-        },
-        required: ['path'],
-      },
-    },
-    executor: 'list_directory',
-  },
-  {
-    definition: {
-      name: 'pan_canvas',
-      description:
-        'Pan the canvas viewport to a specific position. Use this to navigate to different areas of the canvas.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          x: {
-            type: 'number',
-            description: 'X position to pan to.',
-          },
-          y: {
-            type: 'number',
-            description: 'Y position to pan to.',
-          },
-        },
-        required: ['x', 'y'],
-      },
-    },
-    executor: 'pan_canvas',
-  },
-  {
-    definition: {
-      name: 'create_note',
-      description:
-        'Place a sticky note on the canvas. Use this to annotate, explain, or document spatial reasoning.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          text: {
-            type: 'string',
-            description: 'The text content of the sticky note.',
-          },
-          position: {
-            type: 'object',
-            description:
-              'Canvas position {x, y} for the note. Defaults to {x: 100, y: 100}.',
-            properties: {
-              x: { type: 'number' },
-              y: { type: 'number' },
-            },
-            required: ['x', 'y'],
-          },
-          color: {
-            type: 'string',
-            description:
-              'Note color: preset name ("yellow", "pink", "blue", "green", "purple") or a hex color like "#ff6b2b". Defaults to "yellow".',
-          },
-        },
-        required: ['text'],
-      },
-    },
-    executor: 'create_note',
-  },
-  {
-    definition: {
-      name: 'edit_file',
-      description:
-        'Edit a file by writing new content to it. If the file is open in a file viewer on the canvas, the viewer updates live. If not open, a new file viewer opens at the specified position. The file is written to disk immediately.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          path: {
-            type: 'string',
-            description: 'Absolute or relative path to the file to edit.',
-          },
-          content: {
-            type: 'string',
-            description: 'The new file content to write.',
-          },
-          position: {
-            type: 'object',
-            description:
-              'Canvas position {x, y} for the file viewer if a new one is created. Defaults to {x: 100, y: 100}.',
-            properties: {
-              x: { type: 'number' },
-              y: { type: 'number' },
-            },
-            required: ['x', 'y'],
-          },
-        },
-        required: ['path', 'content'],
-      },
-    },
-    executor: 'edit_file',
-  },
-  {
-    definition: {
-      name: 'create_arrow',
-      description:
-        'Draw a connector arrow between two canvas elements. Use this to show relationships or data flow between elements.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          from_id: {
-            type: 'string',
-            description: 'The source element ID (session or note).',
-          },
-          to_id: {
-            type: 'string',
-            description: 'The target element ID (session or note).',
-          },
-          label: {
-            type: 'string',
-            description: 'Optional label displayed on the arrow.',
-          },
-          color: {
-            type: 'string',
-            description:
-              'Optional CSS color for the arrow. Defaults to the theme accent color.',
-          },
-        },
-        required: ['from_id', 'to_id'],
-      },
-    },
-    executor: 'create_arrow',
-  },
-  {
-    definition: {
-      name: 'create_group',
-      description:
-        'Create a new group on the canvas. Groups visually cluster elements together and enable broadcast commands.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          name: {
-            type: 'string',
-            description: 'Display name for the group.',
-          },
-          color: {
-            type: 'string',
-            description:
-              'Hex color for the group. If omitted, auto-assigned from a palette.',
-          },
-        },
-        required: ['name'],
-      },
-    },
-    executor: 'create_group',
-  },
-  {
-    definition: {
-      name: 'add_to_group',
-      description:
-        'Add an existing canvas element (terminal session or note) to a group.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          element_id: {
-            type: 'string',
-            description: 'The ID of the element to add to the group.',
-          },
-          group_id: {
-            type: 'string',
-            description: 'The ID of the group to add the element to.',
-          },
-        },
-        required: ['element_id', 'group_id'],
-      },
-    },
-    executor: 'add_to_group',
-  },
-  {
-    definition: {
-      name: 'broadcast_to_group',
-      description:
-        'Send a command to all terminal sessions in a group. The command text is written to every terminal PTY in the group. Append "\\n" to execute.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          group_id: {
-            type: 'string',
-            description: 'The ID of the group to broadcast to.',
-          },
-          command: {
-            type: 'string',
-            description:
-              'The command text to send. Include "\\n" for Enter key.',
-          },
-        },
-        required: ['group_id', 'command'],
-      },
-    },
-    executor: 'broadcast_to_group',
-  },
-  {
-    definition: {
-      name: 'explore_imports',
-      description:
-        'Explore the import graph starting from a file. Returns all files reachable via import/require statements up to the specified depth, along with the edges between them. Use this to understand architecture, trace data flow, or find related files before making changes.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          file_path: {
-            type: 'string',
-            description:
-              'Absolute or relative path to the starting file.',
-          },
-          depth: {
-            type: 'number',
-            description:
-              'How many levels of imports to follow. Defaults to 2.',
-          },
-        },
-        required: ['file_path'],
-      },
-    },
-    executor: 'explore_imports',
-  },
-  {
-    definition: {
-      name: 'assemble_workspace',
-      description:
-        'Assemble a complete workspace on the canvas from a natural language task description. Chains the full pipeline: task parser → context collector → workspace layout planner → canvas renderer. Opens relevant source files as file viewers arranged by data flow, draws import arrows between them, groups files by module, and spawns terminals cd\'d to the most relevant directories. This is the primary entry point for AI-driven workspace assembly. Returns a summary of what was assembled.',
-      input_schema: {
-        type: 'object' as const,
-        properties: {
-          task_description: {
-            type: 'string',
-            description:
-              'Natural language description of the task. E.g. "fix the terminal resize bug" or "add dark mode support to the config panel".',
-          },
-          project_root: {
-            type: 'string',
-            description:
-              'Root directory of the project. Defaults to the configured default working directory.',
-          },
-          max_files: {
-            type: 'number',
-            description:
-              'Maximum number of files to include in the workspace. Defaults to 15.',
-          },
-          spawn_terminals: {
-            type: 'boolean',
-            description:
-              'Whether to spawn terminals cd\'d to relevant directories. Defaults to true.',
-          },
-        },
-        required: ['task_description'],
-      },
-    },
-    executor: 'assemble_workspace',
-  },
-]
-
+// ── Constants ──────────────────────────────────────────────────────
+// (Tool definitions have moved to toolDefs.ts)
 // ── Executor implementations ────────────────────────────────────────
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -521,7 +48,11 @@ export interface CodegraphDeps {
   structureAnalyzer: StructureAnalyzer
 }
 
-function createExecutors(
+/**
+ * Create the full set of tool executors.
+ * Exported for use by AgentManager + MCP bridge.
+ */
+export function createExecutors(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
   scope?: AgentScopeProvider,
@@ -633,7 +164,7 @@ function createExecutors(
       rows,
     })
 
-    // Wire PTY data and exit events to the renderer (same as ipcHandlers does for user-spawned PTYs)
+    // Wire PTY data and exit events to the renderer
     pty.on('data', (data: string) => {
       terminalOutputBuffer.append(pty.id, data)
       const win = getMainWindow()
@@ -1217,29 +748,4 @@ function createExecutors(
   })
 
   return executors
-}
-
-// ── Registration ────────────────────────────────────────────────────
-
-/**
- * Register all AI tools with the AiService.
- * Called from AgentManager when a new agent is created.
- * When scopeProvider is given, tools are scoped to the agent's assigned group.
- * When codegraphDeps is given, the assemble_workspace tool is enabled.
- */
-export function registerTools(
-  aiService: AiService,
-  ptyManager: PtyManager,
-  getMainWindow: () => BrowserWindow | null,
-  scopeProvider?: AgentScopeProvider,
-  codegraphDeps?: CodegraphDeps
-): void {
-  const executors = createExecutors(ptyManager, getMainWindow, scopeProvider, codegraphDeps)
-
-  for (const tool of tools) {
-    const executor = executors.get(tool.executor)
-    if (executor) {
-      aiService.registerTool(tool.definition, executor)
-    }
-  }
 }

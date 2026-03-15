@@ -5,7 +5,6 @@ import { PtyManager } from '../pty/PtyManager'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/ConfigStore'
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
-import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
@@ -44,7 +43,6 @@ import {
   AI_SEND,
   AI_ABORT,
   AI_CLEAR,
-  AI_CONFIG,
   AGENT_CREATE,
   AGENT_REMOVE,
   AGENT_LIST,
@@ -109,8 +107,6 @@ import {
   AiSendResponse,
   AiAbortRequest,
   AiClearRequest,
-  AiConfigSetRequest,
-  AiConfigGetResponse,
   AgentCreateRequest,
   AgentCreateResponse,
   AgentRemoveRequest,
@@ -161,14 +157,14 @@ export function getAgentManager(): AgentManager | null {
   return agentManagerInstance
 }
 
-export function registerIpcHandlers(
+export async function registerIpcHandlers(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
   launchCwd: string
-): void {
+): Promise<void> {
   // Instantiate the agent manager for multi-agent support
   const agentManager = new AgentManager(getMainWindow)
-  agentManager.setPtyManager(ptyManager)
+  await agentManager.setPtyManager(ptyManager)
   agentManagerInstance = agentManager
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
     const preferences = configStore.get('preferences', defaultPreferences)
@@ -285,19 +281,12 @@ export function registerIpcHandlers(
     const validKeys: Array<keyof Preferences> = [
       'defaultShell', 'autoLaunchClaude', 'claudeCommand', 'startupCommand',
       'gridSize', 'sidebarPosition', 'sidebarWidth', 'sidebarSectionSizes',
-      'theme', 'defaultCwd', 'aiApiKey', 'aiModel',
+      'theme', 'defaultCwd',
       'terminalOpacity', 'fontFamily', 'fontSize', 'lineHeight',
     ]
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig
     configStore.set(key, request.value as never)
-
-    // Invalidate all agents' client cache when API key changes
-    if (request.key === 'aiApiKey') {
-      for (const agent of agentManager.listAgents()) {
-        agentManager.getAgent(agent.id)?.setConfig('aiApiKey', request.value)
-      }
-    }
   })
 
   // File system handlers
@@ -726,23 +715,6 @@ export function registerIpcHandlers(
     agent?.clear(request.conversationId)
   })
 
-  ipcMain.handle(AI_CONFIG, (_event, request?: AiConfigSetRequest): AiConfigGetResponse | void => {
-    if (request && request.key) {
-      // Apply config to all agents
-      for (const info of agentManager.listAgents()) {
-        agentManager.getAgent(info.id)?.setConfig(request.key, request.value)
-      }
-      return
-    }
-    // Config is global — use any agent or create a temp service to read it
-    const agents = agentManager.listAgents()
-    if (agents.length > 0) {
-      return agentManager.getAgent(agents[0].id)!.getConfig()
-    }
-    // No agents yet — read config directly
-    const tempService = new AiService(() => null)
-    return tempService.getConfig()
-  })
 
   // Code graph handlers
   ipcMain.handle(
