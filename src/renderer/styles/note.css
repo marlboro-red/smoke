@@ -1,0 +1,55 @@
+/* Note Window */
+.note-window .window-chrome-status {
+  background: var(--color-warning);
+  box-shadow: 0 0 5px rgba(251, 191, 36, 0.35);
+}
+
+.note-chrome-extras {
+  position: absolute;
+  top: 6px;
+  right: 32px;
+  z-index: 2;
+}
+
+.note-color-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--duration-fast), border-color var(--duration-fast);
+}
+
+.note-color-btn:hover {
+  transform: scale(1.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.note-body {
+  padding: var(--space-md) var(--space-lg);
+  overflow: hidden;
+}
+
+.note-textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-lg);
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  padding: 0;
+}
+
+.note-textarea::placeholder {
+  color: var(--text-placeholder);
+}
+
+/* Thumbnail status dot for note type */
+.thumbnail-status.note {
+  background: var(--color-warning);
+}

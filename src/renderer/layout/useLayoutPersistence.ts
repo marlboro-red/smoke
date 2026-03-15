@@ -27,6 +27,9 @@ function serializeCurrentLayout(name: string): Layout {
       if (s.type === 'file') {
         return { ...base, filePath: s.filePath, language: s.language }
       }
+      if (s.type === 'note') {
+        return { ...base, content: s.content, color: s.color }
+      }
       return base
     }),
     viewport: { panX, panY, zoom },
@@ -124,6 +127,18 @@ export function useLayoutRestore(): {
               // File may no longer exist — skip silently
             }
           }
+          break
+        }
+        case 'note': {
+          const session = sessionStore.getState().createNoteSession(
+            saved.position,
+            saved.color
+          )
+          sessionStore.getState().updateSession(session.id, {
+            title: saved.title,
+            content: saved.content ?? '',
+            size: saved.size,
+          })
           break
         }
       }

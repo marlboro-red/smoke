@@ -2,7 +2,7 @@ import { useRef, useCallback } from 'react'
 import { useCanvasControls } from './useCanvasControls'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
-import type { Session, TerminalSession, FileViewerSession } from '../stores/sessionStore'
+import type { Session, TerminalSession, FileViewerSession, NoteSession } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
@@ -13,6 +13,8 @@ import TerminalWindow from '../terminal/TerminalWindow'
 import TerminalThumbnail from '../terminal/TerminalThumbnail'
 import FileViewerWindow from '../fileviewer/FileViewerWindow'
 import FileViewerThumbnail from '../fileviewer/FileViewerThumbnail'
+import NoteWindow from '../note/NoteWindow'
+import NoteThumbnail from '../note/NoteThumbnail'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -94,6 +96,18 @@ export default function Canvas(): JSX.Element {
               }
               return (
                 <FileViewerWindow
+                  key={session.id}
+                  session={session}
+                  zoom={getZoom}
+                  gridSize={gridSize}
+                />
+              )
+            case 'note':
+              if (isThumbnailMode) {
+                return <NoteThumbnail key={session.id} session={session} />
+              }
+              return (
+                <NoteWindow
                   key={session.id}
                   session={session}
                   zoom={getZoom}
