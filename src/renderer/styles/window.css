@@ -1,39 +1,42 @@
 /* Terminal Window */
 .terminal-window {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  background: rgba(26, 26, 46, 0.95);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-window);
   box-sizing: border-box;
   overflow: hidden;
+  box-shadow: var(--shadow-window);
+  transition: border-color var(--duration-normal), box-shadow var(--duration-normal);
 }
 
 .terminal-window.focused {
-  border-color: rgba(100, 140, 255, 0.5);
-  box-shadow: 0 0 0 1px rgba(100, 140, 255, 0.2);
+  border-color: var(--accent-strong);
+  box-shadow: var(--shadow-window-focus);
 }
 
 .terminal-window.highlighted {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: var(--border-strong);
 }
 
 .terminal-window.dragging {
-  opacity: 0.9;
+  opacity: 0.92;
   cursor: grabbing;
 }
 
 .terminal-window.snapping {
-  transition: left 150ms ease-out, top 150ms ease-out,
-    width 150ms ease-out, height 150ms ease-out;
+  transition: left 150ms var(--ease-out), top 150ms var(--ease-out),
+    width 150ms var(--ease-out), height 150ms var(--ease-out),
+    border-color var(--duration-normal), box-shadow var(--duration-normal);
 }
 
 /* Window Chrome (title bar) */
 .window-chrome {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: var(--space-md);
+  padding: 0 10px;
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border-subtle);
   cursor: grab;
   user-select: none;
   -webkit-app-region: no-drag;
@@ -51,11 +54,12 @@
 }
 
 .window-chrome-status.running {
-  background: #4ade80;
+  background: var(--color-success);
+  box-shadow: 0 0 5px var(--color-success-glow);
 }
 
 .window-chrome-status.exited {
-  background: #6b7280;
+  background: var(--color-neutral);
 }
 
 .window-chrome-title {
@@ -63,41 +67,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 32px;
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  line-height: 34px;
 }
 
 .window-chrome-title-input {
   flex: 1;
   background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(100, 140, 255, 0.4);
-  border-radius: 3px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
-  padding: 2px 4px;
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  padding: 2px 6px;
   outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
 .window-chrome-close {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: none;
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 16px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 15px;
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
+  transition: background var(--duration-fast), color var(--duration-fast);
 }
 
 .window-chrome-close:hover {
-  background: rgba(255, 80, 80, 0.3);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--color-error-dim);
+  color: var(--color-error);
 }
 
 /* Terminal body */
@@ -109,16 +116,17 @@
 .resize-handle {
   background: transparent;
   z-index: 1;
+  transition: background var(--duration-fast);
 }
 
 .resize-handle:hover {
-  background: rgba(100, 140, 255, 0.15);
+  background: var(--accent-dim);
 }
 
 .resize-handle-se {
-  border-radius: 0 0 6px 0;
+  border-radius: 0 0 var(--radius-lg) 0;
 }
 
 .resize-handle-se:hover {
-  background: rgba(100, 140, 255, 0.25);
+  background: var(--accent-muted);
 }

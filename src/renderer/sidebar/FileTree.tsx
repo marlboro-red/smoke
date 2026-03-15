@@ -13,29 +13,26 @@ interface TreeNode {
 }
 
 const FILE_ICONS: Record<string, string> = {
-  // Folders
-  directory: '📁',
-  directoryOpen: '📂',
-  // Languages
-  '.ts': '⬡',
-  '.tsx': '⬡',
-  '.js': '⬡',
-  '.jsx': '⬡',
-  '.json': '{ }',
+  directory: '\u25B8',
+  directoryOpen: '\u25BE',
+  '.ts': 'TS',
+  '.tsx': 'TX',
+  '.js': 'JS',
+  '.jsx': 'JX',
+  '.json': '{}',
   '.css': '#',
   '.html': '<>',
-  '.md': 'M↓',
-  '.yml': '⚙',
-  '.yaml': '⚙',
-  '.toml': '⚙',
-  '.sh': '$',
-  '.py': '🐍',
-  '.rs': '🦀',
-  '.go': 'Go',
-  // Default
-  file: '📄',
-  symlink: '🔗',
-  other: '?',
+  '.md': 'md',
+  '.yml': '::',
+  '.yaml': '::',
+  '.toml': '::',
+  '.sh': '$_',
+  '.py': 'py',
+  '.rs': 'rs',
+  '.go': 'go',
+  file: '\u2014',
+  symlink: '~>',
+  other: '??',
 }
 
 function getFileIcon(entry: { name: string; type: string }, expanded?: boolean): string {

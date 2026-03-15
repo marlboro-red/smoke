@@ -6,5 +6,5 @@
 
 .terminal-container .xterm {
   height: 100%;
-  padding: 4px;
+  padding: var(--space-xs);
 }
