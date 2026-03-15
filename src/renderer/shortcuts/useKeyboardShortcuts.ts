@@ -10,6 +10,7 @@ import { setZoomTo, zoomIn, zoomOut } from '../canvas/useCanvasControls'
 import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
 import { settingsModalStore } from '../config/settingsStore'
 import { shortcutsOverlayStore } from './shortcutsOverlayStore'
+import { commandPaletteStore } from '../palette/commandPaletteStore'
 import { performAutoLayout } from '../layout/autoLayout'
 
 function executeShortcut(action: ShortcutAction): void {
@@ -114,6 +115,10 @@ function executeShortcut(action: ShortcutAction): void {
 
     case 'showShortcutsHelp':
       shortcutsOverlayStore.getState().toggle()
+      break
+
+    case 'commandPalette':
+      commandPaletteStore.getState().toggle()
       break
 
     case 'escape':

@@ -22,6 +22,7 @@ export type ShortcutAction =
   | 'toggleBroadcast'
   | 'autoLayout'
   | 'showShortcutsHelp'
+  | 'commandPalette'
   | 'escape'
 
 export interface ShortcutDef {
@@ -47,6 +48,8 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
   if (!mod) return null
 
   switch (e.key) {
+    case 'p':
+      return 'commandPalette'
     case 'n':
       return 'newSession'
     case 'w':

@@ -58,6 +58,7 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: 'General',
     shortcuts: [
+      { keys: `${MOD} P`, description: 'Command palette' },
       { keys: `${MOD} /`, description: 'Show this help' },
       { keys: 'Esc', description: 'Unfocus session' },
     ],
