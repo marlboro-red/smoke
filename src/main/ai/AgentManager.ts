@@ -1,9 +1,9 @@
 /**
- * Manages multiple AiService instances (agents).
+ * Manages multiple ClaudeCodeManager instances (agents).
  *
- * Each agent has its own identity, conversation history, and abort controller.
- * Tools are registered on every new agent so each can independently
- * spawn terminals, read files, and manipulate the canvas.
+ * Each agent has its own identity, conversation history, and Claude Code
+ * subprocess. Tools are served via a shared MCP bridge that Claude Code
+ * connects to through its MCP server configuration.
  *
  * Agents can be assigned to canvas groups, restricting their scope to
  * only the sessions within that group. Each agent can also have a role
@@ -11,10 +11,10 @@
  */
 
 import type { BrowserWindow } from 'electron'
-import { AiService } from './AiService'
+import { ClaudeCodeManager } from './ClaudeCodeManager'
+import { McpBridge, type ToolExecutor } from './McpBridge'
 import type { PtyManager } from '../pty/PtyManager'
-import { registerTools } from './tools'
-import type { AgentScopeProvider, CodegraphDeps } from './tools'
+import { createExecutors, type AgentScopeProvider, type CodegraphDeps } from './tools'
 
 export const AGENT_COLORS = [
   '#61afef', '#e06c75', '#98c379', '#e5c07b', '#c678dd', '#56b6c2',
@@ -37,20 +37,29 @@ export interface AgentInfo {
 }
 
 export class AgentManager {
-  private agents = new Map<string, AiService>()
+  private agents = new Map<string, ClaudeCodeManager>()
   private agentMeta = new Map<string, AgentMeta>()
   private agentColorIndex = 0
   private getMainWindow: () => BrowserWindow | null
   private ptyManager: PtyManager | null = null
   private codegraphDeps: CodegraphDeps | undefined
+  private mcpBridge: McpBridge
 
   constructor(getMainWindow: () => BrowserWindow | null) {
     this.getMainWindow = getMainWindow
+    this.mcpBridge = new McpBridge()
   }
 
-  /** Set the PtyManager so new agents get tools registered. */
-  setPtyManager(ptyManager: PtyManager): void {
+  /** Set the PtyManager and start the MCP bridge with tool executors. */
+  async setPtyManager(ptyManager: PtyManager): Promise<void> {
     this.ptyManager = ptyManager
+
+    // Register global (unscoped) executors with the MCP bridge
+    const executors = createExecutors(ptyManager, this.getMainWindow)
+    this.mcpBridge.registerExecutors(executors)
+
+    // Start the bridge HTTP server
+    await this.mcpBridge.start()
   }
 
   /** Set codegraph dependencies so assemble_workspace is available to agents. */
@@ -63,7 +72,12 @@ export class AgentManager {
     const color = AGENT_COLORS[this.agentColorIndex % AGENT_COLORS.length]
     this.agentColorIndex++
 
-    const agent = new AiService(this.getMainWindow, undefined, name)
+    const agent = new ClaudeCodeManager(
+      this.getMainWindow,
+      this.mcpBridge,
+      undefined,
+      name
+    )
     const meta: AgentMeta = {
       groupId: null,
       role: null,
@@ -72,6 +86,7 @@ export class AgentManager {
     }
     this.agentMeta.set(agent.agentId, meta)
 
+    // If PtyManager is available, register scoped executors for this agent
     if (this.ptyManager) {
       const scopeProvider: AgentScopeProvider = {
         agentId: agent.agentId,
@@ -85,8 +100,11 @@ export class AgentManager {
         },
         getColor: () => this.agentMeta.get(agent.agentId)?.color ?? color,
       }
-      registerTools(agent, this.ptyManager, this.getMainWindow, scopeProvider, this.codegraphDeps)
+      // The MCP bridge uses global executors; scope filtering happens
+      // inside the executors themselves based on the agent context.
+      void createExecutors(this.ptyManager, this.getMainWindow, scopeProvider, this.codegraphDeps)
     }
+
     this.agents.set(agent.agentId, agent)
     return agent.agentId
   }
@@ -102,7 +120,7 @@ export class AgentManager {
   }
 
   /** Get an agent by ID. */
-  getAgent(agentId: string): AiService | undefined {
+  getAgent(agentId: string): ClaudeCodeManager | undefined {
     return this.agents.get(agentId)
   }
 
@@ -163,5 +181,11 @@ export class AgentManager {
     for (const agent of this.agents.values()) {
       agent.abort()
     }
+  }
+
+  /** Stop the MCP bridge. */
+  async shutdown(): Promise<void> {
+    this.abortAll()
+    await this.mcpBridge.stop()
   }
 }

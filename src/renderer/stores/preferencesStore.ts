@@ -13,8 +13,6 @@ const defaultPreferences: Preferences = {
   sidebarSectionSizes: {},
   theme: 'dark',
   defaultCwd: '',
-  aiApiKey: '',
-  aiModel: 'claude-sonnet-4-20250514',
   terminalOpacity: 1,
   fontFamily: '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace',
   fontSize: 13,

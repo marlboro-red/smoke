@@ -90,11 +90,6 @@ const smokeAPI: SmokeAPI = {
     clear: (agentId, conversationId?) =>
       ipcRenderer.invoke('ai:clear', { agentId, conversationId }),
 
-    getConfig: () => ipcRenderer.invoke('ai:config'),
-
-    setConfig: (key, value) =>
-      ipcRenderer.invoke('ai:config', { key, value }),
-
     onStream: (callback: (event: AiStreamEvent) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, data: AiStreamEvent): void => {
         callback(data)

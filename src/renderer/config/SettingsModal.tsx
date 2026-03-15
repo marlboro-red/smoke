@@ -277,47 +277,6 @@ export default function SettingsModal(): JSX.Element | null {
             )}
           </section>
 
-          {/* ── AI API ── */}
-          <section className="settings-section">
-            <h3 className="settings-section-title">AI API</h3>
-
-            <div className="settings-row">
-              <div className="settings-row-info">
-                <label className="settings-label">Anthropic API Key</label>
-                <p className="settings-help">
-                  Your Anthropic API key for the built-in AI assistant. Stored locally and never sent to third parties.
-                </p>
-              </div>
-              <input
-                className="settings-input"
-                type="password"
-                placeholder="sk-ant-..."
-                value={prefs.aiApiKey}
-                onChange={(e) => updatePref('aiApiKey', e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </div>
-
-            <div className="settings-row">
-              <div className="settings-row-info">
-                <label className="settings-label">Model</label>
-                <p className="settings-help">
-                  The Claude model to use for AI-powered features.
-                </p>
-              </div>
-              <select
-                className="settings-input settings-select"
-                value={prefs.aiModel}
-                onChange={(e) => updatePref('aiModel', e.target.value)}
-              >
-                <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-                <option value="claude-opus-4-20250514">Claude Opus 4</option>
-                <option value="claude-haiku-4-20250506">Claude Haiku 4</option>
-              </select>
-            </div>
-          </section>
-
           {/* ── Context Assembly ── */}
           <section className="settings-section">
             <h3 className="settings-section-title">Context Assembly</h3>

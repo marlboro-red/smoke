@@ -11,6 +11,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
           searchWorker: resolve(__dirname, 'src/main/codegraph/searchWorker.ts'),
+          'mcp-server': resolve(__dirname, 'src/main/ai/mcp-server.ts'),
         },
       }
     }

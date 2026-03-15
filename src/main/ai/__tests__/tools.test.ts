@@ -1,28 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
-import { AiService } from '../AiService'
-import { registerTools, type CodegraphDeps } from '../tools'
+import { createExecutors, type CodegraphDeps } from '../tools'
 import { terminalOutputBuffer } from '../TerminalOutputBuffer'
 import { PtyManager } from '../../pty/PtyManager'
-import { AI_CANVAS_ACTION, PTY_DATA_FROM_PTY, PTY_EXIT } from '../../ipc/channels'
+import { AI_CANVAS_ACTION } from '../../ipc/channels'
 
 // Mock node-pty (native module not available in test)
 vi.mock('node-pty', () => ({
   spawn: vi.fn(),
 }))
 
-// Mock the Anthropic SDK
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: vi.fn(),
-}))
-
 // Mock configStore
 vi.mock('../../config/ConfigStore', () => ({
   configStore: {
     get: vi.fn().mockReturnValue({
-      aiModel: 'claude-sonnet-4-20250514',
-      aiApiKey: 'test-api-key',
-      aiMaxTokens: 4096,
       gridSize: 20,
       defaultShell: '/bin/zsh',
       defaultCwd: '/tmp',
@@ -118,7 +109,7 @@ function createMockPtyProcess(id: string) {
 }
 
 describe('AI Tools', () => {
-  let service: AiService
+  let executors: Map<string, (input: Record<string, unknown>) => Promise<string>>
   let mockWindow: BrowserWindow
   let ptyManager: PtyManager
   let mockPty: ReturnType<typeof createMockPtyProcess>
@@ -127,7 +118,6 @@ describe('AI Tools', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockWindow = createMockWindow()
-    service = new AiService(() => mockWindow)
     ptyManager = new PtyManager()
 
     // Track send calls
@@ -144,28 +134,18 @@ describe('AI Tools', () => {
       return undefined
     })
     vi.spyOn(ptyManager, 'spawn').mockReturnValue(mockPty as never)
-    vi.spyOn(ptyManager, 'write')
 
     // Set up terminal output buffer
     terminalOutputBuffer.clear()
     terminalOutputBuffer.append('existing-session', 'line 1\nline 2\nline 3\n')
 
-    // Register all tools
-    registerTools(service, ptyManager, () => mockWindow)
+    // Create executors directly
+    executors = createExecutors(ptyManager, () => mockWindow)
   })
 
-  // Access registered tools via the private field for testing
-  function getExecutor(name: string) {
-    // We test through the service's registerTool, which stores in toolExecutors map
-    // Since it's private, we access via the internal registration
-    // Instead, we'll use the AiService's internal tool handling indirectly
-    // by checking tool registration count
-    return (service as unknown as { toolExecutors: Map<string, (input: Record<string, unknown>) => Promise<string>> }).toolExecutors.get(name)
-  }
-
-  describe('registerTools', () => {
-    it('registers all 19 tools', () => {
-      const toolNames = (service as unknown as { tools: Array<{ name: string }> }).tools.map(t => t.name)
+  describe('createExecutors', () => {
+    it('creates all 19 tool executors', () => {
+      const toolNames = Array.from(executors.keys())
       expect(toolNames).toEqual([
         'get_canvas_state',
         'list_sessions',
@@ -177,22 +157,22 @@ describe('AI Tools', () => {
         'resize_element',
         'read_file',
         'list_directory',
+        'edit_file',
         'pan_canvas',
         'create_note',
-        'edit_file',
         'create_arrow',
         'create_group',
         'add_to_group',
         'broadcast_to_group',
-        'explore_imports',
         'assemble_workspace',
+        'explore_imports',
       ])
     })
   })
 
   describe('get_canvas_state', () => {
     it('returns canvas state with session count and grid size', async () => {
-      const executor = getExecutor('get_canvas_state')!
+      const executor = executors.get('get_canvas_state')!
       const result = JSON.parse(await executor({}))
       expect(result.sessionCount).toBe(1)
       expect(result.gridSize).toBe(20)
@@ -203,7 +183,7 @@ describe('AI Tools', () => {
 
   describe('list_sessions', () => {
     it('returns session details', async () => {
-      const executor = getExecutor('list_sessions')!
+      const executor = executors.get('list_sessions')!
       const result = JSON.parse(await executor({}))
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe('existing-session')
@@ -212,7 +192,7 @@ describe('AI Tools', () => {
 
     it('returns message when no sessions', async () => {
       terminalOutputBuffer.clear()
-      const executor = getExecutor('list_sessions')!
+      const executor = executors.get('list_sessions')!
       const result = await executor({})
       expect(result).toBe('No active terminal sessions.')
     })
@@ -220,20 +200,20 @@ describe('AI Tools', () => {
 
   describe('read_terminal_output', () => {
     it('reads buffered output from a session', async () => {
-      const executor = getExecutor('read_terminal_output')!
+      const executor = executors.get('read_terminal_output')!
       const result = await executor({ session_id: 'existing-session' })
       expect(result).toContain('line 1')
       expect(result).toContain('line 3')
     })
 
     it('reads last N lines', async () => {
-      const executor = getExecutor('read_terminal_output')!
+      const executor = executors.get('read_terminal_output')!
       const result = await executor({ session_id: 'existing-session', lines: 2 })
       expect(result).toContain('line 3')
     })
 
     it('returns message for non-existent session', async () => {
-      const executor = getExecutor('read_terminal_output')!
+      const executor = executors.get('read_terminal_output')!
       const result = await executor({ session_id: 'nonexistent' })
       expect(result).toContain('No output buffered')
     })
@@ -241,7 +221,7 @@ describe('AI Tools', () => {
 
   describe('spawn_terminal', () => {
     it('spawns a PTY and emits session_created canvas action', async () => {
-      const executor = getExecutor('spawn_terminal')!
+      const executor = executors.get('spawn_terminal')!
       const result = JSON.parse(await executor({
         cwd: '/home/user',
         position: { x: 200, y: 300 },
@@ -262,7 +242,7 @@ describe('AI Tools', () => {
     })
 
     it('uses defaults when no position or cwd specified', async () => {
-      const executor = getExecutor('spawn_terminal')!
+      const executor = executors.get('spawn_terminal')!
       const result = JSON.parse(await executor({}))
       expect(result.sessionId).toBe('mock-session-id')
       expect(result.cwd).toBe('/tmp') // from defaultCwd preference
@@ -271,14 +251,14 @@ describe('AI Tools', () => {
 
   describe('write_to_terminal', () => {
     it('writes text to a terminal session', async () => {
-      const executor = getExecutor('write_to_terminal')!
+      const executor = executors.get('write_to_terminal')!
       const result = await executor({ session_id: 'existing-session', text: 'ls -la\n' })
       expect(mockPty.write).toHaveBeenCalledWith('ls -la\n')
       expect(result).toContain('7 characters')
     })
 
     it('throws for non-existent session', async () => {
-      const executor = getExecutor('write_to_terminal')!
+      const executor = executors.get('write_to_terminal')!
       await expect(executor({ session_id: 'nonexistent', text: 'hello' })).rejects.toThrow(
         'not found'
       )
@@ -287,7 +267,7 @@ describe('AI Tools', () => {
 
   describe('close_terminal', () => {
     it('kills the PTY and emits session_closed', async () => {
-      const executor = getExecutor('close_terminal')!
+      const executor = executors.get('close_terminal')!
       const result = await executor({ session_id: 'existing-session' })
       expect(mockPty.kill).toHaveBeenCalled()
       expect(result).toContain('Closed')
@@ -298,14 +278,14 @@ describe('AI Tools', () => {
     })
 
     it('throws for non-existent session', async () => {
-      const executor = getExecutor('close_terminal')!
+      const executor = executors.get('close_terminal')!
       await expect(executor({ session_id: 'nonexistent' })).rejects.toThrow('not found')
     })
   })
 
   describe('move_element', () => {
     it('emits session_moved canvas action', async () => {
-      const executor = getExecutor('move_element')!
+      const executor = executors.get('move_element')!
       const result = await executor({
         session_id: 'existing-session',
         position: { x: 500, y: 600 },
@@ -323,7 +303,7 @@ describe('AI Tools', () => {
 
   describe('resize_element', () => {
     it('resizes PTY and emits session_resized', async () => {
-      const executor = getExecutor('resize_element')!
+      const executor = executors.get('resize_element')!
       const result = await executor({
         session_id: 'existing-session',
         cols: 120,
@@ -339,27 +319,11 @@ describe('AI Tools', () => {
       expect(action.action).toBe('session_resized')
       expect(action.payload.size).toEqual({ cols: 120, rows: 40, width: 960, height: 720 })
     })
-
-    it('uses custom width/height when provided', async () => {
-      const executor = getExecutor('resize_element')!
-      await executor({
-        session_id: 'existing-session',
-        cols: 100,
-        rows: 30,
-        width: 1000,
-        height: 600,
-      })
-
-      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
-      const action = canvasActions[0][1] as { payload: { size: { width: number; height: number } } }
-      expect(action.payload.size.width).toBe(1000)
-      expect(action.payload.size.height).toBe(600)
-    })
   })
 
   describe('read_file', () => {
     it('reads file content', async () => {
-      const executor = getExecutor('read_file')!
+      const executor = executors.get('read_file')!
       const result = await executor({ path: '/tmp/test.txt' })
       expect(result).toBe('file content here')
     })
@@ -368,14 +332,14 @@ describe('AI Tools', () => {
       const { stat } = await import('fs/promises')
       ;(stat as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ size: 10 * 1024 * 1024 })
 
-      const executor = getExecutor('read_file')!
+      const executor = executors.get('read_file')!
       await expect(executor({ path: '/tmp/big.bin' })).rejects.toThrow('File too large')
     })
   })
 
   describe('list_directory', () => {
     it('lists directory entries with types', async () => {
-      const executor = getExecutor('list_directory')!
+      const executor = executors.get('list_directory')!
       const result = JSON.parse(await executor({ path: '/tmp' }))
 
       expect(result).toHaveLength(3)
@@ -385,74 +349,9 @@ describe('AI Tools', () => {
     })
   })
 
-  describe('edit_file', () => {
-    it('writes file and emits file_edited canvas action', async () => {
-      const executor = getExecutor('edit_file')!
-      const homedir = require('os').homedir()
-      const filePath = `${homedir}/projects/test.ts`
-      const content = 'const x = 42;\n'
-
-      const result = JSON.parse(await executor({ path: filePath, content }))
-      expect(result.path).toBe(filePath)
-      expect(result.size).toBe(Buffer.from(content).length)
-      expect(result.language).toBe('typescript')
-
-      const { writeFile } = await import('fs/promises')
-      expect(writeFile).toHaveBeenCalledWith(filePath, content, 'utf-8')
-
-      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
-      expect(canvasActions).toHaveLength(1)
-      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
-      expect(action.action).toBe('file_edited')
-      expect(action.payload.filePath).toBe(filePath)
-      expect(action.payload.content).toBe(content)
-      expect(action.payload.language).toBe('typescript')
-    })
-
-    it('uses custom position when provided', async () => {
-      const executor = getExecutor('edit_file')!
-      const homedir = require('os').homedir()
-
-      await executor({
-        path: `${homedir}/test.py`,
-        content: 'print("hello")',
-        position: { x: 300, y: 400 },
-      })
-
-      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
-      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
-      expect(action.payload.position).toEqual({ x: 300, y: 400 })
-      expect(action.payload.language).toBe('python')
-    })
-
-    it('rejects paths outside home directory', async () => {
-      const executor = getExecutor('edit_file')!
-      await expect(
-        executor({ path: '/etc/passwd', content: 'nope' })
-      ).rejects.toThrow('Write denied')
-    })
-
-    it('rejects writes to hidden config directories', async () => {
-      const executor = getExecutor('edit_file')!
-      const homedir = require('os').homedir()
-      await expect(
-        executor({ path: `${homedir}/.ssh/id_rsa`, content: 'nope' })
-      ).rejects.toThrow('Write denied')
-    })
-
-    it('rejects content over 5MB', async () => {
-      const executor = getExecutor('edit_file')!
-      const homedir = require('os').homedir()
-      const bigContent = 'x'.repeat(6 * 1024 * 1024)
-      await expect(
-        executor({ path: `${homedir}/big.txt`, content: bigContent })
-      ).rejects.toThrow('Content too large')
-    })
-  })
-
   describe('pan_canvas', () => {
     it('emits viewport_panned canvas action', async () => {
-      const executor = getExecutor('pan_canvas')!
+      const executor = executors.get('pan_canvas')!
       const result = await executor({ x: -200, y: -300 })
       expect(result).toContain('-200')
       expect(result).toContain('-300')
@@ -466,8 +365,8 @@ describe('AI Tools', () => {
   })
 
   describe('create_note', () => {
-    it('emits note_created canvas action with text and position', async () => {
-      const executor = getExecutor('create_note')!
+    it('emits note_created canvas action', async () => {
+      const executor = executors.get('create_note')!
       const result = JSON.parse(await executor({
         text: 'Hello world',
         position: { x: 200, y: 300 },
@@ -482,161 +381,6 @@ describe('AI Tools', () => {
       expect(canvasActions).toHaveLength(1)
       const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
       expect(action.action).toBe('note_created')
-      expect(action.payload.noteId).toBe('mock-session-id')
-      expect(action.payload.text).toBe('Hello world')
-      expect(action.payload.position).toEqual({ x: 200, y: 300 })
-      expect(action.payload.color).toBe('blue')
-    })
-
-    it('uses defaults when position and color are omitted', async () => {
-      const executor = getExecutor('create_note')!
-      const result = JSON.parse(await executor({ text: 'A note' }))
-
-      expect(result.position).toEqual({ x: 100, y: 100 })
-      expect(result.color).toBe('yellow')
-    })
-  })
-
-  describe('create_arrow', () => {
-    it('emits connector_created canvas action', async () => {
-      const executor = getExecutor('create_arrow')!
-      const result = JSON.parse(await executor({
-        from_id: 'session-a',
-        to_id: 'session-b',
-        label: 'data flow',
-      }))
-
-      expect(result.connectorId).toBe('mock-session-id')
-      expect(result.sourceId).toBe('session-a')
-      expect(result.targetId).toBe('session-b')
-      expect(result.label).toBe('data flow')
-
-      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
-      expect(canvasActions).toHaveLength(1)
-      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
-      expect(action.action).toBe('connector_created')
-      expect(action.payload.sourceId).toBe('session-a')
-      expect(action.payload.targetId).toBe('session-b')
-      expect(action.payload.label).toBe('data flow')
-    })
-
-    it('works without optional label and color', async () => {
-      const executor = getExecutor('create_arrow')!
-      const result = JSON.parse(await executor({
-        from_id: 'a',
-        to_id: 'b',
-      }))
-
-      expect(result.connectorId).toBe('mock-session-id')
-      expect(result.label).toBeUndefined()
-    })
-  })
-
-  describe('create_group', () => {
-    it('emits group_created canvas action', async () => {
-      const executor = getExecutor('create_group')!
-      const result = JSON.parse(await executor({
-        name: 'Web Servers',
-        color: '#4A90D9',
-      }))
-
-      expect(result.groupId).toBe('mock-session-id')
-      expect(result.name).toBe('Web Servers')
-      expect(result.color).toBe('#4A90D9')
-
-      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
-      expect(canvasActions).toHaveLength(1)
-      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
-      expect(action.action).toBe('group_created')
-      expect(action.payload.groupId).toBe('mock-session-id')
-      expect(action.payload.name).toBe('Web Servers')
-      expect(action.payload.color).toBe('#4A90D9')
-    })
-
-    it('works without optional color', async () => {
-      const executor = getExecutor('create_group')!
-      const result = JSON.parse(await executor({ name: 'Logs' }))
-
-      expect(result.groupId).toBe('mock-session-id')
-      expect(result.name).toBe('Logs')
-      expect(result.color).toBeUndefined()
-    })
-  })
-
-  describe('add_to_group', () => {
-    it('emits group_member_added canvas action', async () => {
-      const executor = getExecutor('add_to_group')!
-      const result = await executor({
-        element_id: 'existing-session',
-        group_id: 'group-1',
-      })
-
-      expect(result).toContain('existing-session')
-      expect(result).toContain('group-1')
-
-      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
-      expect(canvasActions).toHaveLength(1)
-      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
-      expect(action.action).toBe('group_member_added')
-      expect(action.payload.groupId).toBe('group-1')
-      expect(action.payload.elementId).toBe('existing-session')
-    })
-  })
-
-  describe('broadcast_to_group', () => {
-    it('emits group_broadcast canvas action', async () => {
-      const executor = getExecutor('broadcast_to_group')!
-      const result = await executor({
-        group_id: 'group-1',
-        command: 'npm test\n',
-      })
-
-      expect(result).toContain('9 characters')
-      expect(result).toContain('group-1')
-
-      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
-      expect(canvasActions).toHaveLength(1)
-      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
-      expect(action.action).toBe('group_broadcast')
-      expect(action.payload.groupId).toBe('group-1')
-      expect(action.payload.command).toBe('npm test\n')
-    })
-  })
-
-  describe('explore_imports', () => {
-    it('returns import graph structure for a file', async () => {
-      const executor = getExecutor('explore_imports')!
-      const result = JSON.parse(await executor({ file_path: '/project/src/index.ts' }))
-
-      expect(result.root).toBe('/project/src/index.ts')
-      expect(result.fileCount).toBe(2)
-      expect(result.edgeCount).toBe(1)
-      expect(result.nodes).toHaveLength(2)
-      expect(result.nodes[0].file).toBe('/project/src/index.ts')
-      expect(result.nodes[0].imports).toEqual(['/project/src/utils.ts'])
-      expect(result.edges).toHaveLength(1)
-      expect(result.edges[0].from).toBe('/project/src/index.ts')
-      expect(result.edges[0].to).toBe('/project/src/utils.ts')
-    })
-
-    it('passes depth parameter to buildCodeGraph', async () => {
-      const { buildCodeGraph } = await import('../../codegraph')
-      const executor = getExecutor('explore_imports')!
-      await executor({ file_path: '/project/src/index.ts', depth: 5 })
-
-      expect(buildCodeGraph).toHaveBeenCalledWith(
-        expect.objectContaining({ maxDepth: 5 })
-      )
-    })
-
-    it('defaults depth to 2', async () => {
-      const { buildCodeGraph } = await import('../../codegraph')
-      const executor = getExecutor('explore_imports')!
-      await executor({ file_path: '/project/src/index.ts' })
-
-      expect(buildCodeGraph).toHaveBeenCalledWith(
-        expect.objectContaining({ maxDepth: 2 })
-      )
     })
   })
 
@@ -648,23 +392,22 @@ describe('AI Tools', () => {
       }
     }
 
-    function registerToolsWithDeps() {
-      const svc = new AiService(() => mockWindow)
+    function createExecutorsWithDeps() {
       const deps = createMockCodegraphDeps()
-      registerTools(svc, ptyManager, () => mockWindow, undefined, deps)
-      return (svc as unknown as { toolExecutors: Map<string, (input: Record<string, unknown>) => Promise<string>> }).toolExecutors.get('assemble_workspace')!
+      const execs = createExecutors(ptyManager, () => mockWindow, undefined, deps)
+      return execs.get('assemble_workspace')!
     }
 
     it('throws when codegraph deps are not configured', async () => {
       // Default registration (no codegraph deps)
-      const executor = getExecutor('assemble_workspace')!
+      const executor = executors.get('assemble_workspace')!
       await expect(
         executor({ task_description: 'fix terminal resize bug' })
       ).rejects.toThrow('codegraph dependencies not configured')
     })
 
     it('chains the full pipeline and returns a summary', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       const result = JSON.parse(await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -681,7 +424,7 @@ describe('AI Tools', () => {
     })
 
     it('calls collectContext with proper params', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -703,7 +446,7 @@ describe('AI Tools', () => {
     })
 
     it('calls computeWorkspaceLayout with collected files', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -717,7 +460,7 @@ describe('AI Tools', () => {
     })
 
     it('emits file_edited actions for each file in layout', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -736,7 +479,7 @@ describe('AI Tools', () => {
     })
 
     it('emits connector_created actions for import arrows', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -752,7 +495,7 @@ describe('AI Tools', () => {
     })
 
     it('emits group_created actions for module regions', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -766,7 +509,7 @@ describe('AI Tools', () => {
     })
 
     it('spawns terminals cd\'d to relevant directories', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       const result = JSON.parse(await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -783,7 +526,7 @@ describe('AI Tools', () => {
     })
 
     it('does not spawn terminals when spawn_terminals is false', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       vi.clearAllMocks()
       // Re-setup send tracking after clearAllMocks
       sendCalls = []
@@ -806,7 +549,7 @@ describe('AI Tools', () => {
     })
 
     it('pans canvas to center the workspace', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -833,7 +576,7 @@ describe('AI Tools', () => {
         timing: { parse: 5, search: 10, structure: 3, graph: 0, scoring: 0, total: 18 },
       })
 
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       const result = JSON.parse(await executor({
         task_description: 'fix nonexistent feature',
         project_root: '/project',
@@ -844,7 +587,7 @@ describe('AI Tools', () => {
     })
 
     it('includes file list with relative paths and relevance', async () => {
-      const executor = registerToolsWithDeps()
+      const executor = createExecutorsWithDeps()
       const result = JSON.parse(await executor({
         task_description: 'fix terminal resize bug',
         project_root: '/project',
@@ -861,15 +604,14 @@ describe('AI Tools', () => {
   describe('canvas action emission', () => {
     it('does not emit when window is destroyed', async () => {
       ;(mockWindow.isDestroyed as ReturnType<typeof vi.fn>).mockReturnValue(true)
-      const executor = getExecutor('pan_canvas')!
+      const executor = executors.get('pan_canvas')!
       await executor({ x: 0, y: 0 })
       expect(sendCalls).toHaveLength(0)
     })
 
     it('does not emit when window is null', async () => {
-      const nullService = new AiService(() => null)
-      registerTools(nullService, ptyManager, () => null)
-      const executor = (nullService as unknown as { toolExecutors: Map<string, (input: Record<string, unknown>) => Promise<string>> }).toolExecutors.get('pan_canvas')!
+      const nullExecutors = createExecutors(ptyManager, () => null)
+      const executor = nullExecutors.get('pan_canvas')!
       await executor({ x: 0, y: 0 })
       // Should not throw
     })

@@ -51,8 +51,8 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
-  registerIpcHandlers(ptyManager, () => mainWindow, launchCwd)
+app.whenReady().then(async () => {
+  await registerIpcHandlers(ptyManager, () => mainWindow, launchCwd)
   createWindow()
 
   app.on('activate', () => {
