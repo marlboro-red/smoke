@@ -10,10 +10,17 @@ const ptyManager = new PtyManager()
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
+  const isMac = process.platform === 'darwin'
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
+    // macOS: hiddenInset keeps traffic-light buttons overlaid on content
+    // Windows/Linux: frame:false removes the native title bar entirely
+    ...(isMac
+      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 10 } }
+      : { frame: false }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,

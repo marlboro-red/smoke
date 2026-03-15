@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { useTabList, useActiveTabId, tabStore } from '../stores/tabStore'
+import WindowControls from '../titlebar/WindowControls'
 import '../styles/tabs.css'
 
 export default function TabBar(): JSX.Element {
@@ -46,8 +47,10 @@ export default function TabBar(): JSX.Element {
     }
   }, [handleFinishRename])
 
+  const isMac = window.smokeAPI?.window?.platform === 'darwin'
+
   return (
-    <div className="tab-bar">
+    <div className={`tab-bar${isMac ? ' tab-bar-mac' : ''}`}>
       <div className="tab-bar-tabs">
         {tabs.map((tab) => (
           <div
@@ -84,6 +87,7 @@ export default function TabBar(): JSX.Element {
       <div className="tab-bar-new" onClick={handleNewTab} title="New tab">
         +
       </div>
+      <WindowControls />
     </div>
   )
 }
