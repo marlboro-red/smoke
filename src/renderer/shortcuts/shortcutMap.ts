@@ -30,6 +30,7 @@ export type ShortcutAction =
   | 'exportCanvasPng'
   | 'saveBookmark'
   | 'showDepGraph'
+  | 'toggleFileViewerEdit'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -72,6 +73,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   exportCanvasPng: 'Export Canvas as PNG',
   saveBookmark: 'Save Bookmark',
   showDepGraph: 'Show Import Dependency Graph',
+  toggleFileViewerEdit: 'Toggle File Viewer Edit Mode',
   escape: 'Unfocus Session',
 }
 
@@ -104,6 +106,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   exportCanvasPng: { key: 'e', mod: true, shift: true },
   saveBookmark: { key: 'd', mod: true, shift: false },
   showDepGraph: { key: 'd', mod: true, shift: true },
+  toggleFileViewerEdit: { key: 'e', mod: true, shift: false },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -127,7 +130,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng', 'showDepGraph'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng', 'showDepGraph', 'toggleFileViewerEdit'],
   },
   {
     title: 'Groups',

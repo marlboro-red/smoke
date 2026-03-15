@@ -158,6 +158,19 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+    case 'toggleFileViewerEdit': {
+      if (state.focusedId) {
+        const session = state.sessions.get(state.focusedId)
+        if (session?.type === 'file') {
+          const fileSession = session as FileViewerSession
+          sessionStore.getState().updateSession(state.focusedId, {
+            editing: !fileSession.editing,
+          })
+        }
+      }
+      break
+    }
+
     case 'escape':
       sessionStore.getState().focusSession(null)
       break

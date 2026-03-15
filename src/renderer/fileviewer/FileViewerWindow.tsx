@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import {
   sessionStore,
   useFocusedId,
@@ -33,7 +33,7 @@ export default function FileViewerWindow({
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
   const selectedIds = useSelectedIds()
-  const [editing, setEditing] = useState(false)
+  const editing = session.editing ?? false
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
@@ -81,8 +81,8 @@ export default function FileViewerWindow({
   }, [session.id, session.isDirty])
 
   const handleToggleEdit = useCallback(() => {
-    setEditing((prev) => !prev)
-  }, [])
+    sessionStore.getState().updateSession(session.id, { editing: !editing })
+  }, [session.id, editing])
 
   const handleShowDepGraph = useCallback(() => {
     buildDepGraph(session)
