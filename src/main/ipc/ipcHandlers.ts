@@ -187,7 +187,7 @@ export function registerIpcHandlers(
   ipcMain.handle(CONFIG_SET, (_event, request: ConfigSetRequest): void => {
     const validKeys: Array<keyof Preferences> = [
       'defaultShell', 'autoLaunchClaude', 'claudeCommand',
-      'gridSize', 'sidebarPosition', 'sidebarWidth',
+      'gridSize', 'sidebarPosition', 'sidebarWidth', 'sidebarSectionSizes',
       'theme', 'defaultCwd', 'aiApiKey', 'aiModel',
     ]
     if (!validKeys.includes(request.key as keyof Preferences)) return
