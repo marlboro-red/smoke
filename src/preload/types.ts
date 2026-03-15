@@ -231,6 +231,54 @@ export interface ProjectIndexUpdatedEvent {
   basenameCount: number
 }
 
+// Code graph types
+export interface CodeGraphNode {
+  filePath: string
+  imports: string[]
+  importedBy: string[]
+  moduleGroup?: string
+  depth: number
+}
+
+export interface CodeGraphEdge {
+  from: string
+  to: string
+  type: 'import' | 'require' | 'use'
+}
+
+export interface CodeGraphPosition {
+  filePath: string
+  x: number
+  y: number
+  depth: number
+}
+
+export interface CodeGraphBounds {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+export interface CodeGraphResult {
+  graph: {
+    nodes: CodeGraphNode[]
+    edges: CodeGraphEdge[]
+  }
+  rootPath: string
+  fileCount: number
+  edgeCount: number
+  layout: {
+    positions: CodeGraphPosition[]
+    bounds: CodeGraphBounds
+  }
+}
+
+export interface CodeGraphIndexStats {
+  root: string
+  fileCount: number
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -299,6 +347,18 @@ export interface SmokeAPI {
     assignGroup: (agentId: string, groupId: string | null, memberSessionIds?: string[]) => Promise<void>
     setRole: (agentId: string, role: string | null) => Promise<void>
     updateScope: (agentId: string, sessionIds: string[]) => Promise<void>
+  }
+  codegraph: {
+    build: (filePath: string, projectRoot: string, maxDepth?: number) => Promise<CodeGraphResult>
+    expand: (
+      existingGraph: CodeGraphResult['graph'],
+      existingPositions: CodeGraphPosition[],
+      expandPath: string,
+      projectRoot: string,
+      maxDepth?: number
+    ) => Promise<CodeGraphResult>
+    indexStats: () => Promise<CodeGraphIndexStats | null>
+    invalidateIndex: () => Promise<void>
   }
 }
 

@@ -147,6 +147,17 @@ const smokeAPI: SmokeAPI = {
       ipcRenderer.invoke('agent:set-role', { agentId, role }),
     updateScope: (agentId, sessionIds) =>
       ipcRenderer.invoke('agent:update-scope', { agentId, sessionIds }),
+  },
+
+  codegraph: {
+    build: (filePath, projectRoot, maxDepth?) =>
+      ipcRenderer.invoke('codegraph:build', { filePath, projectRoot, maxDepth }),
+    expand: (existingGraph, existingPositions, expandPath, projectRoot, maxDepth?) =>
+      ipcRenderer.invoke('codegraph:expand', {
+        existingGraph, existingPositions, expandPath, projectRoot, maxDepth,
+      }),
+    indexStats: () => ipcRenderer.invoke('codegraph:index-stats'),
+    invalidateIndex: () => ipcRenderer.invoke('codegraph:invalidate'),
   }
 }
 
