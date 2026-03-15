@@ -2,6 +2,7 @@ import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { v4 as uuidv4 } from 'uuid'
+import { connectorStore } from './connectorStore'
 
 export type ElementType = 'terminal' | 'file'
 
@@ -97,6 +98,7 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
   },
 
   removeSession: (id: string) => {
+    connectorStore.getState().removeConnectorsForElement(id)
     set((state) => {
       const sessions = new Map(state.sessions)
       sessions.delete(id)
