@@ -72,16 +72,22 @@ export default function TerminalWindow({
   })
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const isMod = e.metaKey || e.ctrlKey
+    const isMod = e.metaKey || e.ctrlKey || e.shiftKey
     if (isMod) {
       e.stopPropagation()
       sessionStore.getState().toggleSelectSession(session.id)
       return
     }
+    // If clicking a selected element without modifier, keep selection for drag
+    if (selectedIds.has(session.id) && selectedIds.size > 1) {
+      sessionStore.getState().bringToFront(session.id)
+      sessionStore.getState().focusSession(session.id)
+      return
+    }
     sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id])
+  }, [session.id, selectedIds])
 
   const handleTitleChange = useCallback(
     (title: string) => {
@@ -155,6 +161,7 @@ export default function TerminalWindow({
   return (
     <div
       className={classNames}
+      data-session-id={session.id}
       style={{
         position: 'absolute',
         left: session.position.x,

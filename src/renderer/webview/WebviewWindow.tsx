@@ -3,6 +3,7 @@ import {
   sessionStore,
   useFocusedId,
   useHighlightedId,
+  useSelectedIds,
   type WebviewSession,
 } from '../stores/sessionStore'
 import { useFocusModeActiveIds } from '../stores/focusModeStore'
@@ -30,6 +31,7 @@ export default function WebviewWindow({
 }: WebviewWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
+  const selectedIds = useSelectedIds()
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
   const [urlInput, setUrlInput] = useState(session.url)
   const [isLoading, setIsLoading] = useState(false)
@@ -40,6 +42,7 @@ export default function WebviewWindow({
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
   const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
+  const isSelected = selectedIds.has(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -53,10 +56,22 @@ export default function WebviewWindow({
     gridSize,
   })
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const isMod = e.metaKey || e.ctrlKey || e.shiftKey
+    if (isMod) {
+      e.stopPropagation()
+      sessionStore.getState().toggleSelectSession(session.id)
+      return
+    }
+    if (selectedIds.has(session.id) && selectedIds.size > 1) {
+      sessionStore.getState().bringToFront(session.id)
+      sessionStore.getState().focusSession(session.id)
+      return
+    }
+    sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id])
+  }, [session.id, selectedIds])
 
   const handleTitleChange = useCallback(
     (title: string) => {
@@ -184,6 +199,7 @@ export default function WebviewWindow({
     isFocused && 'focused',
     isHighlighted && 'highlighted',
     isDimmedByFocusMode && 'focus-mode-dimmed',
+    isSelected && 'multi-selected',
   ]
     .filter(Boolean)
     .join(' ')
@@ -193,6 +209,7 @@ export default function WebviewWindow({
   return (
     <div
       className={classNames}
+      data-session-id={session.id}
       style={{
         position: 'absolute',
         left: session.position.x,

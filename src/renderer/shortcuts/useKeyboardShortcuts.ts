@@ -203,6 +203,23 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+    case 'togglePin': {
+      if (state.focusedId) {
+        const session = state.sessions.get(state.focusedId)
+        if (session && !session.isPinned) {
+          const pan = getCurrentPan()
+          const zoom = getCurrentZoom()
+          sessionStore.getState().togglePin(state.focusedId, {
+            x: session.position.x * zoom + pan.x,
+            y: session.position.y * zoom + pan.y,
+          })
+        } else {
+          sessionStore.getState().togglePin(state.focusedId)
+        }
+      }
+      break
+    }
+
     case 'addBookmark': {
       const pan = getCurrentPan()
       const zoom = getCurrentZoom()
@@ -278,9 +295,48 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+<<<<<<< HEAD
     case 'toggleFocusMode':
       focusModeStore.getState().toggle()
       break
+=======
+    case 'deleteSelected': {
+      const selected = state.selectedIds
+      if (selected.size > 0) {
+        for (const id of selected) {
+          closeSession(id)
+        }
+        sessionStore.getState().clearSelection()
+      }
+      break
+    }
+
+    case 'groupSelected': {
+      const sel = state.selectedIds
+      if (sel.size >= 2) {
+        const group = groupStore.getState().createGroup('Group')
+        for (const id of sel) {
+          const session = state.sessions.get(id)
+          if (session) {
+            sessionStore.getState().updateSession(id, { groupId: group.id })
+            groupStore.getState().addMember(group.id, id)
+          }
+        }
+        groupStore.getState().recomputeBoundingBox(group.id)
+        sessionStore.getState().clearSelection()
+      }
+      break
+    }
+
+    case 'selectAll': {
+      // Only select all when no terminal is focused (avoid intercepting Cmd+A in terminal)
+      const active = document.activeElement
+      if (active && active.closest('.terminal-container')) break
+      const allIds = new Set(state.sessions.keys())
+      sessionStore.getState().setSelectedIds(allIds)
+      break
+    }
+>>>>>>> smoke-zdx
 
     case 'escape':
       if (focusModeStore.getState().enabled) {
@@ -288,6 +344,8 @@ function executeShortcut(action: ShortcutAction): void {
       }
       if (terminalSearchStore.getState().activeSessionId) {
         terminalSearchStore.getState().close()
+      } else if (state.selectedIds.size > 0) {
+        sessionStore.getState().clearSelection()
       } else {
         sessionStore.getState().focusSession(null)
       }

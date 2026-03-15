@@ -46,6 +46,9 @@ export type ShortcutAction =
   | 'closePane'
   | 'terminalSearch'
   | 'toggleFocusMode'
+  | 'deleteSelected'
+  | 'selectAll'
+  | 'groupSelected'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -105,6 +108,9 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   closePane: 'Close Pane',
   terminalSearch: 'Find in Terminal',
   toggleFocusMode: 'Toggle Focus Mode',
+  deleteSelected: 'Delete Selected',
+  selectAll: 'Select All',
+  groupSelected: 'Group Selected',
   escape: 'Unfocus Session',
 }
 
@@ -153,6 +159,9 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   closePane: { key: 'w', mod: true, shift: true, alt: false },
   terminalSearch: { key: 'f', mod: true, shift: false, alt: false },
   toggleFocusMode: { key: '.', mod: true, shift: true, alt: false },
+  deleteSelected: { key: 'Backspace', mod: true, shift: false, alt: false },
+  selectAll: { key: 'a', mod: true, shift: false, alt: false },
+  groupSelected: { key: 'g', mod: true, shift: false, alt: true },
   escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
 
@@ -180,7 +189,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit', 'goToLine', 'toggleFocusMode'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'groupSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit', 'goToLine', 'toggleFocusMode'],
   },
   {
     title: 'Groups',

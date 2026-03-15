@@ -52,16 +52,21 @@ export default function NoteWindow({
   })
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const isMod = e.metaKey || e.ctrlKey
+    const isMod = e.metaKey || e.ctrlKey || e.shiftKey
     if (isMod) {
       e.stopPropagation()
       sessionStore.getState().toggleSelectSession(session.id)
       return
     }
+    if (selectedIds.has(session.id) && selectedIds.size > 1) {
+      sessionStore.getState().bringToFront(session.id)
+      sessionStore.getState().focusSession(session.id)
+      return
+    }
     sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id])
+  }, [session.id, selectedIds])
 
   const handleTitleChange = useCallback(
     (title: string) => {
@@ -111,6 +116,7 @@ export default function NoteWindow({
   return (
     <div
       className={classNames}
+      data-session-id={session.id}
       style={{
         position: 'absolute',
         left: session.position.x,
