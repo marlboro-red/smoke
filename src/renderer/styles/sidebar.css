@@ -25,6 +25,12 @@
   letter-spacing: 0.6px;
 }
 
+.sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .sidebar-actions {
   display: flex;
   gap: var(--space-sm);
