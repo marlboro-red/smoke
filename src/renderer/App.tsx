@@ -6,10 +6,12 @@ import { preferencesStore, usePreference } from './stores/preferencesStore'
 import { gridStore } from './stores/gridStore'
 import { canvasStore } from './stores/canvasStore'
 import { useKeyboardShortcuts } from './shortcuts/useKeyboardShortcuts'
+import { useAiCanvasActions } from './ai/useAiCanvasActions'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
   useKeyboardShortcuts()
+  useAiCanvasActions()
   const { restoreDefault } = useLayoutRestore()
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')
