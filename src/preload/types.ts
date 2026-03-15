@@ -397,6 +397,30 @@ export interface ParsedTask {
   usedAi: boolean
 }
 
+// Context collector types
+export interface ContextFile {
+  filePath: string
+  relevance: number
+  imports: string[]
+  importedBy: string[]
+  source: 'search' | 'import-graph' | 'structure' | 'file-pattern'
+  moduleId?: string
+}
+
+export interface ContextCollectResult {
+  files: ContextFile[]
+  parsedTask: ParsedTask
+  structureMap: StructureMap | null
+  timing: {
+    parse: number
+    search: number
+    structure: number
+    graph: number
+    scoring: number
+    total: number
+  }
+}
+
 // Workspace layout planner types
 export interface WorkspaceFileInput {
   filePath: string
@@ -536,6 +560,15 @@ export interface SmokeAPI {
     analyze: (rootPath: string) => Promise<StructureMap>
     get: () => Promise<StructureMap | null>
     getModule: (moduleId: string) => Promise<StructureModuleInfo | null>
+  }
+  context: {
+    collect: (
+      taskDescription: string,
+      projectRoot: string,
+      maxFiles?: number,
+      useAi?: boolean,
+      graphDepth?: number,
+    ) => Promise<ContextCollectResult>
   }
 }
 
