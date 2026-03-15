@@ -7,7 +7,11 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin({ exclude: ['electron-store'] })],
     build: {
       rollupOptions: {
-        external: ['node-pty']
+        external: ['node-pty'],
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          searchWorker: resolve(__dirname, 'src/main/codegraph/searchWorker.ts'),
+        },
       }
     }
   },
