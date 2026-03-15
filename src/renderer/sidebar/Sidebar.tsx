@@ -8,10 +8,11 @@ import SessionListItem from './SessionListItem'
 import GroupHeader from './GroupHeader'
 import { usePanToSession, panToSession as panToSessionStandalone } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
-import ConfigPanel from '../config/ConfigPanel'
 import ReplayPanel from '../replay/ReplayPanel'
+import { settingsModalStore } from '../config/settingsStore'
 import FileTree from './FileTree'
 import '../styles/sidebar.css'
+import '../styles/settings-modal.css'
 
 export default function Sidebar(): JSX.Element {
   const sessions = useSessionList()
@@ -67,6 +68,10 @@ export default function Sidebar(): JSX.Element {
     }
   }, [])
 
+  const handleOpenSettings = useCallback(() => {
+    settingsModalStore.getState().open()
+  }, [])
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
@@ -76,6 +81,9 @@ export default function Sidebar(): JSX.Element {
         </button>
         <button className="sidebar-new-btn" onClick={handleNewSession}>
           + New
+        </button>
+        <button className="sidebar-settings-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
+          &#9881;
         </button>
       </div>
       <div className="session-list">
@@ -112,7 +120,6 @@ export default function Sidebar(): JSX.Element {
       <FileTree onFileOpen={handleFileOpen} />
       <LayoutPanel />
       <ReplayPanel />
-      <ConfigPanel />
     </div>
   )
 }

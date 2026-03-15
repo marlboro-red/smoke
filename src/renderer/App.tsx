@@ -13,6 +13,7 @@ import { useAiStream } from './ai/useAiStream'
 import { useEventRecording } from './recording/useEventRecording'
 import { useIsReplaying } from './replay/replayStore'
 import ReplayControls from './replay/ReplayControls'
+import SettingsModal from './config/SettingsModal'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -65,6 +66,7 @@ function App(): JSX.Element {
       {!isReplaying && <Sidebar />}
       <Canvas readOnly={isReplaying} />
       {aiPanelOpen && !isReplaying && <AiChatPanel />}
+      <SettingsModal />
       {isReplaying && (
         <>
           <div className="replay-read-only-overlay">
