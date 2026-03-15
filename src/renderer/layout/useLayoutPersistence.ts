@@ -30,6 +30,9 @@ function serializeCurrentLayout(name: string): Layout {
       if (s.type === 'note') {
         return { ...base, content: s.content, color: s.color }
       }
+      if (s.type === 'webview') {
+        return { ...base, url: s.url }
+      }
       return base
     }),
     viewport: { panX, panY, zoom },
@@ -137,6 +140,17 @@ export function useLayoutRestore(): {
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             content: saved.content ?? '',
+            size: saved.size,
+          })
+          break
+        }
+        case 'webview': {
+          const session = sessionStore.getState().createWebviewSession(
+            saved.url || 'http://localhost:3000',
+            saved.position
+          )
+          sessionStore.getState().updateSession(session.id, {
+            title: saved.title,
             size: saved.size,
           })
           break
