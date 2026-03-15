@@ -46,6 +46,7 @@ export interface Preferences {
   lineHeight: number
   customShortcuts: Record<string, ShortcutBindingPref | null>
   startupCommand: string
+  skipAssemblyPreview: boolean
 }
 
 export const defaultPreferences: Preferences = {
@@ -66,6 +67,7 @@ export const defaultPreferences: Preferences = {
   lineHeight: 1.2,
   customShortcuts: {},
   startupCommand: '',
+  skipAssemblyPreview: false,
 }
 
 export interface Bookmark {

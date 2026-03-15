@@ -19,6 +19,7 @@ import ShortcutsOverlay from './shortcuts/ShortcutsOverlay'
 import CommandPalette from './palette/CommandPalette'
 import SearchModal from './search/SearchModal'
 import PresentationMode from './presentation/PresentationMode'
+import AssemblyPreview from './assembly/AssemblyPreview'
 import ToastContainer from './toast/ToastContainer'
 import StatusBar from './statusbar/StatusBar'
 import { useIndexingProgress } from './statusbar/useIndexingProgress'
@@ -99,6 +100,7 @@ function App(): JSX.Element {
         <ShortcutsOverlay />
         <CommandPalette />
         <SearchModal />
+        <AssemblyPreview />
         <PresentationMode />
         <ToastContainer />
         {isReplaying && (

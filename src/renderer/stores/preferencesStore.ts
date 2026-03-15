@@ -21,6 +21,7 @@ const defaultPreferences: Preferences = {
   lineHeight: 1.2,
   customShortcuts: {},
   startupCommand: '',
+  skipAssemblyPreview: false,
 }
 
 interface PreferencesStore {

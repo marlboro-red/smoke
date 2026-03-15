@@ -108,6 +108,7 @@ export interface Preferences {
   lineHeight: number
   customShortcuts: Record<string, ShortcutBindingPref | null>
   startupCommand: string
+  skipAssemblyPreview: boolean
 }
 
 export interface FsReaddirEntry {
