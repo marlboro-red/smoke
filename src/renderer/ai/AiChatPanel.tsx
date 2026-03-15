@@ -117,7 +117,7 @@ export default function AiChatPanel(): JSX.Element {
             Assemble
           </button>
           {messages.length > 0 && (
-            <button className="ai-chat-clear-btn" onClick={handleClear}>
+            <button className="ai-chat-clear-btn" onClick={handleClear} title="Clear chat history">
               Clear
             </button>
           )}
@@ -145,13 +145,14 @@ export default function AiChatPanel(): JSX.Element {
                   e.stopPropagation()
                   handleRemoveAgent(agent.id)
                 }}
+                title="Remove agent"
               >
                 x
               </button>
             )}
           </div>
         ))}
-        <button className="ai-agent-tab-add" onClick={handleAddAgent}>
+        <button className="ai-agent-tab-add" onClick={handleAddAgent} title="Add new agent">
           +
         </button>
       </div>
@@ -198,6 +199,7 @@ export default function AiChatPanel(): JSX.Element {
                   setRoleInput(activeAgent.role ?? '')
                   setEditingRole(true)
                 }}
+                title="Set agent role (e.g. frontend, backend)"
               >
                 {activeAgent.role ? `Role: ${activeAgent.role}` : 'Set role...'}
               </button>

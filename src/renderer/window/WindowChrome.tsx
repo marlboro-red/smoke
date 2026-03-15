@@ -154,6 +154,7 @@ export default function WindowChrome({
         className="window-chrome-close"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={handleCloseClick}
+        title="Close window"
       >
         &times;
       </button>

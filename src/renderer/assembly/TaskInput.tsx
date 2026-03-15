@@ -56,6 +56,7 @@ function HistoryList({ onSelect }: { onSelect: (desc: string) => void }): JSX.El
         <button
           className="task-input-history-clear"
           onClick={() => taskInputStore.getState().clearHistory()}
+          title="Clear task history"
         >
           Clear
         </button>
@@ -74,6 +75,7 @@ function HistoryList({ onSelect }: { onSelect: (desc: string) => void }): JSX.El
                 e.stopPropagation()
                 taskInputStore.getState().removeHistoryEntry(entry.timestamp)
               }}
+              title="Remove from history"
             >
               &times;
             </button>
@@ -163,6 +165,7 @@ export default function TaskInput(): JSX.Element | null {
               onClick={() => taskInputStore.getState().close()}
               disabled={loading}
               aria-label="Close"
+              title="Close"
             >
               &times;
             </button>
@@ -206,6 +209,7 @@ export default function TaskInput(): JSX.Element | null {
               className="task-input-cancel-btn"
               onClick={() => taskInputStore.getState().close()}
               disabled={loading}
+              title="Cancel and close"
             >
               Cancel
             </button>
@@ -213,6 +217,7 @@ export default function TaskInput(): JSX.Element | null {
               className="task-input-submit-btn"
               onClick={handleSubmit}
               disabled={loading || !query.trim()}
+              title="Assemble workspace from task description"
             >
               {loading ? 'Assembling...' : 'Assemble'}
             </button>

@@ -59,6 +59,7 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
           onRenameSession(state.sessionId)
           onClose()
         }}
+        title="Rename this session"
       >
         Rename
       </button>
@@ -68,6 +69,7 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
           sessionStore.getState().toggleLock(state.sessionId)
           onClose()
         }}
+        title="Prevent or allow moving this window"
       >
         {sessionStore.getState().sessions.get(state.sessionId)?.locked ? 'Unlock Position' : 'Lock Position'}
       </button>
@@ -83,6 +85,7 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
           }
           onClose()
         }}
+        title="Command to run automatically when this terminal starts"
       >
         Set Startup Command
       </button>
@@ -104,6 +107,7 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
           }
           onClose()
         }}
+        title="Keep this window fixed on screen while panning"
       >
         {(() => {
           const session = sessionStore.getState().sessions.get(state.sessionId)
@@ -116,6 +120,7 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
           onCloseSession(state.sessionId)
           onClose()
         }}
+        title="Close this session"
       >
         Close
       </button>

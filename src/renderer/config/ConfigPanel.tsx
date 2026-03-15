@@ -171,12 +171,14 @@ export default function ConfigPanel(): JSX.Element {
               <button
                 className={`config-option-btn ${prefs.sidebarPosition === 'left' ? 'active' : ''}`}
                 onClick={() => updatePref('sidebarPosition', 'left')}
+                title="Place sidebar on the left"
               >
                 Left
               </button>
               <button
                 className={`config-option-btn ${prefs.sidebarPosition === 'right' ? 'active' : ''}`}
                 onClick={() => updatePref('sidebarPosition', 'right')}
+                title="Place sidebar on the right"
               >
                 Right
               </button>

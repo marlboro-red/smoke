@@ -118,7 +118,7 @@ export default function BookmarkPanel(): JSX.Element {
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <button className="bookmark-save-btn" onClick={handleSave}>
+            <button className="bookmark-save-btn" onClick={handleSave} title="Save current view as bookmark">
               Save
             </button>
           </div>
@@ -136,6 +136,7 @@ export default function BookmarkPanel(): JSX.Element {
                   <button
                     className="bookmark-delete-btn"
                     onClick={() => handleDelete(bm.name)}
+                    title="Delete bookmark"
                   >
                     &times;
                   </button>
