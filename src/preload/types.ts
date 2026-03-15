@@ -65,6 +65,71 @@ export interface FsReadfileResult {
   size: number
 }
 
+// AI types — defined here so both main and renderer can import them
+
+export interface AiConfig {
+  model: string
+  apiKey: string
+  maxTokens: number
+}
+
+export type CanvasActionType =
+  | 'session_created'
+  | 'session_moved'
+  | 'session_resized'
+  | 'session_closed'
+  | 'viewport_panned'
+
+export interface AiStreamTextDelta {
+  type: 'text_delta'
+  conversationId: string
+  delta: string
+}
+
+export interface AiStreamToolUse {
+  type: 'tool_use'
+  conversationId: string
+  toolUseId: string
+  toolName: string
+  input: Record<string, unknown>
+}
+
+export interface AiStreamToolResult {
+  type: 'tool_result'
+  conversationId: string
+  toolUseId: string
+  result: unknown
+  isError?: boolean
+}
+
+export interface AiStreamCanvasAction {
+  type: 'canvas_action'
+  conversationId: string
+  action: CanvasActionType
+  payload: Record<string, unknown>
+}
+
+export interface AiStreamMessageComplete {
+  type: 'message_complete'
+  conversationId: string
+  stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence'
+}
+
+export interface AiStreamError {
+  type: 'error'
+  conversationId: string
+  error: string
+  code?: string
+}
+
+export type AiStreamEvent =
+  | AiStreamTextDelta
+  | AiStreamToolUse
+  | AiStreamToolResult
+  | AiStreamCanvasAction
+  | AiStreamMessageComplete
+  | AiStreamError
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -90,6 +155,15 @@ export interface SmokeAPI {
   }
   app: {
     getLaunchCwd: () => Promise<string>
+  }
+  ai: {
+    send: (message: string, conversationId?: string) => Promise<{ conversationId: string }>
+    abort: (conversationId?: string) => Promise<void>
+    clear: (conversationId?: string) => Promise<void>
+    getConfig: () => Promise<AiConfig>
+    setConfig: (key: string, value: unknown) => Promise<void>
+    onStream: (callback: (event: AiStreamEvent) => void) => () => void
+    onCanvasAction: (callback: (event: AiStreamCanvasAction) => void) => () => void
   }
 }
 
