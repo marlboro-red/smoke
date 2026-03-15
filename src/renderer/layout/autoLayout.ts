@@ -1,5 +1,5 @@
 import { sessionStore, type Session } from '../stores/sessionStore'
-import { canvasStore } from '../stores/canvasStore'
+import { gridStore } from '../stores/gridStore'
 import { setPanTo, setZoomTo, getCanvasRootElement } from '../canvas/useCanvasControls'
 import { snap } from '../window/useSnapping'
 
@@ -161,7 +161,7 @@ export function performAutoLayout(strategy: LayoutStrategy = 'grid'): void {
   const sessionList = Array.from(sessions.values())
   if (sessionList.length === 0) return
 
-  const gridSize = canvasStore.getState().gridSize
+  const gridSize = gridStore.getState().gridSize
 
   let positions: Map<string, { x: number; y: number }>
   switch (strategy) {

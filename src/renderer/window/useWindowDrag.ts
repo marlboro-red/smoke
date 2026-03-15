@@ -162,6 +162,10 @@ export function useWindowDrag({
 
       isDraggingRef.current = true
       startMouseRef.current = { x: e.clientX, y: e.clientY }
+      // Initialize livePosRef so that a pointerup without any preceding
+      // pointermove (i.e. a click without drag) preserves the current position
+      // instead of snapping to a stale value.
+      livePosRef.current = { ...session.position }
 
       if (session.isPinned) {
         isPinnedDragRef.current = true
