@@ -282,6 +282,11 @@ export interface CodeGraphResult {
   }
 }
 
+export interface CodeGraphImportEntry {
+  specifier: string
+  type: 'import' | 'require' | 'use'
+}
+
 export interface CodeGraphIndexStats {
   root: string
   fileCount: number
@@ -365,6 +370,8 @@ export interface SmokeAPI {
       projectRoot: string,
       maxDepth?: number
     ) => Promise<CodeGraphResult>
+    getImports: (filePath: string) => Promise<CodeGraphImportEntry[]>
+    resolveImport: (specifier: string, importerPath: string, projectRoot: string) => Promise<string | null>
     indexStats: () => Promise<CodeGraphIndexStats | null>
     invalidateIndex: () => Promise<void>
   }

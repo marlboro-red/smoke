@@ -9,7 +9,7 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
-import { buildCodeGraph, expandCodeGraph, getIndexStats, invalidateIndex, computeLayout, computeIncrementalLayout } from '../codegraph'
+import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout } from '../codegraph'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -56,6 +56,8 @@ import {
   APP_GET_LAUNCH_CWD,
   CODEGRAPH_BUILD,
   CODEGRAPH_EXPAND,
+  CODEGRAPH_GET_IMPORTS,
+  CODEGRAPH_RESOLVE_IMPORT,
   CODEGRAPH_INDEX_STATS,
   CODEGRAPH_INVALIDATE,
   PtySpawnRequest,
@@ -109,6 +111,10 @@ import {
   CodeGraphBuildRequest,
   CodeGraphBuildResponse,
   CodeGraphExpandRequest,
+  CodeGraphGetImportsRequest,
+  CodeGraphGetImportsResponse,
+  CodeGraphResolveImportRequest,
+  CodeGraphResolveImportResponse,
   CodeGraphIndexStats,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
@@ -682,6 +688,39 @@ export function registerIpcHandlers(
         request.existingPositions
       )
       return { ...result, layout }
+    }
+  )
+
+  ipcMain.handle(
+    CODEGRAPH_GET_IMPORTS,
+    async (_event, request: CodeGraphGetImportsRequest): Promise<CodeGraphGetImportsResponse> => {
+      const filePath = path.resolve(request.filePath)
+      const language = detectLanguage(filePath)
+      if (language === 'text') return { imports: [] }
+
+      const content = await fs.readFile(filePath, 'utf-8')
+      const imports = parseImports(content, language)
+      return { imports }
+    }
+  )
+
+  ipcMain.handle(
+    CODEGRAPH_RESOLVE_IMPORT,
+    async (_event, request: CodeGraphResolveImportRequest): Promise<CodeGraphResolveImportResponse> => {
+      const importerPath = path.resolve(request.importerPath)
+      const language = detectLanguage(importerPath)
+      if (language === 'text') return { resolvedPath: null }
+
+      const index = await ensureIndex(request.projectRoot)
+      const aliases = await loadPathAliases(request.projectRoot)
+      const result = resolveImport(
+        { specifier: request.specifier, type: 'import' },
+        importerPath,
+        language,
+        index,
+        aliases
+      )
+      return { resolvedPath: result.resolvedPath }
     }
   )
 
