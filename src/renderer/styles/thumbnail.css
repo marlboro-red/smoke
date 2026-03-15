@@ -60,3 +60,109 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ─── File Card Thumbnail ─── */
+
+.thumbnail-ext-badge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+.thumbnail-ext-badge.ext-ts {
+  background: rgba(49, 120, 198, 0.25);
+  color: #6cb3f9;
+}
+
+.thumbnail-ext-badge.ext-js {
+  background: rgba(240, 219, 79, 0.2);
+  color: #f0db4f;
+}
+
+.thumbnail-ext-badge.ext-py {
+  background: rgba(55, 118, 171, 0.25);
+  color: #69a3d6;
+}
+
+.thumbnail-ext-badge.ext-rs {
+  background: rgba(222, 165, 132, 0.2);
+  color: #dea584;
+}
+
+.thumbnail-ext-badge.ext-go {
+  background: rgba(0, 173, 216, 0.2);
+  color: #5ec9e3;
+}
+
+.thumbnail-ext-badge.ext-css {
+  background: rgba(86, 61, 204, 0.25);
+  color: #a78bfa;
+}
+
+.thumbnail-ext-badge.ext-html {
+  background: rgba(227, 76, 38, 0.2);
+  color: #f08d70;
+}
+
+.thumbnail-ext-badge.ext-config {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary);
+}
+
+.thumbnail-ext-badge.ext-text {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+.thumbnail-ext-badge.ext-default {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+.file-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.file-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-xs);
+}
+
+.file-card-lines {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+}
+
+.file-card-lang {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.file-card-minimap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 var(--space-xs);
+  overflow: hidden;
+}
+
+.minimap-bar {
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
