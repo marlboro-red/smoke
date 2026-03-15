@@ -143,10 +143,14 @@ export function registerIpcHandlers(
       }
     })
 
-    // Auto-launch Claude Code if enabled
-    if (preferences.autoLaunchClaude && preferences.claudeCommand) {
+    // Determine startup command: per-session > global preference > legacy autoLaunchClaude
+    const startupCmd = request.startupCommand
+      || preferences.startupCommand
+      || (preferences.autoLaunchClaude && preferences.claudeCommand ? preferences.claudeCommand : '')
+
+    if (startupCmd) {
       setTimeout(() => {
-        pty.write(preferences.claudeCommand + '\n')
+        pty.write(startupCmd + '\n')
       }, 100)
     }
 
@@ -220,7 +224,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle(CONFIG_SET, (_event, request: ConfigSetRequest): void => {
     const validKeys: Array<keyof Preferences> = [
-      'defaultShell', 'autoLaunchClaude', 'claudeCommand',
+      'defaultShell', 'autoLaunchClaude', 'claudeCommand', 'startupCommand',
       'gridSize', 'sidebarPosition', 'sidebarWidth', 'sidebarSectionSizes',
       'theme', 'defaultCwd', 'aiApiKey', 'aiModel',
       'terminalOpacity', 'fontFamily', 'fontSize', 'lineHeight',

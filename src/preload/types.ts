@@ -6,6 +6,7 @@ export interface PtySpawnOptions {
   env?: Record<string, string>
   cols?: number
   rows?: number
+  startupCommand?: string
 }
 
 export interface PtySpawnResult {
@@ -36,6 +37,7 @@ export interface LayoutSession {
   color?: string
   url?: string
   aspectRatio?: number
+  startupCommand?: string
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }
@@ -84,6 +86,7 @@ export interface Preferences {
   fontSize: number
   lineHeight: number
   customShortcuts: Record<string, ShortcutBindingPref | null>
+  startupCommand: string
 }
 
 export interface FsReaddirEntry {

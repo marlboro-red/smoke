@@ -88,7 +88,6 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
       onContextMenu={handleContextMenu}
     >
       <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : session.type === 'webview' ? 'webview' : session.type === 'image' ? 'image' : isExited ? 'exited' : 'running'}`} />
->>>>>>> be76e6d (Add image and media preview canvas element (smoke-qx0))
       <div className="session-info">
         {isRenaming ? (
           <input

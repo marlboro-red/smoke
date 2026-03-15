@@ -33,6 +33,9 @@ function serializeCurrentLayout(name: string): Layout {
       if (s.type === 'webview') {
         return { ...base, url: s.url }
       }
+      if (s.type === 'terminal' && s.startupCommand) {
+        return { ...base, startupCommand: s.startupCommand }
+      }
       if (s.type === 'image') {
         return { ...base, filePath: s.filePath, aspectRatio: s.aspectRatio }
       }
@@ -103,6 +106,7 @@ export function useLayoutRestore(): {
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             size: saved.size,
+            ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
           })
           // Spawn PTY — gracefully fall back if cwd doesn't exist
           window.smokeAPI?.pty.spawn({
@@ -110,6 +114,7 @@ export function useLayoutRestore(): {
             cwd,
             cols: saved.size.cols,
             rows: saved.size.rows,
+            ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
           })
           break
         }

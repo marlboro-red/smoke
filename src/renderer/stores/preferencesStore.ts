@@ -20,6 +20,7 @@ const defaultPreferences: Preferences = {
   fontSize: 13,
   lineHeight: 1.2,
   customShortcuts: {},
+  startupCommand: '',
 }
 
 interface PreferencesStore {

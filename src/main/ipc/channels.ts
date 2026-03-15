@@ -74,6 +74,7 @@ export interface PtySpawnRequest {
   env?: Record<string, string>
   cols?: number
   rows?: number
+  startupCommand?: string
 }
 
 export interface PtySpawnResponse {
