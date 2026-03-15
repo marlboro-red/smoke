@@ -64,6 +64,12 @@
   color: var(--text-placeholder);
 }
 
+.config-hint {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-placeholder);
+  margin-top: -2px;
+}
+
 .config-toggle-row {
   display: flex;
   align-items: center;

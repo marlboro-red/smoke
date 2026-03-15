@@ -3,6 +3,7 @@ import Store from 'electron-store'
 export interface LayoutSession {
   title: string
   cwd: string
+  startupCommand?: string
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }
@@ -44,6 +45,7 @@ export interface Preferences {
   fontSize: number
   lineHeight: number
   customShortcuts: Record<string, ShortcutBindingPref | null>
+  startupCommand: string
 }
 
 export const defaultPreferences: Preferences = {
@@ -63,6 +65,7 @@ export const defaultPreferences: Preferences = {
   fontSize: 13,
   lineHeight: 1.2,
   customShortcuts: {},
+  startupCommand: '',
 }
 
 export interface Bookmark {

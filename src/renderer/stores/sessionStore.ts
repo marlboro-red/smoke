@@ -21,6 +21,7 @@ export interface BaseSession {
 export interface TerminalSession extends BaseSession {
   type: 'terminal'
   cwd: string
+  startupCommand?: string
   status: 'running' | 'exited'
   exitCode?: number
 }

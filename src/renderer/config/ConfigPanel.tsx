@@ -66,6 +66,18 @@ export default function ConfigPanel(): JSX.Element {
           </div>
 
           <div className="config-group">
+            <label className="config-label">Startup Command</label>
+            <input
+              className="config-input"
+              type="text"
+              placeholder="e.g. source .env && npm run dev"
+              value={prefs.startupCommand}
+              onChange={(e) => updatePref('startupCommand', e.target.value)}
+            />
+            <span className="config-hint">Runs automatically when a new terminal starts</span>
+          </div>
+
+          <div className="config-group">
             <label className="config-label config-toggle-row">
               <span>Auto-Launch Claude</span>
               <input

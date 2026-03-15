@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { sessionStore } from '../stores/sessionStore'
 
 export interface ContextMenuState {
   sessionId: string
@@ -59,6 +60,21 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
         }}
       >
         Rename
+      </button>
+      <button
+        className="context-menu-item"
+        onClick={() => {
+          const session = sessionStore.getState().sessions.get(state.sessionId)
+          if (session?.type !== 'terminal') return
+          const current = session.startupCommand || ''
+          const cmd = prompt('Startup command for this terminal:', current)
+          if (cmd !== null) {
+            sessionStore.getState().updateSession(state.sessionId, { startupCommand: cmd || undefined })
+          }
+          onClose()
+        }}
+      >
+        Set Startup Command
       </button>
       <button
         className="context-menu-item destructive"
