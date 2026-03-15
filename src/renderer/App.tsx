@@ -36,6 +36,7 @@ function App(): JSX.Element {
   const { restoreDefault } = useLayoutRestore()
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')
+  const sidebarCollapsed = usePreference('sidebarCollapsed')
   const aiPanelOpen = useAiPanelOpen()
   const isReplaying = useIsReplaying()
 
@@ -91,7 +92,26 @@ function App(): JSX.Element {
   return (
     <div className="app-shell">
       <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
-        {!isReplaying && <Sidebar />}
+        {!isReplaying && (
+          <div className={`sidebar-wrapper${sidebarCollapsed ? ' collapsed' : ''}${sidebarPosition === 'right' ? ' position-right' : ''}`}>
+            <Sidebar />
+            <button
+              className="sidebar-collapse-btn"
+              onClick={() => {
+                const next = !sidebarCollapsed
+                preferencesStore.getState().updatePreference('sidebarCollapsed', next)
+                window.smokeAPI?.config.set('sidebarCollapsed', next)
+              }}
+              title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              <span className="sidebar-collapse-icon">
+                {sidebarPosition === 'right'
+                  ? (sidebarCollapsed ? '\u25C0' : '\u25B6')
+                  : (sidebarCollapsed ? '\u25B6' : '\u25C0')}
+              </span>
+            </button>
+          </div>
+        )}
         <div className="canvas-with-tabs">
           {!isReplaying && <TabBar />}
           <Canvas readOnly={isReplaying} />

@@ -1,9 +1,9 @@
 /* ─── Presentation Mode ─── */
 
 /* Hide sidebar, AI panel, and window chrome when presenting */
+html.presentation-active .sidebar-wrapper,
 html.presentation-active .sidebar,
-html.presentation-active .ai-chat-panel,
-html.presentation-active .app-layout > .sidebar {
+html.presentation-active .ai-chat-panel {
   display: none !important;
 }
 

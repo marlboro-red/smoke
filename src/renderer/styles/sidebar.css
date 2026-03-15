@@ -1,5 +1,67 @@
+/* Sidebar wrapper for collapse animation */
+
+.sidebar-wrapper {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  width: 240px;
+  transition: width 200ms ease-out;
+  overflow: hidden;
+}
+
+.sidebar-wrapper.collapsed {
+  width: 0;
+}
+
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 50%;
+  right: -14px;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 14px;
+  height: 48px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-subtle);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
+}
+
+.sidebar-wrapper:hover .sidebar-collapse-btn,
+.sidebar-wrapper.collapsed .sidebar-collapse-btn {
+  opacity: 1;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-collapse-icon {
+  line-height: 1;
+}
+
+/* Right-positioned sidebar: flip the collapse button to the left edge */
+.sidebar-wrapper.position-right .sidebar-collapse-btn {
+  right: auto;
+  left: -14px;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  border-right: none;
+}
+
 .sidebar {
   width: 240px;
+  min-width: 240px;
   flex-shrink: 0;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-subtle);

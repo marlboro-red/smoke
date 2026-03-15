@@ -334,6 +334,14 @@ function executeShortcut(action: ShortcutAction): void {
       taskInputStore.getState().open()
       break
 
+    case 'toggleSidebar': {
+      const prefs = preferencesStore.getState().preferences
+      const collapsed = !prefs.sidebarCollapsed
+      preferencesStore.getState().updatePreference('sidebarCollapsed', collapsed)
+      window.smokeAPI?.config.set('sidebarCollapsed', collapsed)
+      break
+    }
+
     case 'selectAll': {
       // Only select all when no terminal is focused (avoid intercepting Cmd+A in terminal)
       const active = document.activeElement

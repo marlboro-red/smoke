@@ -107,6 +107,7 @@ export interface Preferences {
   customShortcuts: Record<string, ShortcutBindingPref | null>
   startupCommand: string
   skipAssemblyPreview: boolean
+  sidebarCollapsed: boolean
 }
 
 export interface FsReaddirEntry {
