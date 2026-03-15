@@ -54,6 +54,17 @@ const smokeAPI: SmokeAPI = {
     readdir: (path) => ipcRenderer.invoke('fs:readdir', { path }),
     readfile: (path, maxSize?) => ipcRenderer.invoke('fs:readfile', { path, maxSize }),
     writefile: (path, content) => ipcRenderer.invoke('fs:writefile', { path, content }),
+    watch: (path) => ipcRenderer.invoke('fs:watch', { path }),
+    unwatch: (path) => ipcRenderer.invoke('fs:unwatch', { path }),
+    onFileChanged: (callback: (event: { path: string }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: { path: string }): void => {
+        callback(data)
+      }
+      ipcRenderer.on('fs:file-changed', listener)
+      return () => {
+        ipcRenderer.removeListener('fs:file-changed', listener)
+      }
+    },
   },
 
   app: {
