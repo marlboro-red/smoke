@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { sessionStore } from '../stores/sessionStore'
+import { sessionStore, type FileViewerSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { getCurrentPan, getCurrentZoom, getCanvasRootElement } from '../canvas/useCanvasControls'
@@ -41,6 +41,29 @@ export function createNewSession(position?: { x: number; y: number }): void {
   window.smokeAPI?.pty.spawn({ id: session.id, cwd })
 
   // Focus and bring to front
+  sessionStore.getState().focusSession(session.id)
+  sessionStore.getState().bringToFront(session.id)
+}
+
+export function createTerminalAtFileDir(fileSession: FileViewerSession): void {
+  const { snapToGrid } = gridStore.getState()
+
+  // Extract directory from the file path
+  const lastSlash = fileSession.filePath.lastIndexOf('/')
+  const cwd = lastSlash > 0 ? fileSession.filePath.slice(0, lastSlash) : fileSession.filePath
+
+  // Position adjacent to the right of the file viewer
+  const adjacentX = fileSession.position.x + fileSession.size.width + 20
+  const adjacentY = fileSession.position.y
+
+  const snappedPos = {
+    x: snapToGrid(adjacentX),
+    y: snapToGrid(adjacentY),
+  }
+
+  const session = sessionStore.getState().createSession(cwd, snappedPos)
+  window.smokeAPI?.pty.spawn({ id: session.id, cwd })
+
   sessionStore.getState().focusSession(session.id)
   sessionStore.getState().bringToFront(session.id)
 }

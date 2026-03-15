@@ -103,6 +103,26 @@
   pointer-events: none !important;
 }
 
+/* Open Terminal button in window chrome */
+.file-viewer-terminal-btn {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-right: 4px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.file-viewer-terminal-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
 /* Edit toggle button in window chrome */
 .file-viewer-edit-toggle {
   background: transparent;

@@ -30,6 +30,7 @@ export type ShortcutAction =
   | 'exportCanvasPng'
   | 'saveBookmark'
   | 'showDepGraph'
+  | 'openTerminalHere'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -72,6 +73,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   exportCanvasPng: 'Export Canvas as PNG',
   saveBookmark: 'Save Bookmark',
   showDepGraph: 'Show Import Dependency Graph',
+  openTerminalHere: 'Open Terminal Here',
   escape: 'Unfocus Session',
 }
 
@@ -104,6 +106,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   exportCanvasPng: { key: 'e', mod: true, shift: true },
   saveBookmark: { key: 'd', mod: true, shift: false },
   showDepGraph: { key: 'd', mod: true, shift: true },
+  openTerminalHere: { key: 't', mod: true, shift: true },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -115,7 +118,7 @@ export interface ShortcutGroupDef {
 export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   {
     title: 'Session Management',
-    actions: ['newSession', 'closeSession', 'cycleNextSession', 'cyclePrevSession'],
+    actions: ['newSession', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
   },
   {
     title: 'Session Focus',

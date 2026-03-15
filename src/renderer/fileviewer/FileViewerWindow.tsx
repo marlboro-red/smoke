@@ -11,6 +11,7 @@ import { useFileViewerResize } from './useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
+import { createTerminalAtFileDir } from '../session/useSessionCreation'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import FileViewerWidget from './FileViewerWidget'
@@ -88,6 +89,10 @@ export default function FileViewerWindow({
     buildDepGraph(session)
   }, [session])
 
+  const handleOpenTerminal = useCallback(() => {
+    createTerminalAtFileDir(session)
+  }, [session])
+
   const handleSave = useCallback(
     async (content: string) => {
       await window.smokeAPI.fs.writefile(session.filePath, content)
@@ -141,6 +146,14 @@ export default function FileViewerWindow({
         onClose={handleClose}
         onDragStart={onDragStart}
       >
+        <button
+          className="file-viewer-terminal-btn"
+          onClick={handleOpenTerminal}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Open terminal in file's directory"
+        >
+          &gt;_
+        </button>
         <button
           className="file-viewer-edit-toggle"
           onClick={handleShowDepGraph}
