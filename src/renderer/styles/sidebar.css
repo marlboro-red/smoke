@@ -129,6 +129,19 @@
   text-overflow: ellipsis;
 }
 
+.session-title-input {
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-xs);
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
 .session-cwd {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
