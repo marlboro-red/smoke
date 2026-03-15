@@ -10,6 +10,7 @@ import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from './useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
+import { addToast } from '../stores/toastStore'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
 import { createTerminalAtFileDir } from '../session/useSessionCreation'
 import WindowChrome from '../window/WindowChrome'
@@ -95,8 +96,14 @@ export default function FileViewerWindow({
 
   const handleSave = useCallback(
     async (content: string) => {
-      await window.smokeAPI.fs.writefile(session.filePath, content)
-      sessionStore.getState().updateSession(session.id, { content, isDirty: false })
+      try {
+        await window.smokeAPI.fs.writefile(session.filePath, content)
+        sessionStore.getState().updateSession(session.id, { content, isDirty: false })
+        const fileName = session.filePath.split('/').pop() || session.filePath
+        addToast(`Saved "${fileName}"`, 'success')
+      } catch (err) {
+        addToast(`Failed to save: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      }
     },
     [session.id, session.filePath]
   )
