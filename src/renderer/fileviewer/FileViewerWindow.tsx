@@ -196,13 +196,25 @@ export default function FileViewerWindow({
       } else {
         await buildDepGraph(session)
       }
+    } catch (err) {
+      addToast(
+        `Failed to load imports: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      )
     } finally {
       setImportsLoading(false)
     }
   }, [session])
 
-  const handleShowDependents = useCallback(() => {
-    buildDependentsGraph(session)
+  const handleShowDependents = useCallback(async () => {
+    try {
+      await buildDependentsGraph(session)
+    } catch (err) {
+      addToast(
+        `Failed to load dependents: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      )
+    }
   }, [session])
 
   const handleOpenTerminal = useCallback(() => {

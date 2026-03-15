@@ -49,13 +49,13 @@ export default function GhostSuggestion({ suggestion }: GhostSuggestionProps): J
 
     try {
       // Read the file content
-      const content = await window.smokeAPI.fs.readfile(suggestion.filePath, 256 * 1024)
+      const result = await window.smokeAPI.fs.readfile(suggestion.filePath, 256 * 1024)
       const language = extToLanguage(suggestion.filePath)
 
       // Create a real file session at the ghost's position
       sessionStore.getState().createFileSession(
         suggestion.filePath,
-        content,
+        result.content,
         language,
         suggestion.position
       )
