@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -135,6 +135,11 @@ const smokeAPI: SmokeAPI = {
         ipcRenderer.removeListener('project:index-updated', listener)
       }
     },
+  },
+
+  tab: {
+    getState: () => ipcRenderer.invoke('tab:get-state'),
+    saveState: (state: TabState) => ipcRenderer.invoke('tab:save-state', state),
   },
 
   agent: {

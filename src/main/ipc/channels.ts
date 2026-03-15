@@ -67,6 +67,10 @@ export const PROJECT_INDEX_LOOKUP = 'project:index-lookup' as const
 export const PROJECT_INDEX_STATS = 'project:index-stats' as const
 export const PROJECT_INDEX_UPDATED = 'project:index-updated' as const
 
+// Tab channels
+export const TAB_GET_STATE = 'tab:get-state' as const
+export const TAB_SAVE_STATE = 'tab:save-state' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -435,6 +439,12 @@ export interface CodeGraphResolveImportResponse {
 export interface CodeGraphIndexStats {
   root: string
   fileCount: number
+}
+
+// Tab message types
+export interface TabStateData {
+  tabs: Array<{ id: string; name: string }>
+  activeTabId: string
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

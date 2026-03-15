@@ -3,6 +3,7 @@ import { sessionStore } from '../stores/sessionStore'
 import { canvasStore } from '../stores/canvasStore'
 import { gridStore } from '../stores/gridStore'
 import { regionStore } from '../stores/regionStore'
+import { tabStore } from '../stores/tabStore'
 import type { Layout } from '../../preload/types'
 
 function serializeCurrentLayout(name: string): Layout {
@@ -60,25 +61,145 @@ function serializeCurrentLayout(name: string): Layout {
 
 export { serializeCurrentLayout }
 
+/**
+ * Restore a layout into the current stores (non-hook version for tab switching).
+ * Assumes sessions have already been cleared by the caller.
+ */
+export async function restoreTabLayout(layout: Layout): Promise<void> {
+  // Restore viewport
+  canvasStore.getState().setPan(layout.viewport.panX, layout.viewport.panY)
+  canvasStore.getState().setZoom(layout.viewport.zoom)
+  gridStore.getState().setGridSize(layout.gridSize)
+
+  // Create sessions from layout
+  for (const saved of layout.sessions) {
+    const elementType = saved.type ?? 'terminal'
+    switch (elementType) {
+      case 'terminal': {
+        const cwd = saved.cwd
+        const session = sessionStore.getState().createSession(cwd, saved.position)
+        sessionStore.getState().updateSession(session.id, {
+          title: saved.title,
+          size: saved.size,
+          ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
+        })
+        window.smokeAPI?.pty.spawn({
+          id: session.id,
+          cwd,
+          cols: saved.size.cols,
+          rows: saved.size.rows,
+          ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
+        })
+        break
+      }
+      case 'file': {
+        if (saved.filePath) {
+          try {
+            const result = await window.smokeAPI?.fs.readfile(saved.filePath)
+            if (result) {
+              const session = sessionStore.getState().createFileSession(
+                saved.filePath,
+                result.content,
+                saved.language || 'text',
+                saved.position
+              )
+              sessionStore.getState().updateSession(session.id, {
+                title: saved.title,
+                size: saved.size,
+              })
+            }
+          } catch {
+            // File may no longer exist
+          }
+        }
+        break
+      }
+      case 'note': {
+        const session = sessionStore.getState().createNoteSession(
+          saved.position,
+          saved.color
+        )
+        sessionStore.getState().updateSession(session.id, {
+          title: saved.title,
+          content: saved.content ?? '',
+          size: saved.size,
+        })
+        break
+      }
+      case 'webview': {
+        const session = sessionStore.getState().createWebviewSession(
+          saved.url || 'http://localhost:3000',
+          saved.position
+        )
+        sessionStore.getState().updateSession(session.id, {
+          title: saved.title,
+          size: saved.size,
+        })
+        break
+      }
+      case 'image': {
+        if (saved.filePath) {
+          try {
+            const result = await window.smokeAPI?.fs.readfileBase64(saved.filePath)
+            if (result) {
+              const img = new window.Image()
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve()
+                img.onerror = () => reject(new Error('Failed to load image'))
+                img.src = result.dataUrl
+              })
+              const session = sessionStore.getState().createImageSession(
+                saved.filePath,
+                result.dataUrl,
+                img.naturalWidth,
+                img.naturalHeight,
+                saved.position
+              )
+              sessionStore.getState().updateSession(session.id, {
+                title: saved.title,
+                size: saved.size,
+              })
+            }
+          } catch {
+            // Image file may no longer exist
+          }
+        }
+        break
+      }
+      case 'snippet': {
+        const session = sessionStore.getState().createSnippetSession(
+          saved.language || 'javascript',
+          saved.content ?? '',
+          saved.position
+        )
+        sessionStore.getState().updateSession(session.id, {
+          title: saved.title,
+          size: saved.size,
+        })
+        break
+      }
+    }
+  }
+}
+
 export function useLayoutAutoSave(): void {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const unsubSession = sessionStore.subscribe(() => {
+    const scheduleAutoSave = (): void => {
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
-        const layout = serializeCurrentLayout('__default__')
-        window.smokeAPI?.layout.save('__default__', layout)
+        const { activeTabId } = tabStore.getState()
+        const tabKey = `__tab__${activeTabId}`
+        const layout = serializeCurrentLayout(tabKey)
+        window.smokeAPI?.layout.save(tabKey, layout)
+        // Also save as __default__ for backward compatibility
+        window.smokeAPI?.layout.save('__default__', { ...layout, name: '__default__' })
       }, 2000)
-    })
+    }
 
-    const unsubCanvas = canvasStore.subscribe(() => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        const layout = serializeCurrentLayout('__default__')
-        window.smokeAPI?.layout.save('__default__', layout)
-      }, 2000)
-    })
+    const unsubSession = sessionStore.subscribe(scheduleAutoSave)
+    const unsubCanvas = canvasStore.subscribe(scheduleAutoSave)
 
     const unsubRegion = regionStore.subscribe(() => {
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -251,6 +372,18 @@ export function useLayoutRestore(): {
   }, [])
 
   const restoreDefault = useCallback(async () => {
+    // Try to load tab state and restore the active tab's layout
+    const tabState = await window.smokeAPI?.tab.getState()
+    if (tabState) {
+      tabStore.getState().setTabs(tabState.tabs, tabState.activeTabId)
+      const tabKey = `__tab__${tabState.activeTabId}`
+      const layout = await window.smokeAPI?.layout.load(tabKey)
+      if (layout) {
+        await restoreLayout(layout)
+        return
+      }
+    }
+    // Fall back to __default__ layout for backward compatibility
     const layout = await window.smokeAPI?.layout.load('__default__')
     if (layout) {
       await restoreLayout(layout)

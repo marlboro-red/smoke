@@ -75,11 +75,18 @@ export interface Bookmark {
   zoom: number
 }
 
+export interface TabInfo {
+  id: string
+  name: string
+}
+
 export interface SmokeConfig {
   defaultLayout: Layout | null
   namedLayouts: Record<string, Layout>
   canvasBookmarks: Record<string, Bookmark>
   preferences: Preferences
+  tabs: TabInfo[]
+  activeTabId: string
 }
 
 const configStore = new Store<SmokeConfig>({
@@ -89,6 +96,8 @@ const configStore = new Store<SmokeConfig>({
     namedLayouts: {},
     canvasBookmarks: {},
     preferences: { ...defaultPreferences },
+    tabs: [{ id: 'default', name: 'Canvas 1' }],
+    activeTabId: 'default',
   },
 })
 

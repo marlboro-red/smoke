@@ -65,6 +65,16 @@ export interface Bookmark {
   zoom: number
 }
 
+export interface TabInfo {
+  id: string
+  name: string
+}
+
+export interface TabState {
+  tabs: TabInfo[]
+  activeTabId: string
+}
+
 export interface SidebarSectionSizes {
   fileTree?: number
   layouts?: number
@@ -375,6 +385,10 @@ export interface SmokeAPI {
     resolveImport: (specifier: string, importerPath: string, projectRoot: string) => Promise<string | null>
     indexStats: () => Promise<CodeGraphIndexStats | null>
     invalidateIndex: () => Promise<void>
+  }
+  tab: {
+    getState: () => Promise<TabState>
+    saveState: (state: TabState) => Promise<void>
   }
 }
 
