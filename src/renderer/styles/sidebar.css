@@ -129,41 +129,13 @@
   min-height: 40px;
 }
 
-/* Resizable sidebar sections */
+/* Auto-sizing sidebar sections */
 
 .sidebar-section {
+  flex: 0 1 auto;
+  max-height: 300px;
   overflow-y: auto;
-  min-height: 40px;
-  flex-shrink: 0;
-}
-
-.sidebar-section-divider {
-  height: 4px;
-  flex-shrink: 0;
-  cursor: row-resize;
-  background: transparent;
-  position: relative;
-  z-index: 1;
-}
-
-.sidebar-section-divider::after {
-  content: '';
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 50%;
-  height: 1px;
-  border-radius: 1px;
-  background: var(--border-subtle);
-  transition: background var(--duration-fast);
-}
-
-.sidebar-section-divider:hover::after {
-  background: var(--border-strong);
-}
-
-.sidebar-section-divider:active::after {
-  background: var(--accent);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .session-list-item {
@@ -415,7 +387,6 @@
 .ft-panel {
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
 }
 
