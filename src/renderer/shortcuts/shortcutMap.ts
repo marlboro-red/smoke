@@ -43,6 +43,7 @@ export type ShortcutAction =
   | 'navigatePaneUp'
   | 'navigatePaneDown'
   | 'closePane'
+  | 'terminalSearch'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -99,6 +100,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   navigatePaneUp: 'Navigate Pane Up',
   navigatePaneDown: 'Navigate Pane Down',
   closePane: 'Close Pane',
+  terminalSearch: 'Find in Terminal',
   escape: 'Unfocus Session',
 }
 
@@ -144,6 +146,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   navigatePaneUp: { key: 'ArrowUp', mod: true, shift: false, alt: true },
   navigatePaneDown: { key: 'ArrowDown', mod: true, shift: false, alt: true },
   closePane: { key: 'w', mod: true, shift: true, alt: false },
+  terminalSearch: { key: 'f', mod: true, shift: false, alt: false },
   escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
 
@@ -155,7 +158,7 @@ export interface ShortcutGroupDef {
 export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   {
     title: 'Session Management',
-    actions: ['newSession', 'newSnippet', 'duplicateElement', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
+    actions: ['newSession', 'newSnippet', 'duplicateElement', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere', 'terminalSearch'],
   },
   {
     title: 'Session Focus',

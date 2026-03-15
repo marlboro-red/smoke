@@ -19,6 +19,7 @@ import { exportCanvasPng } from '../canvas/exportCanvas'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
 import type { FileViewerSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
+import { terminalSearchStore } from '../terminal/terminalSearchStore'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -255,8 +256,22 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+    case 'terminalSearch': {
+      if (state.focusedId) {
+        const session = state.sessions.get(state.focusedId)
+        if (session?.type === 'terminal') {
+          terminalSearchStore.getState().open(state.focusedId)
+        }
+      }
+      break
+    }
+
     case 'escape':
-      sessionStore.getState().focusSession(null)
+      if (terminalSearchStore.getState().activeSessionId) {
+        terminalSearchStore.getState().close()
+      } else {
+        sessionStore.getState().focusSession(null)
+      }
       break
   }
 }
