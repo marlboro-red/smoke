@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { Terminal } from '@xterm/xterm'
-import { sessionStore } from '../stores/sessionStore'
+import { sessionStore, getGroupSessionIds } from '../stores/sessionStore'
 
 export function usePty(
   sessionId: string,
@@ -52,16 +52,44 @@ export function usePty(
   }, [sessionId, terminalRef])
 
   // Terminal input -> PTY: requires terminal to exist
+  // When broadcast mode is active, also writes to all other group members
   useEffect(() => {
     const terminal = terminalRef.current
     if (!terminal || !window.smokeAPI) return
 
     const onDataDisposable = terminal.onData((data) => {
       window.smokeAPI.pty.write(sessionId, data)
+
+      // Broadcast to group members if broadcast mode is active
+      const state = sessionStore.getState()
+      const session = state.sessions.get(sessionId)
+      if (
+        session?.type === 'terminal' &&
+        session.groupId &&
+        state.broadcastGroupId === session.groupId
+      ) {
+        const groupIds = getGroupSessionIds(session.groupId)
+        for (const id of groupIds) {
+          if (id !== sessionId) {
+            window.smokeAPI.pty.write(id, data)
+          }
+        }
+      }
     })
 
     return () => {
       onDataDisposable.dispose()
     }
   }, [sessionId, terminalRef])
+}
+
+/**
+ * Write data to all terminals in a broadcast group.
+ * Used by the broadcast input in the sidebar group header.
+ */
+export function broadcastToGroup(groupId: string, data: string): void {
+  const groupIds = getGroupSessionIds(groupId)
+  for (const id of groupIds) {
+    window.smokeAPI.pty.write(id, data)
+  }
 }

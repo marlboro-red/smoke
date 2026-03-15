@@ -4,6 +4,7 @@ import { CHROME_HEIGHT } from './useSnapping'
 interface WindowChromeProps {
   title: string
   status: 'running' | 'exited'
+  isBroadcasting?: boolean
   onTitleChange: (title: string) => void
   onClose: () => void
   onDragStart: (e: React.PointerEvent) => void
@@ -13,6 +14,7 @@ interface WindowChromeProps {
 export default function WindowChrome({
   title,
   status,
+  isBroadcasting,
   onTitleChange,
   onClose,
   onDragStart,
@@ -86,6 +88,11 @@ export default function WindowChrome({
           onDoubleClick={handleDoubleClick}
         >
           {title}
+        </span>
+      )}
+      {isBroadcasting && (
+        <span className="window-chrome-broadcast" title="Broadcasting">
+          BC
         </span>
       )}
       {children}

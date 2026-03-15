@@ -44,6 +44,7 @@ interface SessionStore {
   focusedId: string | null
   highlightedId: string | null
   nextZIndex: number
+  broadcastGroupId: string | null
 
   createSession: (cwd: string, position?: { x: number; y: number }) => Session
   createFileSession: (filePath: string, content: string, language: string, position?: { x: number; y: number }) => FileViewerSession
@@ -53,6 +54,7 @@ interface SessionStore {
   focusSession: (id: string | null) => void
   highlightSession: (id: string | null) => void
   bringToFront: (id: string) => void
+  toggleBroadcast: (groupId: string | null) => void
 }
 
 export const sessionStore = createStore<SessionStore>((set, get) => ({
@@ -60,6 +62,7 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
   focusedId: null,
   highlightedId: null,
   nextZIndex: 1,
+  broadcastGroupId: null,
 
   createSession: (cwd: string, position?: { x: number; y: number }): Session => {
     const { nextZIndex } = get()
@@ -166,6 +169,12 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       return { sessions, nextZIndex: state.nextZIndex + 1 }
     })
   },
+
+  toggleBroadcast: (groupId: string | null) => {
+    set((state) => ({
+      broadcastGroupId: state.broadcastGroupId === groupId ? null : groupId,
+    }))
+  },
 }))
 
 // Array selector for React list rendering — useShallow prevents infinite loop
@@ -184,6 +193,20 @@ export const useHighlightedId = (): string | null =>
 
 export const useSessionStore = <T>(selector: (state: SessionStore) => T): T =>
   useStore(sessionStore, selector)
+
+export const useBroadcastGroupId = (): string | null =>
+  useStore(sessionStore, (state) => state.broadcastGroupId)
+
+export function getGroupSessionIds(groupId: string): string[] {
+  const sessions = sessionStore.getState().sessions
+  const ids: string[] = []
+  for (const [id, session] of sessions) {
+    if (session.type === 'terminal' && session.groupId === groupId) {
+      ids.push(id)
+    }
+  }
+  return ids
+}
 
 export function findFileSessionByPath(filePath: string): FileViewerSession | undefined {
   for (const session of sessionStore.getState().sessions.values()) {

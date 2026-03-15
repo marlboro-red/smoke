@@ -130,6 +130,94 @@
   margin-top: 1px;
 }
 
+/* Session Groups */
+
+.session-group {
+  border-left: 2px solid var(--accent-muted);
+  margin: var(--space-xs) 0;
+}
+
+.group-header {
+  padding: var(--space-sm) 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.group-header.broadcasting {
+  background: rgba(251, 191, 36, 0.06);
+  border-left: 2px solid var(--color-warning);
+  margin-left: -2px;
+}
+
+.group-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.broadcast-toggle {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: background var(--duration-fast), color var(--duration-fast),
+    border-color var(--duration-fast);
+}
+
+.broadcast-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.broadcast-toggle.active {
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+
+.broadcast-input-row {
+  margin-top: var(--space-sm);
+}
+
+.broadcast-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  padding: var(--space-xs) var(--space-md);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.12);
+}
+
+.broadcast-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.session-list-item.broadcasting {
+  border-left-color: var(--color-warning);
+}
+
+.session-list-item.broadcasting .status-dot.running {
+  background: var(--color-warning);
+  box-shadow: 0 0 5px rgba(251, 191, 36, 0.35);
+}
+
 /* File Tree Panel */
 
 .ft-panel {
