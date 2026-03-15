@@ -27,6 +27,7 @@ export type ShortcutAction =
   | 'canvasSearch'
   | 'showShortcutsHelp'
   | 'commandPalette'
+  | 'showDepGraph'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -66,6 +67,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   canvasSearch: 'Search All Sessions',
   showShortcutsHelp: 'Keyboard Shortcuts',
   commandPalette: 'Command Palette',
+  showDepGraph: 'Show Import Dependency Graph',
   escape: 'Unfocus Session',
 }
 
@@ -95,6 +97,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   canvasSearch: { key: 'f', mod: true, shift: true },
   showShortcutsHelp: { key: '/', mod: true, shift: false },
   commandPalette: { key: 'p', mod: true, shift: false },
+  showDepGraph: { key: 'd', mod: true, shift: true },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -118,7 +121,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'showDepGraph'],
   },
   {
     title: 'Groups',
