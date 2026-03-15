@@ -9,9 +9,9 @@ interface SessionListItemProps {
   onPanTo: (sessionId: string) => void
 }
 
-function shortenCwd(cwd: string): string {
+function shortenPath(path: string): string {
   const home = '~'
-  const parts = cwd.replace(/^\/Users\/[^/]+/, home).split('/')
+  const parts = path.replace(/^\/Users\/[^/]+/, home).split('/')
   if (parts.length <= 3) return parts.join('/')
   return parts[0] + '/.../' + parts[parts.length - 1]
 }
@@ -43,11 +43,14 @@ function SessionListItem({ session, isFocused, isHighlighted, onPanTo }: Session
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
     >
-      <span className={`status-dot ${isExited ? 'exited' : 'running'}`} />
+      <span className={`status-dot ${session.type === 'file' ? 'file' : isExited ? 'exited' : 'running'}`} />
       <div className="session-info">
         <span className="session-title">{session.title}</span>
         {session.type === 'terminal' && (
-          <span className="session-cwd">{shortenCwd(session.cwd)}</span>
+          <span className="session-cwd">{shortenPath(session.cwd)}</span>
+        )}
+        {session.type === 'file' && (
+          <span className="session-cwd">{shortenPath(session.filePath)}</span>
         )}
       </div>
     </div>
