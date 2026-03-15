@@ -561,6 +561,13 @@ export interface SmokeAPI {
       graphDepth?: number,
     ) => Promise<ContextCollectResult>
   }
+  window: {
+    minimize: () => Promise<void>
+    maximize: () => Promise<void>
+    close: () => Promise<void>
+    isMaximized: () => Promise<boolean>
+    platform: string
+  }
 }
 
 declare global {

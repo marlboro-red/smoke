@@ -10,6 +10,11 @@
   overflow: hidden;
 }
 
+/* Leave space for macOS traffic-light buttons */
+.tab-bar.tab-bar-mac {
+  padding-left: 78px;
+}
+
 .tab-bar-tabs {
   display: flex;
   align-items: stretch;

@@ -74,6 +74,12 @@ export const TAB_SAVE_STATE = 'tab:save-state' as const
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 export const APP_GET_GIT_BRANCH = 'app:get-git-branch' as const
 
+// Window control channels
+export const WINDOW_MINIMIZE = 'window:minimize' as const
+export const WINDOW_MAXIMIZE = 'window:maximize' as const
+export const WINDOW_CLOSE = 'window:close' as const
+export const WINDOW_IS_MAXIMIZED = 'window:is-maximized' as const
+
 // Full-text search channels
 export const SEARCH_BUILD = 'search:build' as const
 export const SEARCH_QUERY = 'search:query' as const

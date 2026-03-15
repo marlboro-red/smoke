@@ -58,6 +58,10 @@ import {
   TAB_SAVE_STATE,
   APP_GET_LAUNCH_CWD,
   APP_GET_GIT_BRANCH,
+  WINDOW_MINIMIZE,
+  WINDOW_MAXIMIZE,
+  WINDOW_CLOSE,
+  WINDOW_IS_MAXIMIZED,
   SEARCH_BUILD,
   SEARCH_QUERY,
   SEARCH_STATS,
@@ -685,6 +689,32 @@ export async function registerIpcHandlers(
     } catch {
       return null
     }
+  })
+
+  // Window control handlers (for frameless window on Windows/Linux)
+  ipcMain.handle(WINDOW_MINIMIZE, (): void => {
+    const win = getMainWindow()
+    if (win) win.minimize()
+  })
+
+  ipcMain.handle(WINDOW_MAXIMIZE, (): void => {
+    const win = getMainWindow()
+    if (!win) return
+    if (win.isMaximized()) {
+      win.unmaximize()
+    } else {
+      win.maximize()
+    }
+  })
+
+  ipcMain.handle(WINDOW_CLOSE, (): void => {
+    const win = getMainWindow()
+    if (win) win.close()
+  })
+
+  ipcMain.handle(WINDOW_IS_MAXIMIZED, (): boolean => {
+    const win = getMainWindow()
+    return win ? win.isMaximized() : false
   })
 
   // Agent management handlers

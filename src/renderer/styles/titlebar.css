@@ -1,0 +1,30 @@
+.window-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+.window-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+  padding: 0;
+}
+
+.window-control-btn:hover {
+  background: var(--bg-hover);
+}
+
+.window-control-close:hover {
+  background: #e81123;
+  color: #fff;
+}
