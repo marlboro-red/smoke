@@ -92,6 +92,7 @@ export type CanvasActionType =
   | 'group_created'
   | 'group_member_added'
   | 'group_broadcast'
+  | 'file_edited'
 
 export interface AiStreamTextDelta {
   type: 'text_delta'

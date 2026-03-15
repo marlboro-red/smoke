@@ -304,6 +304,38 @@ const tools: Array<{ definition: ToolDefinition; executor: string }> = [
   },
   {
     definition: {
+      name: 'edit_file',
+      description:
+        'Edit a file by writing new content to it. If the file is open in a file viewer on the canvas, the viewer updates live. If not open, a new file viewer opens at the specified position. The file is written to disk immediately.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Absolute or relative path to the file to edit.',
+          },
+          content: {
+            type: 'string',
+            description: 'The new file content to write.',
+          },
+          position: {
+            type: 'object',
+            description:
+              'Canvas position {x, y} for the file viewer if a new one is created. Defaults to {x: 100, y: 100}.',
+            properties: {
+              x: { type: 'number' },
+              y: { type: 'number' },
+            },
+            required: ['x', 'y'],
+          },
+        },
+        required: ['path', 'content'],
+      },
+    },
+    executor: 'edit_file',
+  },
+  {
+    definition: {
       name: 'create_arrow',
       description:
         'Draw a connector arrow between two canvas elements. Use this to show relationships or data flow between elements.',
@@ -659,6 +691,68 @@ function createExecutors(
     }
 
     return JSON.stringify(results)
+  })
+
+  // ── edit_file ───────────────────────────────────────────────
+
+  executors.set('edit_file', async (input) => {
+    const filePath = path.resolve(input.path as string)
+
+    // Safety: reject paths outside the user's home directory
+    const homedir = require('os').homedir()
+    if (!filePath.startsWith(homedir)) {
+      throw new Error('Write denied: path must be within the user home directory')
+    }
+
+    // Safety: reject writes to hidden config directories at the home root
+    const relToHome = path.relative(homedir, filePath)
+    const topSegment = relToHome.split(path.sep)[0]
+    if (topSegment.startsWith('.') && topSegment !== '.') {
+      throw new Error('Write denied: cannot write to hidden config directories')
+    }
+
+    const content = input.content as string
+    const contentBytes = Buffer.from(content, 'utf-8')
+    if (contentBytes.length > MAX_FILE_SIZE) {
+      throw new Error(
+        `Content too large: ${contentBytes.length} bytes (max ${MAX_FILE_SIZE}).`
+      )
+    }
+
+    await fs.writeFile(filePath, content, 'utf-8')
+
+    const position = (input.position as { x: number; y: number }) ?? {
+      x: 100,
+      y: 100,
+    }
+
+    // Detect language from file extension
+    const ext = filePath.split('.').pop()?.toLowerCase() || ''
+    const langMap: Record<string, string> = {
+      ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
+      py: 'python', rs: 'rust', go: 'go', rb: 'ruby', java: 'java',
+      c: 'c', h: 'c', cpp: 'cpp', hpp: 'cpp', cs: 'csharp',
+      css: 'css', html: 'html', htm: 'html', json: 'json',
+      yaml: 'yaml', yml: 'yaml', toml: 'toml', xml: 'xml',
+      md: 'markdown', sh: 'bash', bash: 'bash', zsh: 'bash',
+      sql: 'sql', swift: 'swift', kt: 'kotlin', vue: 'vue',
+      svelte: 'svelte', php: 'php', lua: 'lua', zig: 'zig',
+    }
+    const language = langMap[ext] || 'text'
+
+    // Notify the renderer to create or update the file viewer
+    emitCanvasAction('file_edited', {
+      filePath,
+      content,
+      language,
+      position,
+    })
+
+    return JSON.stringify({
+      path: filePath,
+      size: contentBytes.length,
+      language,
+    })
   })
 
   // ── pan_canvas ────────────────────────────────────────────────

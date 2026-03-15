@@ -41,6 +41,7 @@ vi.mock('uuid', () => ({
 vi.mock('fs/promises', () => ({
   stat: vi.fn().mockResolvedValue({ size: 100 }),
   readFile: vi.fn().mockResolvedValue('file content here'),
+  writeFile: vi.fn().mockResolvedValue(undefined),
   readdir: vi.fn().mockResolvedValue([
     { name: 'file.ts', isFile: () => true, isDirectory: () => false, isSymbolicLink: () => false },
     { name: 'src', isFile: () => false, isDirectory: () => true, isSymbolicLink: () => false },
@@ -123,7 +124,7 @@ describe('AI Tools', () => {
   }
 
   describe('registerTools', () => {
-    it('registers all 16 tools', () => {
+    it('registers all 17 tools', () => {
       const toolNames = (service as unknown as { tools: Array<{ name: string }> }).tools.map(t => t.name)
       expect(toolNames).toEqual([
         'get_canvas_state',
@@ -138,6 +139,7 @@ describe('AI Tools', () => {
         'list_directory',
         'pan_canvas',
         'create_note',
+        'edit_file',
         'create_arrow',
         'create_group',
         'add_to_group',
@@ -338,6 +340,71 @@ describe('AI Tools', () => {
       expect(result[0]).toEqual({ name: 'file.ts', type: 'file', size: 100 })
       expect(result[1]).toEqual({ name: 'src', type: 'directory', size: 0 })
       expect(result[2]).toEqual({ name: 'link', type: 'symlink', size: 0 })
+    })
+  })
+
+  describe('edit_file', () => {
+    it('writes file and emits file_edited canvas action', async () => {
+      const executor = getExecutor('edit_file')!
+      const homedir = require('os').homedir()
+      const filePath = `${homedir}/projects/test.ts`
+      const content = 'const x = 42;\n'
+
+      const result = JSON.parse(await executor({ path: filePath, content }))
+      expect(result.path).toBe(filePath)
+      expect(result.size).toBe(Buffer.from(content).length)
+      expect(result.language).toBe('typescript')
+
+      const { writeFile } = await import('fs/promises')
+      expect(writeFile).toHaveBeenCalledWith(filePath, content, 'utf-8')
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      expect(canvasActions).toHaveLength(1)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.action).toBe('file_edited')
+      expect(action.payload.filePath).toBe(filePath)
+      expect(action.payload.content).toBe(content)
+      expect(action.payload.language).toBe('typescript')
+    })
+
+    it('uses custom position when provided', async () => {
+      const executor = getExecutor('edit_file')!
+      const homedir = require('os').homedir()
+
+      await executor({
+        path: `${homedir}/test.py`,
+        content: 'print("hello")',
+        position: { x: 300, y: 400 },
+      })
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.payload.position).toEqual({ x: 300, y: 400 })
+      expect(action.payload.language).toBe('python')
+    })
+
+    it('rejects paths outside home directory', async () => {
+      const executor = getExecutor('edit_file')!
+      await expect(
+        executor({ path: '/etc/passwd', content: 'nope' })
+      ).rejects.toThrow('Write denied')
+    })
+
+    it('rejects writes to hidden config directories', async () => {
+      const executor = getExecutor('edit_file')!
+      const homedir = require('os').homedir()
+      await expect(
+        executor({ path: `${homedir}/.ssh/id_rsa`, content: 'nope' })
+      ).rejects.toThrow('Write denied')
+    })
+
+    it('rejects content over 5MB', async () => {
+      const executor = getExecutor('edit_file')!
+      const homedir = require('os').homedir()
+      const bigContent = 'x'.repeat(6 * 1024 * 1024)
+      await expect(
+        executor({ path: `${homedir}/big.txt`, content: bigContent })
+      ).rejects.toThrow('Content too large')
     })
   })
 
