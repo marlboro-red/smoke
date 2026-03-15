@@ -268,6 +268,71 @@ const tools: Array<{ definition: ToolDefinition; executor: string }> = [
     },
     executor: 'pan_canvas',
   },
+  {
+    definition: {
+      name: 'create_note',
+      description:
+        'Place a sticky note on the canvas. Use this to annotate, explain, or document spatial reasoning.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          text: {
+            type: 'string',
+            description: 'The text content of the sticky note.',
+          },
+          position: {
+            type: 'object',
+            description:
+              'Canvas position {x, y} for the note. Defaults to {x: 100, y: 100}.',
+            properties: {
+              x: { type: 'number' },
+              y: { type: 'number' },
+            },
+            required: ['x', 'y'],
+          },
+          color: {
+            type: 'string',
+            description:
+              'Note color: "yellow", "pink", "blue", "green", or "purple". Defaults to "yellow".',
+            enum: ['yellow', 'pink', 'blue', 'green', 'purple'],
+          },
+        },
+        required: ['text'],
+      },
+    },
+    executor: 'create_note',
+  },
+  {
+    definition: {
+      name: 'create_arrow',
+      description:
+        'Draw a connector arrow between two canvas elements. Use this to show relationships or data flow between elements.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          from_id: {
+            type: 'string',
+            description: 'The source element ID (session or note).',
+          },
+          to_id: {
+            type: 'string',
+            description: 'The target element ID (session or note).',
+          },
+          label: {
+            type: 'string',
+            description: 'Optional label displayed on the arrow.',
+          },
+          color: {
+            type: 'string',
+            description:
+              'Optional CSS color for the arrow. Defaults to the theme accent color.',
+          },
+        },
+        required: ['from_id', 'to_id'],
+      },
+    },
+    executor: 'create_arrow',
+  },
 ]
 
 // ── Executor implementations ────────────────────────────────────────
@@ -537,6 +602,42 @@ function createExecutors(
     emitCanvasAction('viewport_panned', { panX: x, panY: y })
 
     return `Panned canvas viewport to (${x}, ${y}).`
+  })
+
+  // ── create_note ────────────────────────────────────────────────
+
+  executors.set('create_note', async (input) => {
+    const text = input.text as string
+    const position = (input.position as { x: number; y: number }) ?? {
+      x: 100,
+      y: 100,
+    }
+    const color = (input.color as string) ?? 'yellow'
+    const noteId = uuid()
+
+    emitCanvasAction('note_created', { noteId, text, position, color })
+
+    return JSON.stringify({ noteId, text, position, color })
+  })
+
+  // ── create_arrow ───────────────────────────────────────────────
+
+  executors.set('create_arrow', async (input) => {
+    const fromId = input.from_id as string
+    const toId = input.to_id as string
+    const label = input.label as string | undefined
+    const color = input.color as string | undefined
+    const connectorId = uuid()
+
+    emitCanvasAction('connector_created', {
+      connectorId,
+      sourceId: fromId,
+      targetId: toId,
+      label,
+      color,
+    })
+
+    return JSON.stringify({ connectorId, sourceId: fromId, targetId: toId, label })
   })
 
   return executors

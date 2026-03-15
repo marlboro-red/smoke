@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AiStreamCanvasAction } from '../../../preload/types'
 import { sessionStore } from '../../stores/sessionStore'
+import { connectorStore } from '../../stores/connectorStore'
 
 /**
  * Tests for the canvas action handler logic in useAiCanvasActions.
@@ -128,5 +129,81 @@ describe('AI canvas action: viewport_panned', () => {
     handleCanvasAction(makeEvent('viewport_panned', { panX: 500, panY: -200 }))
 
     expect(setPanTo).toHaveBeenCalledWith(500, -200)
+  })
+})
+
+describe('AI canvas action: note_created', () => {
+  beforeEach(() => {
+    sessionStore.setState({ sessions: new Map(), focusedId: null, nextZIndex: 1 })
+  })
+
+  it('inserts a new note session into the store', async () => {
+    const { handleCanvasAction } = await import('../useAiCanvasActions')
+
+    handleCanvasAction(makeEvent('note_created', {
+      noteId: 'ai-note-1',
+      text: 'Important note',
+      position: { x: 200, y: 300 },
+      color: 'pink',
+    }))
+
+    const session = sessionStore.getState().sessions.get('ai-note-1')
+    expect(session).toBeDefined()
+    expect(session!.type).toBe('note')
+    expect(session!.position).toEqual({ x: 200, y: 300 })
+    expect((session as { content: string }).content).toBe('Important note')
+    expect((session as { color: string }).color).toBe('pink')
+  })
+
+  it('uses default size for notes', async () => {
+    const { handleCanvasAction } = await import('../useAiCanvasActions')
+
+    handleCanvasAction(makeEvent('note_created', {
+      noteId: 'ai-note-2',
+      text: 'Test',
+      position: { x: 0, y: 0 },
+      color: 'yellow',
+    }))
+
+    const session = sessionStore.getState().sessions.get('ai-note-2')
+    expect(session!.size).toEqual({ cols: 0, rows: 0, width: 240, height: 200 })
+  })
+})
+
+describe('AI canvas action: connector_created', () => {
+  beforeEach(() => {
+    connectorStore.setState({ connectors: new Map() })
+  })
+
+  it('inserts a new connector into the store', async () => {
+    const { handleCanvasAction } = await import('../useAiCanvasActions')
+
+    handleCanvasAction(makeEvent('connector_created', {
+      connectorId: 'ai-conn-1',
+      sourceId: 'session-a',
+      targetId: 'session-b',
+      label: 'data flow',
+      color: '#ff0000',
+    }))
+
+    const connector = connectorStore.getState().connectors.get('ai-conn-1')
+    expect(connector).toBeDefined()
+    expect(connector!.sourceId).toBe('session-a')
+    expect(connector!.targetId).toBe('session-b')
+    expect(connector!.label).toBe('data flow')
+    expect(connector!.color).toBe('#ff0000')
+  })
+
+  it('uses default accent color when color is omitted', async () => {
+    const { handleCanvasAction } = await import('../useAiCanvasActions')
+
+    handleCanvasAction(makeEvent('connector_created', {
+      connectorId: 'ai-conn-2',
+      sourceId: 'a',
+      targetId: 'b',
+    }))
+
+    const connector = connectorStore.getState().connectors.get('ai-conn-2')
+    expect(connector!.color).toBe('var(--accent-strong, #7aa2f7)')
   })
 })

@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import type { AiStreamCanvasAction } from '../../preload/types'
-import type { TerminalSession } from '../stores/sessionStore'
+import type { NoteSession, TerminalSession } from '../stores/sessionStore'
 import { sessionStore } from '../stores/sessionStore'
+import { connectorStore } from '../stores/connectorStore'
 import { setPanTo } from '../canvas/useCanvasControls'
 import { closeSession } from '../session/useSessionClose'
 
@@ -29,6 +30,21 @@ interface SessionClosedPayload {
 interface ViewportPannedPayload {
   panX: number
   panY: number
+}
+
+interface NoteCreatedPayload {
+  noteId: string
+  text: string
+  position: { x: number; y: number }
+  color: string
+}
+
+interface ConnectorCreatedPayload {
+  connectorId: string
+  sourceId: string
+  targetId: string
+  label?: string
+  color?: string
 }
 
 export function handleCanvasAction(event: AiStreamCanvasAction): void {
@@ -79,6 +95,46 @@ export function handleCanvasAction(event: AiStreamCanvasAction): void {
       const { panX, panY } = event.payload as unknown as ViewportPannedPayload
       // setPanTo updates the ref + CSS transform + syncs to store
       setPanTo(panX, panY)
+      break
+    }
+
+    case 'note_created': {
+      const { noteId, text, position, color } = event.payload as unknown as NoteCreatedPayload
+      const note: NoteSession = {
+        id: noteId,
+        type: 'note',
+        title: 'Note',
+        content: text,
+        color,
+        position,
+        size: { cols: 0, rows: 0, width: 240, height: 200 },
+        zIndex: 0,
+        createdAt: Date.now(),
+      }
+      sessionStore.setState((state) => {
+        const sessions = new Map(state.sessions)
+        sessions.set(noteId, note)
+        return { sessions }
+      })
+      sessionStore.getState().bringToFront(noteId)
+      break
+    }
+
+    case 'connector_created': {
+      const { connectorId, sourceId, targetId, label, color } =
+        event.payload as unknown as ConnectorCreatedPayload
+      const connector = {
+        id: connectorId,
+        sourceId,
+        targetId,
+        label,
+        color: color ?? 'var(--accent-strong, #7aa2f7)',
+      }
+      connectorStore.setState((state) => {
+        const connectors = new Map(state.connectors)
+        connectors.set(connectorId, connector)
+        return { connectors }
+      })
       break
     }
   }
