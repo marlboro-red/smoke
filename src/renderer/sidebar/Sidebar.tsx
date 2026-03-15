@@ -13,6 +13,7 @@ import { usePanToSession, panToSession as panToSessionStandalone } from './useSi
 import LayoutPanel from '../layout/LayoutPanel'
 import ReplayPanel from '../replay/ReplayPanel'
 import { settingsModalStore } from '../config/settingsStore'
+import { shortcutsOverlayStore } from '../shortcuts/shortcutsOverlayStore'
 import { performAutoLayout } from '../layout/autoLayout'
 import FileTree from './FileTree'
 import { usePreference } from '../stores/preferencesStore'
@@ -143,13 +144,22 @@ export default function Sidebar(): JSX.Element {
     settingsModalStore.getState().open()
   }, [])
 
+  const handleOpenShortcuts = useCallback(() => {
+    shortcutsOverlayStore.getState().open()
+  }, [])
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
         <span className="sidebar-title">Sessions</span>
-        <button className="sidebar-settings-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
-          &#9881;
-        </button>
+        <div className="sidebar-header-actions">
+          <button className="sidebar-settings-btn" onClick={handleOpenShortcuts} title="Keyboard Shortcuts (⌘/)">
+            ?
+          </button>
+          <button className="sidebar-settings-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
+            &#9881;
+          </button>
+        </div>
       </div>
       <div className="sidebar-actions">
         <button className="sidebar-new-btn" onClick={handleNewSession}>
