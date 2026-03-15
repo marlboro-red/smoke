@@ -10,6 +10,29 @@ const listeners: Record<string, (...args: any[]) => any> = {}
 let mockDialogSaveResult: any = { canceled: false, filePath: '/tmp/test-export.smoke-replay' }
 let mockDialogOpenResult: any = { canceled: false, filePaths: ['/tmp/test-import.smoke-replay'] }
 
+// Mock SearchIndex and StructureAnalyzer
+const { mockSearchIndex, mockStructureAnalyzer } = vi.hoisted(() => ({
+  mockSearchIndex: {
+    build: vi.fn(),
+    search: vi.fn(),
+    getStats: vi.fn(),
+    dispose: vi.fn(),
+  },
+  mockStructureAnalyzer: {
+    analyze: vi.fn(),
+    getCached: vi.fn(),
+    getModule: vi.fn(),
+  },
+}))
+
+vi.mock('../../codegraph/SearchIndex', () => ({
+  SearchIndex: function SearchIndex() { return mockSearchIndex },
+}))
+
+vi.mock('../../codegraph/StructureAnalyzer', () => ({
+  StructureAnalyzer: function StructureAnalyzer() { return mockStructureAnalyzer },
+}))
+
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn((channel: string, handler: any) => {
@@ -132,6 +155,14 @@ describe('registerIpcHandlers', () => {
       },
     }
     getMainWindow = () => mockWindow
+
+    // Reset search/structure mocks
+    mockSearchIndex.build.mockReset()
+    mockSearchIndex.search.mockReset()
+    mockSearchIndex.getStats.mockReset()
+    mockStructureAnalyzer.analyze.mockReset()
+    mockStructureAnalyzer.getCached.mockReset()
+    mockStructureAnalyzer.getModule.mockReset()
 
     registerIpcHandlers(ptyManager, getMainWindow, '/home/user/project')
   })
@@ -506,6 +537,136 @@ describe('registerIpcHandlers', () => {
         const result = await handlers['recording:import']({})
         expect(result).toBeNull()
       })
+    })
+  })
+
+  describe('Search handlers', () => {
+    it('builds search index and returns stats', async () => {
+      mockSearchIndex.build.mockResolvedValue({ fileCount: 150, tokenCount: 8000 })
+
+      const result = await handlers['search:build']({}, { rootPath: '/tmp/project' })
+
+      expect(mockSearchIndex.build).toHaveBeenCalledWith('/tmp/project')
+      expect(result).toEqual({ fileCount: 150, tokenCount: 8000 })
+    })
+
+    it('queries search index with default maxResults', () => {
+      const mockResponse = {
+        results: [
+          { filePath: '/tmp/project/foo.ts', lineNumber: 10, lineContent: 'function foo() {', matchStart: 9, matchEnd: 12, score: 5 },
+        ],
+        totalMatches: 1,
+        durationMs: 2,
+      }
+      mockSearchIndex.search.mockReturnValue(mockResponse)
+
+      const result = handlers['search:query']({}, { query: 'foo' })
+
+      expect(mockSearchIndex.search).toHaveBeenCalledWith('foo', undefined)
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('queries search index with custom maxResults', () => {
+      mockSearchIndex.search.mockReturnValue({ results: [], totalMatches: 0, durationMs: 1 })
+
+      handlers['search:query']({}, { query: 'bar', maxResults: 5 })
+
+      expect(mockSearchIndex.search).toHaveBeenCalledWith('bar', 5)
+    })
+
+    it('returns search stats', () => {
+      const mockStats = { fileCount: 150, tokenCount: 8000, rootPath: '/tmp/project', indexing: false }
+      mockSearchIndex.getStats.mockReturnValue(mockStats)
+
+      const result = handlers['search:stats']({})
+
+      expect(result).toEqual(mockStats)
+    })
+
+    it('returns stats showing indexing in progress', () => {
+      const mockStats = { fileCount: 50, tokenCount: 2000, rootPath: '/tmp/project', indexing: true }
+      mockSearchIndex.getStats.mockReturnValue(mockStats)
+
+      const result = handlers['search:stats']({})
+
+      expect(result.indexing).toBe(true)
+    })
+  })
+
+  describe('Structure handlers', () => {
+    const sampleStructure = {
+      projectRoot: '/tmp/project',
+      modules: {
+        '.': {
+          id: '.',
+          name: 'my-project',
+          rootPath: '/tmp/project',
+          entryPoint: 'src/index.ts',
+          type: 'package',
+          children: ['src'],
+          keyFiles: ['package.json'],
+        },
+      },
+      topLevelDirs: [
+        { name: 'src', type: 'source', path: '/tmp/project/src' },
+        { name: 'tests', type: 'tests', path: '/tmp/project/tests' },
+      ],
+    }
+
+    it('analyzes project structure', async () => {
+      mockStructureAnalyzer.analyze.mockResolvedValue(sampleStructure)
+
+      const result = await handlers['structure:analyze']({}, { rootPath: '/tmp/project' })
+
+      expect(mockStructureAnalyzer.analyze).toHaveBeenCalledWith('/tmp/project')
+      expect(result).toEqual(sampleStructure)
+    })
+
+    it('returns cached structure map', () => {
+      mockStructureAnalyzer.getCached.mockReturnValue(sampleStructure)
+
+      const result = handlers['structure:get']({})
+
+      expect(result).toEqual(sampleStructure)
+      expect(result.modules['.']).toEqual(expect.objectContaining({
+        id: '.',
+        name: 'my-project',
+        type: 'package',
+      }))
+    })
+
+    it('returns null when no structure is cached', () => {
+      mockStructureAnalyzer.getCached.mockReturnValue(null)
+
+      const result = handlers['structure:get']({})
+
+      expect(result).toBeNull()
+    })
+
+    it('returns details for a specific module', () => {
+      const srcModule = {
+        id: 'src',
+        name: 'src',
+        rootPath: '/tmp/project/src',
+        entryPoint: 'index.ts',
+        type: 'source',
+        children: [],
+        keyFiles: [],
+      }
+      mockStructureAnalyzer.getModule.mockReturnValue(srcModule)
+
+      const result = handlers['structure:get-module']({}, { moduleId: 'src' })
+
+      expect(mockStructureAnalyzer.getModule).toHaveBeenCalledWith('src')
+      expect(result).toEqual(srcModule)
+    })
+
+    it('returns null for nonexistent module', () => {
+      mockStructureAnalyzer.getModule.mockReturnValue(null)
+
+      const result = handlers['structure:get-module']({}, { moduleId: 'nonexistent' })
+
+      expect(result).toBeNull()
     })
   })
 })
