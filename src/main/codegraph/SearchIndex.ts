@@ -6,12 +6,15 @@
  * or any string. Returns ranked results with file path, line number, and
  * surrounding context.
  *
- * Runs on the main thread (async with periodic yields to avoid blocking).
- * Index is built on demand and updated incrementally via file watcher.
+ * Initial build runs in a background worker thread to avoid blocking
+ * the main process event loop. Incremental updates via file watcher
+ * happen on the main thread (single-file reindexing is lightweight).
  */
 
+import * as fsSync from 'fs'
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { Worker } from 'worker_threads'
 import type { BrowserWindow } from 'electron'
 
 /** Extensions to index (source code files only). */
@@ -32,14 +35,13 @@ const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'out', 'build', '.next',
   '__pycache__', '.tox', 'venv', '.venv', 'target',
   '.cache', '.turbo', '.parcel-cache', 'coverage',
-  '.DS_Store',
+  '.DS_Store', '.beads',
 ])
 
 /** Maximum file size to index (256KB). */
 const MAX_FILE_SIZE = 256 * 1024
 
-/** Batch size: yield to event loop every N files. */
-const BATCH_SIZE = 50
+const WATCHER_DEBOUNCE_MS = 500
 
 export interface SearchResult {
   /** Absolute file path. */
@@ -92,41 +94,153 @@ export class SearchIndex {
   private indexedFiles = new Set<string>()
   private projectRoot: string = ''
   private isIndexing = false
+  private worker: Worker | null = null
+  private watcher: fsSync.FSWatcher | null = null
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null
+  private pendingUpdates = new Map<string, 'add' | 'delete'>()
   private getMainWindow: () => BrowserWindow | null
 
   constructor(getMainWindow: () => BrowserWindow | null) {
     this.getMainWindow = getMainWindow
   }
 
-  /** Build the full index for a project. */
+  /**
+   * Build the full index for a project.
+   * Uses a background worker thread for the heavy I/O and tokenization.
+   * Falls back to main-thread indexing if the worker file is unavailable.
+   */
   async build(projectRoot: string): Promise<{ fileCount: number; tokenCount: number }> {
+    this.dispose()
     this.projectRoot = path.resolve(projectRoot)
-    this.index.clear()
-    this.fileLines.clear()
-    this.indexedFiles.clear()
     this.isIndexing = true
 
+    const workerPath = path.join(__dirname, 'searchWorker.js')
+    let useWorker = false
     try {
-      const files = await this.collectFiles(this.projectRoot)
-      let indexed = 0
+      fsSync.accessSync(workerPath, fsSync.constants.R_OK)
+      useWorker = true
+    } catch {
+      // Worker file not available (e.g. in test environment)
+    }
 
-      for (let i = 0; i < files.length; i++) {
-        await this.indexFile(files[i])
-        indexed++
-
-        // Yield to event loop periodically and report progress
-        if (indexed % BATCH_SIZE === 0) {
-          await new Promise(resolve => setImmediate(resolve))
-          this.sendProgress(indexed, files.length)
-        }
+    try {
+      if (useWorker) {
+        await this.buildWithWorker(workerPath)
+      } else {
+        await this.buildOnMainThread()
       }
-
-      this.sendProgress(indexed, files.length)
     } finally {
       this.isIndexing = false
     }
 
+    this.startWatching()
+
     return { fileCount: this.indexedFiles.size, tokenCount: this.index.size }
+  }
+
+  private buildWithWorker(workerPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.worker = new Worker(workerPath)
+
+      this.worker.on('message', (msg: any) => {
+        switch (msg.type) {
+          case 'progress':
+            this.sendProgress(msg.indexed, msg.total)
+            break
+
+          case 'complete': {
+            const data = msg.data as {
+              files: string[]
+              fileLines: Record<string, string[]>
+              index: Record<string, PostingEntry[]>
+            }
+
+            // Load the index built by the worker
+            this.index.clear()
+            this.fileLines.clear()
+            this.indexedFiles.clear()
+
+            for (const filePath of data.files) {
+              this.indexedFiles.add(filePath)
+            }
+
+            for (const [filePath, lines] of Object.entries(data.fileLines)) {
+              this.fileLines.set(filePath, lines)
+            }
+
+            for (const [token, postings] of Object.entries(data.index)) {
+              this.index.set(token, postings)
+            }
+
+            this.worker?.terminate()
+            this.worker = null
+            resolve()
+            break
+          }
+
+          case 'error':
+            this.worker?.terminate()
+            this.worker = null
+            reject(new Error(msg.message))
+            break
+        }
+      })
+
+      this.worker.on('error', (err) => {
+        this.worker = null
+        reject(err)
+      })
+
+      this.worker.postMessage({ type: 'build', rootPath: this.projectRoot })
+    })
+  }
+
+  /** Fallback: build index on the main thread with periodic yields. */
+  private async buildOnMainThread(): Promise<void> {
+    const files = await this.collectFiles(this.projectRoot)
+    let indexed = 0
+
+    for (let i = 0; i < files.length; i++) {
+      await this.indexFile(files[i])
+      indexed++
+
+      if (indexed % 50 === 0) {
+        await new Promise(resolve => setImmediate(resolve))
+        this.sendProgress(indexed, files.length)
+      }
+    }
+
+    this.sendProgress(indexed, files.length)
+  }
+
+  private async collectFiles(dir: string): Promise<string[]> {
+    const files: string[] = []
+    await this.walkDir(dir, files)
+    return files
+  }
+
+  private async walkDir(dir: string, files: string[]): Promise<void> {
+    let entries: import('fs').Dirent[]
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name)
+
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
+          await this.walkDir(fullPath, files)
+        }
+      } else if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase()
+        if (SOURCE_EXTENSIONS.has(ext)) {
+          files.push(fullPath)
+        }
+      }
+    }
   }
 
   /**
@@ -205,7 +319,6 @@ export class SearchIndex {
 
   /** Incrementally add a file to the index. */
   async addFile(absolutePath: string): Promise<void> {
-    // Remove old entry first
     this.removeFile(absolutePath)
     await this.indexFile(absolutePath)
   }
@@ -214,7 +327,6 @@ export class SearchIndex {
   removeFile(absolutePath: string): void {
     if (!this.indexedFiles.has(absolutePath)) return
 
-    // Remove from posting lists
     for (const [token, postings] of this.index) {
       const filtered = postings.filter(p => p.filePath !== absolutePath)
       if (filtered.length === 0) {
@@ -228,37 +340,29 @@ export class SearchIndex {
     this.indexedFiles.delete(absolutePath)
   }
 
-  // -- Internal --
-
-  private async collectFiles(dir: string): Promise<string[]> {
-    const files: string[] = []
-    await this.walkDir(dir, files)
-    return files
+  /** Clean up all resources. */
+  dispose(): void {
+    if (this.worker) {
+      this.worker.terminate()
+      this.worker = null
+    }
+    if (this.watcher) {
+      this.watcher.close()
+      this.watcher = null
+    }
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
+      this.debounceTimer = null
+    }
+    this.index.clear()
+    this.fileLines.clear()
+    this.indexedFiles.clear()
+    this.pendingUpdates.clear()
+    this.projectRoot = ''
+    this.isIndexing = false
   }
 
-  private async walkDir(dir: string, files: string[]): Promise<void> {
-    let entries: import('fs').Dirent[]
-    try {
-      entries = await fs.readdir(dir, { withFileTypes: true })
-    } catch {
-      return
-    }
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name)
-
-      if (entry.isDirectory()) {
-        if (!SKIP_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
-          await this.walkDir(fullPath, files)
-        }
-      } else if (entry.isFile()) {
-        const ext = path.extname(entry.name).toLowerCase()
-        if (SOURCE_EXTENSIONS.has(ext)) {
-          files.push(fullPath)
-        }
-      }
-    }
-  }
+  // -- Internal: file indexing --
 
   private async indexFile(filePath: string): Promise<void> {
     let content: string
@@ -275,7 +379,6 @@ export class SearchIndex {
     this.fileLines.set(filePath, lines)
     this.indexedFiles.add(filePath)
 
-    // Build token → line mapping for this file
     const tokenLines = new Map<string, Set<number>>()
 
     for (let i = 0; i < lines.length; i++) {
@@ -284,11 +387,10 @@ export class SearchIndex {
         if (!tokenLines.has(token)) {
           tokenLines.set(token, new Set())
         }
-        tokenLines.get(token)!.add(i + 1) // 1-based
+        tokenLines.get(token)!.add(i + 1)
       }
     }
 
-    // Add to global inverted index
     for (const [token, lineNums] of tokenLines) {
       if (!this.index.has(token)) {
         this.index.set(token, [])
@@ -301,13 +403,10 @@ export class SearchIndex {
   }
 
   private tokenize(text: string): string[] {
-    // Split on non-alphanumeric chars, filter short tokens
     const tokens = text.split(/[^a-z0-9_]+/i).filter(t => t.length >= 2)
-    // Also split camelCase/PascalCase
     const expanded: string[] = []
     for (const token of tokens) {
       expanded.push(token)
-      // Split camelCase: "parseImports" → "parse", "imports"
       const parts = token.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(' ')
       if (parts.length > 1) {
         for (const part of parts) {
@@ -321,13 +420,11 @@ export class SearchIndex {
   private findCandidateFiles(tokens: string[]): Set<string> {
     if (tokens.length === 0) return new Set()
 
-    // Start with files containing the first token
     const postings0 = this.index.get(tokens[0])
     if (!postings0) return new Set()
 
     let candidates = new Set(postings0.map(p => p.filePath))
 
-    // Intersect with files containing subsequent tokens
     for (let i = 1; i < tokens.length; i++) {
       const postingsI = this.index.get(tokens[i])
       if (!postingsI) return new Set()
@@ -339,6 +436,65 @@ export class SearchIndex {
     }
 
     return candidates
+  }
+
+  // -- Internal: file watcher for incremental updates --
+
+  private startWatching(): void {
+    if (!this.projectRoot) return
+
+    try {
+      this.watcher = fsSync.watch(
+        this.projectRoot,
+        { recursive: true, persistent: false },
+        (_eventType, filename) => {
+          if (!filename || !this.projectRoot) return
+
+          const ext = path.extname(filename).toLowerCase()
+          if (!SOURCE_EXTENSIONS.has(ext)) return
+
+          const parts = filename.split(path.sep)
+          if (parts.some(p => SKIP_DIRS.has(p) || p.startsWith('.'))) return
+
+          const fullPath = path.join(this.projectRoot, filename)
+          this.scheduleUpdate(fullPath)
+        }
+      )
+
+      this.watcher.on('error', () => {
+        if (this.watcher) {
+          this.watcher.close()
+          this.watcher = null
+        }
+      })
+    } catch {
+      // Directory may not support watching
+    }
+  }
+
+  private scheduleUpdate(fullPath: string): void {
+    fsSync.access(fullPath, fsSync.constants.F_OK, (err) => {
+      this.pendingUpdates.set(fullPath, err ? 'delete' : 'add')
+
+      if (this.debounceTimer) clearTimeout(this.debounceTimer)
+      this.debounceTimer = setTimeout(() => {
+        this.debounceTimer = null
+        this.flushPending()
+      }, WATCHER_DEBOUNCE_MS)
+    })
+  }
+
+  private async flushPending(): Promise<void> {
+    const updates = new Map(this.pendingUpdates)
+    this.pendingUpdates.clear()
+
+    for (const [fullPath, action] of updates) {
+      if (action === 'delete') {
+        this.removeFile(fullPath)
+      } else {
+        await this.addFile(fullPath)
+      }
+    }
   }
 
   private sendProgress(indexed: number, total: number): void {
