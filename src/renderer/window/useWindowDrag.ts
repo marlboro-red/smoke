@@ -120,6 +120,7 @@ export function useWindowDrag({
 
       const session = sessionStore.getState().sessions.get(sessionId)
       if (!session) return
+      if (session.locked) return
 
       isDraggingRef.current = true
       startMouseRef.current = { x: e.clientX, y: e.clientY }

@@ -22,6 +22,8 @@ function getSelectedSessions(): Session[] {
 }
 
 function applyPosition(id: string, x: number, y: number, gridSize: number): void {
+  const session = sessionStore.getState().sessions.get(id)
+  if (session?.locked) return
   sessionStore.getState().updateSession(id, {
     position: { x: snap(x, gridSize), y: snap(y, gridSize) },
   })

@@ -122,6 +122,7 @@ export function useImageResize({
 
       const session = sessionStore.getState().sessions.get(sessionId) as ImageSession | undefined
       if (!session) return
+      if (session.locked) return
 
       directionRef.current = direction
       startMouseRef.current = { x: e.clientX, y: e.clientY }

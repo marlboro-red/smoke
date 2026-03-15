@@ -35,6 +35,7 @@ export type ShortcutAction =
   | 'startPresentation'
   | 'toggleFileViewerEdit'
   | 'goToLine'
+  | 'togglePin'
   | 'newSnippet'
   | 'duplicateElement'
   | 'splitHorizontal'
@@ -97,6 +98,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   startPresentation: 'Start Presentation',
   toggleFileViewerEdit: 'Toggle File Viewer Edit Mode',
   goToLine: 'Go to Line',
+  togglePin: 'Pin/Unpin to Viewport',
   newSnippet: 'New Snippet',
   duplicateElement: 'Duplicate Element',
   splitHorizontal: 'Split Pane Horizontal',
@@ -148,6 +150,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   startPresentation: { key: 'F5', mod: false, shift: false, alt: false },
   toggleFileViewerEdit: { key: 'e', mod: true, shift: false, alt: false },
   goToLine: { key: 'g', mod: true, shift: false, alt: false },
+  togglePin: { key: 'j', mod: true, shift: true, alt: false },
   newSnippet: { key: 'k', mod: true, shift: true, alt: false },
   duplicateElement: { key: 'd', mod: true, shift: false, alt: false },
   splitHorizontal: { key: '\\', mod: true, shift: false, alt: false },
@@ -189,7 +192,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'groupSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit', 'goToLine', 'toggleFocusMode'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'groupSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit', 'goToLine', 'togglePin', 'toggleFocusMode'],
   },
   {
     title: 'Groups',

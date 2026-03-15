@@ -162,6 +162,10 @@ export default function FileViewerWindow({
     closeSession(session.id)
   }, [session.id, session.isDirty])
 
+  const handleToggleLock = useCallback(() => {
+    sessionStore.getState().toggleLock(session.id)
+  }, [session.id])
+
   const handleToggleEdit = useCallback(() => {
     sessionStore.getState().updateSession(session.id, { editing: !editing })
   }, [session.id, editing])
@@ -208,6 +212,7 @@ export default function FileViewerWindow({
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
     isDimmedByFocusMode && 'focus-mode-dimmed',
+    session.locked && 'locked',
     extraClassName,
   ]
     .filter(Boolean)
@@ -231,9 +236,11 @@ export default function FileViewerWindow({
         title={session.title}
         status="running"
         isDirty={session.isDirty}
+        isLocked={session.locked}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
+        onToggleLock={handleToggleLock}
       >
         <button
           className="file-viewer-terminal-btn"

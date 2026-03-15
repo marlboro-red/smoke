@@ -124,6 +124,7 @@ export function useWindowResize({
 
       const session = sessionStore.getState().sessions.get(sessionId)
       if (!session) return
+      if (session.locked) return
 
       directionRef.current = direction
       startMouseRef.current = { x: e.clientX, y: e.clientY }

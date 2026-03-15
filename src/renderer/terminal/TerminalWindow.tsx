@@ -100,6 +100,10 @@ export default function TerminalWindow({
     closeSession(session.id)
   }, [session.id])
 
+  const handleToggleLock = useCallback(() => {
+    sessionStore.getState().toggleLock(session.id)
+  }, [session.id])
+
   const handleSnapshotReady = useCallback(
     (getSnapshot: () => string[]) => {
       getSnapshotRef.current = getSnapshot
@@ -154,6 +158,7 @@ export default function TerminalWindow({
     isSelected && 'multi-selected',
     isBroadcasting && 'broadcasting',
     isDimmedByFocusMode && 'focus-mode-dimmed',
+    session.locked && 'locked',
   ]
     .filter(Boolean)
     .join(' ')
@@ -178,11 +183,13 @@ export default function TerminalWindow({
         title={session.title}
         status={session.status}
         isBroadcasting={isBroadcasting}
+        isLocked={session.locked}
         agentColor={assignedAgent?.color}
         agentRole={assignedAgent?.role}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
+        onToggleLock={handleToggleLock}
       />
       <div
         className="terminal-body"

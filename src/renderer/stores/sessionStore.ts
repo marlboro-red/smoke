@@ -16,6 +16,7 @@ export interface BaseSession {
   zIndex: number
   createdAt: number
   groupId?: string
+  locked?: boolean
 }
 
 export interface TerminalSession extends BaseSession {
@@ -88,6 +89,7 @@ interface SessionStore {
   toggleSelectSession: (id: string) => void
   setSelectedIds: (ids: Set<string>) => void
   clearSelection: () => void
+  toggleLock: (id: string) => void
 }
 
 export const sessionStore = createStore<SessionStore>((set, get) => ({
@@ -323,6 +325,16 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
 
   clearSelection: () => {
     set({ selectedIds: new Set<string>() })
+  },
+
+  toggleLock: (id: string) => {
+    set((state) => {
+      const existing = state.sessions.get(id)
+      if (!existing) return state
+      const sessions = new Map(state.sessions)
+      sessions.set(id, { ...existing, locked: !existing.locked } as Session)
+      return { sessions }
+    })
   },
 }))
 

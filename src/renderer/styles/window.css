@@ -32,6 +32,14 @@
     border-color var(--duration-normal), box-shadow var(--duration-normal);
 }
 
+.terminal-window.locked {
+  border-color: var(--color-neutral);
+}
+
+.terminal-window.locked.focused {
+  border-color: var(--accent-strong);
+}
+
 .terminal-window.dragging {
   opacity: 0.92;
   cursor: grabbing;
@@ -128,6 +136,45 @@
   text-transform: uppercase;
   line-height: 1.4;
   opacity: 0.85;
+}
+
+.window-chrome.locked {
+  cursor: default;
+}
+
+.window-chrome.locked:active {
+  cursor: default;
+}
+
+.window-chrome-lock {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast), background var(--duration-fast);
+}
+
+.window-chrome:hover .window-chrome-lock,
+.window-chrome-lock.active {
+  opacity: 1;
+}
+
+.window-chrome-lock.active {
+  color: var(--color-warning);
+}
+
+.window-chrome-lock:hover {
+  background: var(--bg-hover);
 }
 
 .window-chrome-close {

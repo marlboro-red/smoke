@@ -14,7 +14,7 @@ function serializeCurrentLayout(name: string): Layout {
   return {
     name,
     sessions: Array.from(sessions.values()).map((s) => {
-      const base = {
+      const base: Record<string, unknown> = {
         type: s.type,
         title: s.title,
         cwd: s.type === 'terminal' ? s.cwd : '',
@@ -26,6 +26,7 @@ function serializeCurrentLayout(name: string): Layout {
           rows: s.size.rows,
         },
       }
+      if (s.locked) base.locked = true
       if (s.type === 'file') {
         return { ...base, filePath: s.filePath, language: s.language }
       }
@@ -130,10 +131,12 @@ export function useLayoutRestore(): {
     // Create sessions from layout
     for (const saved of layout.sessions) {
       const elementType = saved.type ?? 'terminal'
+      let createdId: string | null = null
       switch (elementType) {
         case 'terminal': {
           const cwd = saved.cwd
           const session = sessionStore.getState().createSession(cwd, saved.position)
+          createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             size: saved.size,
@@ -160,6 +163,7 @@ export function useLayoutRestore(): {
                   saved.language || 'text',
                   saved.position
                 )
+                createdId = session.id
                 sessionStore.getState().updateSession(session.id, {
                   title: saved.title,
                   size: saved.size,
@@ -176,6 +180,7 @@ export function useLayoutRestore(): {
             saved.position,
             saved.color
           )
+          createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             content: saved.content ?? '',
@@ -188,6 +193,7 @@ export function useLayoutRestore(): {
             saved.url || 'http://localhost:3000',
             saved.position
           )
+          createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             size: saved.size,
@@ -212,6 +218,7 @@ export function useLayoutRestore(): {
                   img.naturalHeight,
                   saved.position
                 )
+                createdId = session.id
                 sessionStore.getState().updateSession(session.id, {
                   title: saved.title,
                   size: saved.size,
@@ -229,12 +236,16 @@ export function useLayoutRestore(): {
             saved.content ?? '',
             saved.position
           )
+          createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             size: saved.size,
           })
           break
         }
+      }
+      if (saved.locked && createdId) {
+        sessionStore.getState().updateSession(createdId, { locked: true })
       }
     }
   }, [])

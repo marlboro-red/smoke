@@ -295,11 +295,10 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
-<<<<<<< HEAD
     case 'toggleFocusMode':
       focusModeStore.getState().toggle()
       break
-=======
+
     case 'deleteSelected': {
       const selected = state.selectedIds
       if (selected.size > 0) {
@@ -336,7 +335,6 @@ function executeShortcut(action: ShortcutAction): void {
       sessionStore.getState().setSelectedIds(allIds)
       break
     }
->>>>>>> smoke-zdx
 
     case 'escape':
       if (focusModeStore.getState().enabled) {

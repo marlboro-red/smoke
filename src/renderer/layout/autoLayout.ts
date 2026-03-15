@@ -180,8 +180,10 @@ export function performAutoLayout(strategy: LayoutStrategy = 'grid'): void {
   // Enable CSS transitions for smooth animation
   enableLayoutAnimation()
 
-  // Update all session positions
+  // Update all session positions (skip locked elements)
   for (const [id, pos] of positions) {
+    const session = sessionStore.getState().sessions.get(id)
+    if (session?.locked) continue
     sessionStore.getState().updateSession(id, { position: pos })
   }
 

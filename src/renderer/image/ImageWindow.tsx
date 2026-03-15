@@ -73,12 +73,17 @@ export default function ImageWindow({
     closeSession(session.id)
   }, [session.id])
 
+  const handleToggleLock = useCallback(() => {
+    sessionStore.getState().toggleLock(session.id)
+  }, [session.id])
+
   const classNames = [
     'terminal-window',
     'image-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
+    session.locked && 'locked',
   ]
     .filter(Boolean)
     .join(' ')
@@ -100,9 +105,11 @@ export default function ImageWindow({
       <WindowChrome
         title={session.title}
         status="running"
+        isLocked={session.locked}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
+        onToggleLock={handleToggleLock}
       />
       <div
         className="image-body"
