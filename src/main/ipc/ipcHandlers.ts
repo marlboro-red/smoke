@@ -40,6 +40,7 @@ import {
   AGENT_ASSIGN_GROUP,
   AGENT_SET_ROLE,
   AGENT_UPDATE_SCOPE,
+  CANVAS_EXPORT_PNG,
   APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
   PtySpawnResponse,
@@ -76,6 +77,8 @@ import {
   AgentAssignGroupRequest,
   AgentSetRoleRequest,
   AgentUpdateScopeRequest,
+  CanvasExportPngRequest,
+  CanvasExportPngResponse,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -433,6 +436,34 @@ export function registerIpcHandlers(
       eventCount: events.length,
       durationMs,
     }
+  })
+
+  // Canvas export handler — capture canvas area as PNG
+  ipcMain.handle(CANVAS_EXPORT_PNG, async (_event, request: CanvasExportPngRequest): Promise<CanvasExportPngResponse> => {
+    const { dialog } = await import('electron')
+    const win = getMainWindow()
+    if (!win) return { filePath: null }
+
+    const image = await win.webContents.capturePage({
+      x: request.x,
+      y: request.y,
+      width: request.width,
+      height: request.height,
+    })
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const result = await dialog.showSaveDialog(win, {
+      title: 'Export Canvas as PNG',
+      defaultPath: `smoke-canvas-${timestamp}.png`,
+      filters: [{ name: 'PNG Image', extensions: ['png'] }],
+    })
+
+    if (result.canceled || !result.filePath) {
+      return { filePath: null }
+    }
+
+    await fs.writeFile(result.filePath, image.toPNG())
+    return { filePath: result.filePath }
   })
 
   // App info handlers

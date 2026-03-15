@@ -98,6 +98,10 @@ const smokeAPI: SmokeAPI = {
     },
   },
 
+  canvas: {
+    exportPng: (rect) => ipcRenderer.invoke('canvas:export-png', rect),
+  },
+
   agent: {
     create: (name) => ipcRenderer.invoke('agent:create', { name }),
     remove: (agentId) => ipcRenderer.invoke('agent:remove', { agentId }),
