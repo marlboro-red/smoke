@@ -144,12 +144,36 @@ describe('registerIpcHandlers', () => {
     mockConfig.namedLayouts = {}
 
     ptyManager = {
-      spawn: vi.fn(() => ({
-        id: 'test-id',
-        pid: 123,
-        on: vi.fn(),
-        write: vi.fn(),
-      })),
+      spawn: vi.fn(() => {
+        const eventListeners: Record<string, Array<(...args: any[]) => void>> = {}
+        return {
+          id: 'test-id',
+          pid: 123,
+          on: vi.fn((event: string, cb: (...args: any[]) => void) => {
+            if (!eventListeners[event]) eventListeners[event] = []
+            eventListeners[event].push(cb)
+          }),
+          once: vi.fn((event: string, cb: (...args: any[]) => void) => {
+            if (!eventListeners[event]) eventListeners[event] = []
+            const wrapper = (...args: any[]) => {
+              const idx = eventListeners[event].indexOf(wrapper)
+              if (idx >= 0) eventListeners[event].splice(idx, 1)
+              cb(...args)
+            }
+            eventListeners[event].push(wrapper)
+          }),
+          removeListener: vi.fn((event: string, cb: (...args: any[]) => void) => {
+            if (eventListeners[event]) {
+              eventListeners[event] = eventListeners[event].filter(fn => fn !== cb)
+            }
+          }),
+          write: vi.fn(),
+          emit: (event: string, ...args: any[]) => {
+            const cbs = eventListeners[event] || []
+            cbs.forEach(cb => cb(...args))
+          },
+        }
+      }),
       write: vi.fn(),
       resize: vi.fn(),
       kill: vi.fn(),
@@ -217,6 +241,91 @@ describe('registerIpcHandlers', () => {
       expect(ptyManager.spawn).toHaveBeenCalledWith(
         expect.objectContaining({ shell: '/bin/zsh' })
       )
+    })
+
+    it('sends startup command from request after first data event', async () => {
+      const result = handlers['pty:spawn']({}, {
+        id: 'sess-sc-1',
+        cwd: '/tmp',
+        startupCommand: 'echo hello',
+      })
+
+      const pty = (ptyManager.spawn as any).mock.results[0].value
+
+      // Startup command should not have been written yet
+      expect(pty.write).not.toHaveBeenCalled()
+
+      // Simulate shell emitting first data (prompt)
+      pty.emit('data', '$ ')
+
+      // After the 50ms internal delay, the command should be written
+      await vi.waitFor(() => {
+        expect(pty.write).toHaveBeenCalledWith('echo hello\n')
+      })
+    })
+
+    it('sends startup command from global preference when not in request', async () => {
+      mockConfig.preferences.startupCommand = 'npm run dev'
+
+      handlers['pty:spawn']({}, {
+        id: 'sess-sc-2',
+        cwd: '/tmp',
+      })
+
+      const pty = (ptyManager.spawn as any).mock.results[0].value
+
+      // Simulate shell ready
+      pty.emit('data', '$ ')
+
+      await vi.waitFor(() => {
+        expect(pty.write).toHaveBeenCalledWith('npm run dev\n')
+      })
+    })
+
+    it('uses autoLaunchClaude fallback when no startup command is set', async () => {
+      mockConfig.preferences.autoLaunchClaude = true
+      mockConfig.preferences.claudeCommand = 'claude --chat'
+
+      handlers['pty:spawn']({}, {
+        id: 'sess-sc-3',
+        cwd: '/tmp',
+      })
+
+      const pty = (ptyManager.spawn as any).mock.results[0].value
+      pty.emit('data', '$ ')
+
+      await vi.waitFor(() => {
+        expect(pty.write).toHaveBeenCalledWith('claude --chat\n')
+      })
+    })
+
+    it('does not send startup command when none is configured', () => {
+      handlers['pty:spawn']({}, {
+        id: 'sess-sc-4',
+        cwd: '/tmp',
+      })
+
+      const pty = (ptyManager.spawn as any).mock.results[0].value
+
+      // No once listener should have been registered for startup
+      expect(pty.once).not.toHaveBeenCalled()
+    })
+
+    it('request startupCommand takes priority over global preference', async () => {
+      mockConfig.preferences.startupCommand = 'global-cmd'
+
+      handlers['pty:spawn']({}, {
+        id: 'sess-sc-5',
+        cwd: '/tmp',
+        startupCommand: 'request-cmd',
+      })
+
+      const pty = (ptyManager.spawn as any).mock.results[0].value
+      pty.emit('data', '$ ')
+
+      await vi.waitFor(() => {
+        expect(pty.write).toHaveBeenCalledWith('request-cmd\n')
+      })
     })
   })
 

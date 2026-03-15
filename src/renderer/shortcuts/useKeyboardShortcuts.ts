@@ -18,7 +18,7 @@ import { presentationStore } from '../presentation/presentationStore'
 import { exportCanvasPng } from '../canvas/exportCanvas'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
 import { goToLineStore } from '../fileviewer/goToLineStore'
-import type { FileViewerSession } from '../stores/sessionStore'
+import type { FileViewerSession, TerminalSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { terminalSearchStore } from '../terminal/terminalSearchStore'
 import { focusModeStore } from '../stores/focusModeStore'
@@ -256,7 +256,9 @@ function executeShortcut(action: ShortcutAction): void {
             const cwd = (session as { cwd: string }).cwd ||
               preferencesStore.getState().preferences.defaultCwd ||
               preferencesStore.getState().launchCwd || ''
-            window.smokeAPI?.pty.spawn({ id: newPaneId, cwd })
+            const startupCommand = (session as TerminalSession).startupCommand ||
+              preferencesStore.getState().preferences.startupCommand || undefined
+            window.smokeAPI?.pty.spawn({ id: newPaneId, cwd, startupCommand })
           }
         }
       }

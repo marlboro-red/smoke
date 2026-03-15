@@ -38,7 +38,9 @@ export function createNewSession(position?: { x: number; y: number }): void {
   }
 
   const session = sessionStore.getState().createSession(cwd, snappedPos)
-  window.smokeAPI?.pty.spawn({ id: session.id, cwd })
+  const { preferences } = preferencesStore.getState()
+  const startupCommand = preferences.startupCommand || undefined
+  window.smokeAPI?.pty.spawn({ id: session.id, cwd, startupCommand })
 
   // Focus and bring to front
   sessionStore.getState().focusSession(session.id)
@@ -62,7 +64,9 @@ export function createTerminalAtFileDir(fileSession: FileViewerSession): void {
   }
 
   const session = sessionStore.getState().createSession(cwd, snappedPos)
-  window.smokeAPI?.pty.spawn({ id: session.id, cwd })
+  const { preferences } = preferencesStore.getState()
+  const startupCommand = preferences.startupCommand || undefined
+  window.smokeAPI?.pty.spawn({ id: session.id, cwd, startupCommand })
 
   sessionStore.getState().focusSession(session.id)
   sessionStore.getState().bringToFront(session.id)
@@ -87,7 +91,8 @@ export function duplicateSession(sourceId: string): void {
     case 'terminal': {
       const src = source as TerminalSession
       newSession = state.createSession(src.cwd, pos)
-      window.smokeAPI?.pty.spawn({ id: newSession.id, cwd: src.cwd })
+      const startupCommand = src.startupCommand || preferencesStore.getState().preferences.startupCommand || undefined
+      window.smokeAPI?.pty.spawn({ id: newSession.id, cwd: src.cwd, startupCommand })
       break
     }
     case 'file': {

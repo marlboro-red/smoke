@@ -132,4 +132,27 @@ describe('createNewSession', () => {
       expect.objectContaining({ cwd: '' })
     )
   })
+
+  it('passes startupCommand from preferences when set', () => {
+    preferencesStore.setState({
+      ...preferencesStore.getState(),
+      preferences: {
+        ...preferencesStore.getState().preferences,
+        startupCommand: 'echo hello',
+      },
+    })
+
+    createNewSession({ x: 0, y: 0 })
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      expect.objectContaining({ startupCommand: 'echo hello' })
+    )
+  })
+
+  it('does not pass startupCommand when preference is empty', () => {
+    createNewSession({ x: 0, y: 0 })
+
+    const spawnArg = mockSpawn.mock.calls[0][0]
+    expect(spawnArg.startupCommand).toBeUndefined()
+  })
 })

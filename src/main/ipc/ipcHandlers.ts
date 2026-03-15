@@ -206,9 +206,27 @@ export async function registerIpcHandlers(
       || (preferences.autoLaunchClaude && preferences.claudeCommand ? preferences.claudeCommand : '')
 
     if (startupCmd) {
+      // Wait for the shell to emit its first output (prompt/motd) before sending
+      // the startup command. This is more reliable than a fixed delay because
+      // different shells take varying amounts of time to initialize.
+      let sent = false
+      const sendStartupCommand = (): void => {
+        if (sent) return
+        sent = true
+        setTimeout(() => {
+          pty.write(startupCmd + '\n')
+        }, 50)
+      }
+
+      pty.once('data', sendStartupCommand)
+
+      // Safety fallback: if the shell never emits data within 3s, send anyway
       setTimeout(() => {
-        pty.write(startupCmd + '\n')
-      }, 100)
+        if (!sent) {
+          pty.removeListener('data', sendStartupCommand)
+          sendStartupCommand()
+        }
+      }, 3000)
     }
 
     return { id: pty.id, pid: pty.pid }
