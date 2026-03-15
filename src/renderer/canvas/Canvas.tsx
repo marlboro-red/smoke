@@ -22,6 +22,7 @@ import WebviewThumbnail from '../webview/WebviewThumbnail'
 import GroupCollapsedCard from './GroupCollapsedCard'
 import SnapPreview from './SnapPreview'
 import Minimap from './Minimap'
+import AlignmentToolbar from './AlignmentToolbar'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -89,6 +90,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
       // Only unfocus when clicking empty canvas, not terminal windows
       if ((e.target as HTMLElement).closest('.terminal-window')) return
       sessionStore.getState().focusSession(null)
+      sessionStore.getState().clearSelection()
     },
     [readOnly]
   )
@@ -100,6 +102,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
       onDoubleClick={handleDoubleClick}
       onClick={handleClick}
     >
+      <AlignmentToolbar />
       <div className="canvas-viewport" ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         <SnapPreview />

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
-import { sessionStore, useFocusedId, useHighlightedId, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
+import { sessionStore, useFocusedId, useHighlightedId, useSelectedIds, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
 import { snapshotStore } from '../stores/snapshotStore'
 import { findAgentBySessionGroupId } from '../stores/agentStore'
 import { getTerminal } from './terminalRegistry'
@@ -29,12 +29,14 @@ export default function TerminalWindow({
 }: TerminalWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
+  const selectedIds = useSelectedIds()
   const broadcastGroupId = useBroadcastGroupId()
   const charDimsRef = useRef({ width: 8, height: 16 })
   const getSnapshotRef = useRef<(() => string[]) | null>(null)
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
+  const isSelected = selectedIds.has(session.id)
   const isBroadcasting = !!(session.groupId && broadcastGroupId === session.groupId)
 
   // Find the agent assigned to this session's group
@@ -58,7 +60,14 @@ export default function TerminalWindow({
     charDims: getCharDims,
   })
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const isMod = e.metaKey || e.ctrlKey
+    if (isMod) {
+      e.stopPropagation()
+      sessionStore.getState().toggleSelectSession(session.id)
+      return
+    }
+    sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
   }, [session.id])
@@ -125,6 +134,7 @@ export default function TerminalWindow({
     'terminal-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    isSelected && 'multi-selected',
     isBroadcasting && 'broadcasting',
   ]
     .filter(Boolean)
