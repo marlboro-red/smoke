@@ -9,6 +9,7 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
+import { buildCodeGraph, expandCodeGraph, getIndexStats, invalidateIndex, computeLayout, computeIncrementalLayout } from '../codegraph'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -53,6 +54,10 @@ import {
   PROJECT_INDEX_STATS,
   CANVAS_EXPORT_PNG,
   APP_GET_LAUNCH_CWD,
+  CODEGRAPH_BUILD,
+  CODEGRAPH_EXPAND,
+  CODEGRAPH_INDEX_STATS,
+  CODEGRAPH_INVALIDATE,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
@@ -101,6 +106,10 @@ import {
   ProjectIndexStatsResponse,
   CanvasExportPngRequest,
   CanvasExportPngResponse,
+  CodeGraphBuildRequest,
+  CodeGraphBuildResponse,
+  CodeGraphExpandRequest,
+  CodeGraphIndexStats,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -647,5 +656,40 @@ export function registerIpcHandlers(
     // No agents yet — read config directly
     const tempService = new AiService(() => null)
     return tempService.getConfig()
+  })
+
+  // Code graph handlers
+  ipcMain.handle(
+    CODEGRAPH_BUILD,
+    async (_event, request: CodeGraphBuildRequest): Promise<CodeGraphBuildResponse> => {
+      const result = await buildCodeGraph(request)
+      const layout = computeLayout(result.graph, result.rootPath)
+      return { ...result, layout }
+    }
+  )
+
+  ipcMain.handle(
+    CODEGRAPH_EXPAND,
+    async (_event, request: CodeGraphExpandRequest): Promise<CodeGraphBuildResponse> => {
+      const result = await expandCodeGraph(
+        request.existingGraph,
+        request.expandPath,
+        request.projectRoot,
+        request.maxDepth
+      )
+      const layout = computeIncrementalLayout(
+        result.graph,
+        request.existingPositions
+      )
+      return { ...result, layout }
+    }
+  )
+
+  ipcMain.handle(CODEGRAPH_INDEX_STATS, (): CodeGraphIndexStats | null => {
+    return getIndexStats()
+  })
+
+  ipcMain.handle(CODEGRAPH_INVALIDATE, (): void => {
+    invalidateIndex()
   })
 }

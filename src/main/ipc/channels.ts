@@ -70,6 +70,12 @@ export const PROJECT_INDEX_UPDATED = 'project:index-updated' as const
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
+// Code graph channels
+export const CODEGRAPH_BUILD = 'codegraph:build' as const
+export const CODEGRAPH_EXPAND = 'codegraph:expand' as const
+export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
+export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -352,6 +358,60 @@ export interface CanvasExportPngRequest {
 
 export interface CanvasExportPngResponse {
   filePath: string | null
+}
+
+// Code graph message types
+export interface CodeGraphBuildRequest {
+  filePath: string
+  projectRoot: string
+  maxDepth?: number
+}
+
+export interface CodeGraphBuildResponse {
+  graph: {
+    nodes: Array<{
+      filePath: string
+      imports: string[]
+      importedBy: string[]
+      moduleGroup?: string
+      depth: number
+    }>
+    edges: Array<{
+      from: string
+      to: string
+      type: 'import' | 'require' | 'use'
+    }>
+  }
+  rootPath: string
+  fileCount: number
+  edgeCount: number
+  layout: {
+    positions: Array<{
+      filePath: string
+      x: number
+      y: number
+      depth: number
+    }>
+    bounds: {
+      minX: number
+      minY: number
+      maxX: number
+      maxY: number
+    }
+  }
+}
+
+export interface CodeGraphExpandRequest {
+  existingGraph: CodeGraphBuildResponse['graph']
+  existingPositions: CodeGraphBuildResponse['layout']['positions']
+  expandPath: string
+  projectRoot: string
+  maxDepth?: number
+}
+
+export interface CodeGraphIndexStats {
+  root: string
+  fileCount: number
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing
