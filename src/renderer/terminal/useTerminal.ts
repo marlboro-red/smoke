@@ -93,6 +93,8 @@ export function useTerminal(
       } catch {
         // fit may fail if container has zero dimensions
       }
+      // Force full redraw of the buffer after reattach + fit
+      terminal.refresh(0, terminal.rows - 1)
     } else {
       // Create new terminal
       const terminal = new Terminal({

@@ -89,23 +89,33 @@ export function reattachTerminal(
   const entry = registry.get(sessionId)
   if (!entry) return null
 
+  // Always dispose existing WebGL addon before re-opening —
+  // terminal.open() creates new DOM/canvas elements, making
+  // the old WebGL context stale.
+  if (entry.webglAddon) {
+    try {
+      entry.webglAddon.dispose()
+    } catch {
+      // already disposed
+    }
+    entry.webglAddon = null
+  }
+
   // Re-open terminal into new container
   entry.terminal.open(container)
 
-  // Re-create WebGL addon if it was disposed
-  if (!entry.webglAddon) {
-    try {
-      const webglAddon = new WebglAddon()
-      webglAddon.onContextLoss(() => {
-        webglAddon.dispose()
-        const current = registry.get(sessionId)
-        if (current) current.webglAddon = null
-      })
-      entry.terminal.loadAddon(webglAddon)
-      entry.webglAddon = webglAddon
-    } catch {
-      // WebGL not available
-    }
+  // Re-create WebGL addon (requires canvas context from open())
+  try {
+    const webglAddon = new WebglAddon()
+    webglAddon.onContextLoss(() => {
+      webglAddon.dispose()
+      const current = registry.get(sessionId)
+      if (current) current.webglAddon = null
+    })
+    entry.terminal.loadAddon(webglAddon)
+    entry.webglAddon = webglAddon
+  } catch {
+    // WebGL not available — xterm uses canvas renderer
   }
 
   markVisible(sessionId)
