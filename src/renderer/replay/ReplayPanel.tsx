@@ -65,6 +65,18 @@ export default function ReplayPanel(): JSX.Element {
     replayEngine.play()
   }, [])
 
+  const handleExport = useCallback(async (e: React.MouseEvent, filename: string) => {
+    e.stopPropagation()
+    await window.smokeAPI.recording.exportRecording(filename)
+  }, [])
+
+  const handleImport = useCallback(async () => {
+    const result = await window.smokeAPI.recording.importRecording()
+    if (result) {
+      refreshList()
+    }
+  }, [refreshList])
+
   if (isReplaying) return <></>
 
   return (
@@ -79,13 +91,22 @@ export default function ReplayPanel(): JSX.Element {
 
       {expanded && (
         <div className="replay-panel-content">
-          <button
-            className="replay-panel-action"
-            onClick={handleReplayCurrent}
-            title="Replay events from the current session"
-          >
-            Replay current session
-          </button>
+          <div className="replay-panel-actions">
+            <button
+              className="replay-panel-action"
+              onClick={handleReplayCurrent}
+              title="Replay events from the current session"
+            >
+              Replay current session
+            </button>
+            <button
+              className="replay-panel-action replay-panel-action-secondary"
+              onClick={handleImport}
+              title="Import a .smoke-replay or JSON recording"
+            >
+              Import recording
+            </button>
+          </div>
 
           {loading && <div className="replay-panel-loading">Loading...</div>}
 
@@ -94,18 +115,26 @@ export default function ReplayPanel(): JSX.Element {
           )}
 
           {recordings.map((rec) => (
-            <button
-              key={rec.filename}
-              className="replay-panel-item"
-              onClick={() => handleLoadRecording(rec.filename)}
-            >
-              <span className="replay-panel-item-date">
-                {formatDate(rec.startedAt)}
-              </span>
-              <span className="replay-panel-item-meta">
-                {rec.eventCount} events &middot; {formatDuration(rec.durationMs)}
-              </span>
-            </button>
+            <div key={rec.filename} className="replay-panel-item-row">
+              <button
+                className="replay-panel-item"
+                onClick={() => handleLoadRecording(rec.filename)}
+              >
+                <span className="replay-panel-item-date">
+                  {formatDate(rec.startedAt)}
+                </span>
+                <span className="replay-panel-item-meta">
+                  {rec.eventCount} events &middot; {formatDuration(rec.durationMs)}
+                </span>
+              </button>
+              <button
+                className="replay-panel-export-btn"
+                onClick={(e) => handleExport(e, rec.filename)}
+                title="Export recording"
+              >
+                Export
+              </button>
+            </div>
           ))}
         </div>
       )}
