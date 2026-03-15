@@ -8,6 +8,7 @@ import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
+import { FilenameIndex } from '../index/FilenameIndex'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -47,6 +48,9 @@ import {
   AGENT_ASSIGN_GROUP,
   AGENT_SET_ROLE,
   AGENT_UPDATE_SCOPE,
+  PROJECT_INDEX_BUILD,
+  PROJECT_INDEX_LOOKUP,
+  PROJECT_INDEX_STATS,
   CANVAS_EXPORT_PNG,
   APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
@@ -90,6 +94,11 @@ import {
   AgentAssignGroupRequest,
   AgentSetRoleRequest,
   AgentUpdateScopeRequest,
+  ProjectIndexBuildRequest,
+  ProjectIndexBuildResponse,
+  ProjectIndexLookupRequest,
+  ProjectIndexLookupResponse,
+  ProjectIndexStatsResponse,
   CanvasExportPngRequest,
   CanvasExportPngResponse,
 } from './channels'
@@ -350,6 +359,21 @@ export function registerIpcHandlers(
 
   ipcMain.handle(FS_UNWATCH, (_event, request: FsUnwatchRequest): void => {
     fileWatcher.unwatch(request.path)
+  })
+
+  // Project filename index handlers
+  const filenameIndex = new FilenameIndex(getMainWindow)
+
+  ipcMain.handle(PROJECT_INDEX_BUILD, async (_event, request: ProjectIndexBuildRequest): Promise<ProjectIndexBuildResponse> => {
+    return filenameIndex.build(request.rootPath)
+  })
+
+  ipcMain.handle(PROJECT_INDEX_LOOKUP, (_event, request: ProjectIndexLookupRequest): ProjectIndexLookupResponse => {
+    return { paths: filenameIndex.lookup(request.basename) }
+  })
+
+  ipcMain.handle(PROJECT_INDEX_STATS, (): ProjectIndexStatsResponse => {
+    return filenameIndex.getStats()
   })
 
   // Terminal output buffer handlers (AI orchestrator)
