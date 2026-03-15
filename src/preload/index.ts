@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -118,6 +118,23 @@ const smokeAPI: SmokeAPI = {
 
   canvas: {
     exportPng: (rect) => ipcRenderer.invoke('canvas:export-png', rect),
+  },
+
+  project: {
+    buildIndex: (rootPath) =>
+      ipcRenderer.invoke('project:index-build', { rootPath }).then((r: { fileCount: number; basenameCount: number }) => r),
+    lookup: (basename) =>
+      ipcRenderer.invoke('project:index-lookup', { basename }).then((r: { paths: string[] }) => r.paths),
+    getStats: () => ipcRenderer.invoke('project:index-stats'),
+    onIndexUpdated: (callback: (event: ProjectIndexUpdatedEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: ProjectIndexUpdatedEvent): void => {
+        callback(data)
+      }
+      ipcRenderer.on('project:index-updated', listener)
+      return () => {
+        ipcRenderer.removeListener('project:index-updated', listener)
+      }
+    },
   },
 
   agent: {

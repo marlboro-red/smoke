@@ -212,6 +212,22 @@ export interface CanvasExportRect {
   height: number
 }
 
+export interface ProjectIndexBuildResult {
+  fileCount: number
+  basenameCount: number
+}
+
+export interface ProjectIndexStats {
+  fileCount: number
+  basenameCount: number
+  rootPath: string | null
+}
+
+export interface ProjectIndexUpdatedEvent {
+  fileCount: number
+  basenameCount: number
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -266,6 +282,12 @@ export interface SmokeAPI {
   }
   canvas: {
     exportPng: (rect: CanvasExportRect) => Promise<{ filePath: string | null }>
+  }
+  project: {
+    buildIndex: (rootPath: string) => Promise<ProjectIndexBuildResult>
+    lookup: (basename: string) => Promise<string[]>
+    getStats: () => Promise<ProjectIndexStats>
+    onIndexUpdated: (callback: (event: ProjectIndexUpdatedEvent) => void) => () => void
   }
   agent: {
     create: (name: string) => Promise<{ agentId: string; color: string }>

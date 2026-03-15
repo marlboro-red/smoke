@@ -61,6 +61,12 @@ export const AGENT_UPDATE_SCOPE = 'agent:update-scope' as const
 // Canvas export channels
 export const CANVAS_EXPORT_PNG = 'canvas:export-png' as const
 
+// Project index channels
+export const PROJECT_INDEX_BUILD = 'project:index-build' as const
+export const PROJECT_INDEX_LOOKUP = 'project:index-lookup' as const
+export const PROJECT_INDEX_STATS = 'project:index-stats' as const
+export const PROJECT_INDEX_UPDATED = 'project:index-updated' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -304,6 +310,35 @@ export interface RecordingImportResponse {
   startedAt: number
   eventCount: number
   durationMs: number
+}
+
+// Project index message types
+export interface ProjectIndexBuildRequest {
+  rootPath: string
+}
+
+export interface ProjectIndexBuildResponse {
+  fileCount: number
+  basenameCount: number
+}
+
+export interface ProjectIndexLookupRequest {
+  basename: string
+}
+
+export interface ProjectIndexLookupResponse {
+  paths: string[]
+}
+
+export interface ProjectIndexStatsResponse {
+  fileCount: number
+  basenameCount: number
+  rootPath: string | null
+}
+
+export interface ProjectIndexUpdatedEvent {
+  fileCount: number
+  basenameCount: number
 }
 
 // Canvas export message types
