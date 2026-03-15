@@ -3,6 +3,7 @@ import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { v4 as uuidv4 } from 'uuid'
 import { connectorStore } from './connectorStore'
+import { preferencesStore } from './preferencesStore'
 
 export type ElementType = 'terminal' | 'file' | 'note'
 
@@ -88,11 +89,17 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
 
   createFileSession: (filePath: string, content: string, language: string, position?: { x: number; y: number }): FileViewerSession => {
     const { nextZIndex } = get()
-    const fileName = filePath.split('/').pop() || filePath
+    const { launchCwd } = preferencesStore.getState()
+    let title: string
+    if (launchCwd && filePath.startsWith(launchCwd + '/')) {
+      title = filePath.slice(launchCwd.length + 1)
+    } else {
+      title = filePath.split('/').pop() || filePath
+    }
     const session: FileViewerSession = {
       id: uuidv4(),
       type: 'file',
-      title: fileName,
+      title,
       filePath,
       content,
       language,
