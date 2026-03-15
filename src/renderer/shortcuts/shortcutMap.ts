@@ -17,6 +17,7 @@ export type ShortcutAction =
   | 'zoomOut'
   | 'saveLayout'
   | 'openSettings'
+  | 'toggleAiPanel'
   | 'escape'
 
 export interface ShortcutDef {
@@ -58,6 +59,8 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
       return 'saveLayout'
     case ',':
       return 'openSettings'
+    case 'l':
+      return 'toggleAiPanel'
     default:
       break
   }

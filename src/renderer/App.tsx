@@ -1,20 +1,25 @@
 import { useEffect, useRef } from 'react'
 import Canvas from './canvas/Canvas'
 import Sidebar from './sidebar/Sidebar'
+import AiChatPanel from './ai/AiChatPanel'
 import { useLayoutAutoSave, useLayoutRestore } from './layout/useLayoutPersistence'
 import { preferencesStore, usePreference } from './stores/preferencesStore'
+import { useAiPanelOpen } from './stores/aiStore'
 import { gridStore } from './stores/gridStore'
 import { canvasStore } from './stores/canvasStore'
 import { useKeyboardShortcuts } from './shortcuts/useKeyboardShortcuts'
 import { useAiCanvasActions } from './ai/useAiCanvasActions'
+import { useAiStream } from './ai/useAiStream'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
   useKeyboardShortcuts()
   useAiCanvasActions()
+  useAiStream()
   const { restoreDefault } = useLayoutRestore()
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')
+  const aiPanelOpen = useAiPanelOpen()
 
   useEffect(() => {
     if (!restored.current) {
@@ -54,6 +59,7 @@ function App(): JSX.Element {
     <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
       <Sidebar />
       <Canvas />
+      {aiPanelOpen && <AiChatPanel />}
     </div>
   )
 }

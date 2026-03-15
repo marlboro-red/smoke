@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { resolveShortcut, getSortedSessionIds, type ShortcutAction } from './shortcutMap'
 import { sessionStore } from '../stores/sessionStore'
+import { aiStore } from '../stores/aiStore'
 import { createNewSession } from '../session/useSessionCreation'
 import { closeSession } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
@@ -77,6 +78,10 @@ function executeShortcut(action: ShortcutAction): void {
 
     case 'openSettings':
       // Settings panel not yet implemented — shortcut reserved
+      break
+
+    case 'toggleAiPanel':
+      aiStore.getState().togglePanel()
       break
 
     case 'escape':

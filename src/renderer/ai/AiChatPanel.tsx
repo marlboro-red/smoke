@@ -12,13 +12,16 @@ export default function AiChatPanel(): JSX.Element {
 
   const handleSend = useCallback((text: string) => {
     aiStore.getState().addUserMessage(text)
+    window.smokeAPI?.ai.send(text)
   }, [])
 
   const handleStop = useCallback(() => {
+    window.smokeAPI?.ai.abort()
     aiStore.getState().completeGeneration()
   }, [])
 
   const handleClear = useCallback(() => {
+    window.smokeAPI?.ai.clear()
     aiStore.getState().clearHistory()
   }, [])
 
