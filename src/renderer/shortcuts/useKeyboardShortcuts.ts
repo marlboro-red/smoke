@@ -266,9 +266,31 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+    case 'deleteSelected': {
+      const selected = state.selectedIds
+      if (selected.size > 0) {
+        for (const id of selected) {
+          closeSession(id)
+        }
+        sessionStore.getState().clearSelection()
+      }
+      break
+    }
+
+    case 'selectAll': {
+      // Only select all when no terminal is focused (avoid intercepting Cmd+A in terminal)
+      const active = document.activeElement
+      if (active && active.closest('.terminal-container')) break
+      const allIds = new Set(state.sessions.keys())
+      sessionStore.getState().setSelectedIds(allIds)
+      break
+    }
+
     case 'escape':
       if (terminalSearchStore.getState().activeSessionId) {
         terminalSearchStore.getState().close()
+      } else if (state.selectedIds.size > 0) {
+        sessionStore.getState().clearSelection()
       } else {
         sessionStore.getState().focusSession(null)
       }

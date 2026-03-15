@@ -25,6 +25,9 @@ export function useWindowDrag({
   const windowElRef = useRef<HTMLElement | null>(null)
 
   const livePosRef = useRef({ x: 0, y: 0 })
+  // Multi-select drag: track other selected elements' start positions and DOM refs
+  const peerStartsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
+  const peerElsRef = useRef<Map<string, HTMLElement>>(new Map())
 
   const onPointerMove = useCallback(
     (e: PointerEvent) => {
@@ -41,6 +44,15 @@ export function useWindowDrag({
       if (el) {
         el.style.left = `${newX}px`
         el.style.top = `${newY}px`
+      }
+
+      // Move peer selected elements
+      for (const [id, start] of peerStartsRef.current) {
+        const peerEl = peerElsRef.current.get(id)
+        if (peerEl) {
+          peerEl.style.left = `${start.x + dx}px`
+          peerEl.style.top = `${start.y + dy}px`
+        }
       }
 
       // Show snap preview at the target grid position
@@ -63,6 +75,10 @@ export function useWindowDrag({
       if (!isDraggingRef.current) return
       isDraggingRef.current = false
 
+      const z = zoom()
+      const dx = (e.clientX - startMouseRef.current.x) / z
+      const dy = (e.clientY - startMouseRef.current.y) / z
+
       const target = windowElRef.current
       if (target) {
         target.releasePointerCapture(e.pointerId)
@@ -79,10 +95,23 @@ export function useWindowDrag({
       const snapped = snapPosition(livePosRef.current, gridSize)
       sessionStore.getState().updateSession(sessionId, { position: snapped })
 
+      // Sync peer selected elements
+      for (const [id, start] of peerStartsRef.current) {
+        const peerSnapped = snapPosition({ x: start.x + dx, y: start.y + dy }, gridSize)
+        sessionStore.getState().updateSession(id, { position: peerSnapped })
+        const peerEl = peerElsRef.current.get(id)
+        if (peerEl) {
+          peerEl.classList.add('snapping')
+          setTimeout(() => peerEl.classList.remove('snapping'), 150)
+        }
+      }
+      peerStartsRef.current.clear()
+      peerElsRef.current.clear()
+
       document.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('pointerup', onPointerUp)
     },
-    [sessionId, gridSize, onPointerMove]
+    [sessionId, gridSize, zoom, onPointerMove]
   )
 
   const onDragStart = useCallback(
@@ -105,6 +134,26 @@ export function useWindowDrag({
       }
 
       sessionStore.getState().bringToFront(sessionId)
+
+      // If this element is part of a multi-selection, drag peers too
+      const { selectedIds, sessions } = sessionStore.getState()
+      if (selectedIds.has(sessionId) && selectedIds.size > 1) {
+        peerStartsRef.current.clear()
+        peerElsRef.current.clear()
+        const viewport = windowEl?.closest('.canvas-viewport')
+        for (const peerId of selectedIds) {
+          if (peerId === sessionId) continue
+          const peer = sessions.get(peerId)
+          if (peer) {
+            peerStartsRef.current.set(peerId, { ...peer.position })
+            // Find peer DOM element within the viewport
+            if (viewport) {
+              const peerEl = viewport.querySelector(`[data-session-id="${peerId}"]`) as HTMLElement | null
+              if (peerEl) peerElsRef.current.set(peerId, peerEl)
+            }
+          }
+        }
+      }
 
       document.addEventListener('pointermove', onPointerMove)
       document.addEventListener('pointerup', onPointerUp)

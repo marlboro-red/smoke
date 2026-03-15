@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useMemo } from 'react'
 import { useCanvasControls } from './useCanvasControls'
+import { useRubberBandSelect } from './useRubberBandSelect'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
 import type { Session, TerminalSession, FileViewerSession, NoteSession, WebviewSession, ImageSession, SnippetSession } from '../stores/sessionStore'
@@ -43,6 +44,8 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
   const storeZoom = useCanvasStore((s) => s.zoom)
   const gridSize = useGridStore((s) => s.gridSize)
   const showGrid = useGridStore((s) => s.showGrid)
+
+  useRubberBandSelect(rootRef, panRef, zoomRef)
 
   const { visibleIds, isThumbnailMode } = useViewportCulling(
     panRef,

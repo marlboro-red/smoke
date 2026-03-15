@@ -44,6 +44,8 @@ export type ShortcutAction =
   | 'navigatePaneDown'
   | 'closePane'
   | 'terminalSearch'
+  | 'deleteSelected'
+  | 'selectAll'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -101,6 +103,8 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   navigatePaneDown: 'Navigate Pane Down',
   closePane: 'Close Pane',
   terminalSearch: 'Find in Terminal',
+  deleteSelected: 'Delete Selected',
+  selectAll: 'Select All',
   escape: 'Unfocus Session',
 }
 
@@ -147,6 +151,8 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   navigatePaneDown: { key: 'ArrowDown', mod: true, shift: false, alt: true },
   closePane: { key: 'w', mod: true, shift: true, alt: false },
   terminalSearch: { key: 'f', mod: true, shift: false, alt: false },
+  deleteSelected: { key: 'Backspace', mod: true, shift: false, alt: false },
+  selectAll: { key: 'a', mod: true, shift: false, alt: false },
   escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
 
@@ -174,7 +180,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit'],
   },
   {
     title: 'Groups',
