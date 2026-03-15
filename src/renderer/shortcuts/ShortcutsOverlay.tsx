@@ -100,7 +100,7 @@ export default function ShortcutsOverlay(): JSX.Element | null {
         </div>
 
         <div className="shortcuts-footer">
-          <span className="shortcuts-hint">Press Esc or {MOD}/ to close</span>
+          <span className="shortcuts-hint">Press Esc or {isMac ? '\u2318' : 'Ctrl'}/ to close</span>
         </div>
       </div>
     </div>
