@@ -26,6 +26,89 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 
+.note-color-picker-wrapper {
+  position: relative;
+}
+
+.note-color-popover {
+  position: absolute;
+  top: 22px;
+  right: 0;
+  background: var(--bg-window);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  padding: var(--space-md);
+  z-index: 100;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.note-color-presets {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.note-color-preset {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--duration-fast), border-color var(--duration-fast);
+}
+
+.note-color-preset:hover {
+  transform: scale(1.15);
+}
+
+.note-color-preset.active {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.note-color-custom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.note-color-custom-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.note-color-input {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: transparent;
+}
+
+.note-color-input::-webkit-color-swatch-wrapper {
+  padding: 1px;
+}
+
+.note-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.note-color-hex {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
 .note-body {
   padding: var(--space-md) var(--space-lg);
   overflow: hidden;
