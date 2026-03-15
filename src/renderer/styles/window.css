@@ -2,7 +2,9 @@
 .terminal-window {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  background: var(--bg-window);
+  background: var(--bg-terminal);
+  backdrop-filter: var(--terminal-backdrop);
+  -webkit-backdrop-filter: var(--terminal-backdrop);
   box-sizing: border-box;
   overflow: hidden;
   box-shadow: var(--shadow-window);

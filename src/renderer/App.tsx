@@ -14,7 +14,7 @@ import { useEventRecording } from './recording/useEventRecording'
 import { useIsReplaying } from './replay/replayStore'
 import ReplayControls from './replay/ReplayControls'
 import SettingsModal from './config/SettingsModal'
-import { applyTheme } from './themes/applyTheme'
+import { applyTheme, applyTerminalOpacity } from './themes/applyTheme'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -54,6 +54,7 @@ function App(): JSX.Element {
         gridStore.getState().setGridSize(prefs.gridSize)
         canvasStore.getState().setGridSize(prefs.gridSize)
         applyTheme(prefs.theme || 'dark')
+        applyTerminalOpacity(prefs.terminalOpacity ?? 1)
       }
     })
     window.smokeAPI?.app.getLaunchCwd().then((cwd) => {

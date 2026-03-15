@@ -10,6 +10,7 @@ import {
   flushHiddenBuffer,
 } from './terminalRegistry'
 import { sessionStore } from '../stores/sessionStore'
+import { preferencesStore } from '../stores/preferencesStore'
 import { getCurrentTheme } from '../themes/applyTheme'
 
 const TERMINAL_OPTIONS = {
@@ -18,7 +19,6 @@ const TERMINAL_OPTIONS = {
   fontSize: 13,
   lineHeight: 1.2,
   scrollback: 10000,
-  allowTransparency: false,
 }
 
 /** Total horizontal + vertical padding inside the .xterm element (4px each side) */
@@ -98,9 +98,16 @@ export function useTerminal(
       flushHiddenBuffer(sessionId, terminal)
     } else {
       // Create new terminal
+      const opacity = preferencesStore.getState().preferences.terminalOpacity
+      const transparent = opacity < 1
+      const theme = getCurrentTheme()
       const terminal = new Terminal({
         ...TERMINAL_OPTIONS,
-        theme: getCurrentTheme().xtermTheme,
+        allowTransparency: transparent,
+        theme: {
+          ...theme.xtermTheme,
+          background: transparent ? 'transparent' : theme.xtermTheme.background,
+        },
         cols: cols ?? 80,
         rows: rows ?? 24,
       })
