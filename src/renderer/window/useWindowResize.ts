@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { sessionStore } from '../stores/sessionStore'
+import { snapPreviewStore } from '../stores/snapPreviewStore'
 import { snapSize, CHROME_HEIGHT } from './useSnapping'
 import { calculateTerminalSize } from '../terminal/useTerminal'
 import type { ResizeDirection } from './ResizeHandle'
@@ -58,6 +59,18 @@ export function useWindowResize({
           rows: sessionStore.getState().sessions.get(sessionId)?.size.rows ?? 24,
         },
       })
+
+      // Show snap preview at the target grid size
+      const session = sessionStore.getState().sessions.get(sessionId)
+      if (session) {
+        const snapped = snapSize({ width: newWidth, height: newHeight }, gridSize)
+        snapPreviewStore.getState().show({
+          x: session.position.x,
+          y: session.position.y,
+          width: snapped.width,
+          height: snapped.height,
+        })
+      }
     },
     [sessionId, zoom, gridSize]
   )
@@ -71,6 +84,9 @@ export function useWindowResize({
         target.classList.add('snapping')
         setTimeout(() => target.classList.remove('snapping'), 150)
       }
+
+      // Hide snap preview
+      snapPreviewStore.getState().hide()
 
       // Snap size to grid and recalculate terminal dimensions
       const session = sessionStore.getState().sessions.get(sessionId)

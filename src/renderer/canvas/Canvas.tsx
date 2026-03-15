@@ -18,6 +18,7 @@ import FileViewerThumbnail from '../fileviewer/FileViewerThumbnail'
 import NoteWindow from '../note/NoteWindow'
 import NoteThumbnail from '../note/NoteThumbnail'
 import GroupCollapsedCard from './GroupCollapsedCard'
+import SnapPreview from './SnapPreview'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -98,6 +99,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
     >
       <div className="canvas-viewport" ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
+        <SnapPreview />
         <ConnectorLayer />
         {groups.map((group) => (
           <GroupContainer key={group.id} group={group} />
