@@ -1,1 +1,0 @@
-{"session_id":"sess-20260315-003010","started_at":"2026-03-15T00:30:10Z","ended_at":"2026-03-15T01:11:05Z","total_completed":1,"total_failed":0,"agents":[{"task_id":"smoke-gp1","runtime":"CLAUDE","model":"claude-opus-4-6","elapsed_secs":234,"status":"Completed"}]}
