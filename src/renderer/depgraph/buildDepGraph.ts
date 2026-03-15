@@ -39,7 +39,7 @@ function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   const langMap: Record<string, string> = {
     ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
-    py: 'python', rs: 'rust', go: 'go',
+    py: 'python', rs: 'rust', go: 'go', cs: 'csharp',
     mjs: 'javascript', cjs: 'javascript',
   }
   return langMap[ext] || 'text'

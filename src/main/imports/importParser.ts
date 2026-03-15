@@ -3,7 +3,7 @@ import { openSync, readSync, closeSync } from 'fs'
 /** Maximum bytes to read from each file (imports are at the top) */
 const READ_LIMIT = 4096
 
-export type Language = 'js' | 'ts' | 'python' | 'go' | 'rust'
+export type Language = 'js' | 'ts' | 'python' | 'go' | 'rust' | 'csharp'
 
 export interface ParsedImport {
   specifier: string
@@ -25,6 +25,7 @@ const EXT_MAP: Record<string, Language> = {
   '.pyw': 'python',
   '.go': 'go',
   '.rs': 'rust',
+  '.cs': 'csharp',
 }
 
 export function detectLanguage(filePath: string): Language | null {
@@ -151,6 +152,25 @@ function extractRust(source: string): ParsedImport[] {
   return results
 }
 
+function extractCSharp(source: string): ParsedImport[] {
+  const results: ParsedImport[] = []
+  const seen = new Set<string>()
+
+  // using System; using static System.Math; using MyAlias = Some.Namespace;
+  const usingRe = /^using\s+(?:static\s+)?(?:\w+\s*=\s*)?([\w.]+)(?:<[^>]*>)?\s*;/gm
+  usingRe.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = usingRe.exec(source)) !== null) {
+    const specifier = match[1]
+    if (specifier && !seen.has(specifier)) {
+      seen.add(specifier)
+      results.push({ specifier, line: lineAt(source, match.index) })
+    }
+  }
+
+  return results
+}
+
 // --- Public API ---
 
 /**
@@ -167,6 +187,8 @@ export function parseImports(source: string, language: Language): ParsedImport[]
       return extractGo(source)
     case 'rust':
       return extractRust(source)
+    case 'csharp':
+      return extractCSharp(source)
   }
 }
 

@@ -32,6 +32,10 @@ describe('detectLanguage', () => {
     expect(detectLanguage('lib.rs')).toBe('rust')
   })
 
+  it('detects C#', () => {
+    expect(detectLanguage('Program.cs')).toBe('csharp')
+  })
+
   it('returns null for unknown extensions', () => {
     expect(detectLanguage('file.txt')).toBeNull()
     expect(detectLanguage('file.html')).toBeNull()
@@ -164,6 +168,44 @@ use crate::utils;
       expect(result[0].specifier).toBe('std::io::*')
     })
   })
+
+  describe('C#', () => {
+    it('parses using statements', () => {
+      const code = `
+using System;
+using System.Collections.Generic;
+using System.Linq;
+`
+      const result = parseImports(code, 'csharp')
+      expect(result.map(r => r.specifier)).toEqual([
+        'System',
+        'System.Collections.Generic',
+        'System.Linq',
+      ])
+    })
+
+    it('parses using static', () => {
+      const result = parseImports(`using static System.Math;`, 'csharp')
+      expect(result[0].specifier).toBe('System.Math')
+    })
+
+    it('parses using alias', () => {
+      const result = parseImports(`using MyList = System.Collections.Generic.List;`, 'csharp')
+      expect(result[0].specifier).toBe('System.Collections.Generic.List')
+    })
+
+    it('tracks line numbers', () => {
+      const code = `using System;\nusing System.IO;`
+      const result = parseImports(code, 'csharp')
+      expect(result.map(r => r.line)).toEqual([1, 2])
+    })
+
+    it('deduplicates', () => {
+      const code = `using System;\nusing System;`
+      const result = parseImports(code, 'csharp')
+      expect(result).toHaveLength(1)
+    })
+  })
 })
 
 describe('extractImportsFromFile', () => {
@@ -189,6 +231,13 @@ describe('extractImportsFromFile', () => {
     writeFileSync(file, `import os\nfrom sys import argv\n`)
     const result = extractImportsFromFile(file)
     expect(result.map(r => r.specifier)).toEqual(['os', 'sys'])
+  })
+
+  it('extracts imports from a .cs file', () => {
+    const file = join(tmpDir, 'test.cs')
+    writeFileSync(file, `using System;\nusing System.Linq;\n`)
+    const result = extractImportsFromFile(file)
+    expect(result.map(r => r.specifier)).toEqual(['System', 'System.Linq'])
   })
 
   it('returns empty for unsupported extensions', () => {
