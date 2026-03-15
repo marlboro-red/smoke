@@ -20,6 +20,7 @@ export type ShortcutAction =
   | 'toggleAiPanel'
   | 'toggleGroupCollapse'
   | 'toggleBroadcast'
+  | 'autoLayout'
   | 'escape'
 
 export interface ShortcutDef {
@@ -68,6 +69,9 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
       break
     case 'b':
       if (e.shiftKey) return 'toggleBroadcast'
+      break
+    case 'a':
+      if (e.shiftKey) return 'autoLayout'
       break
     default:
       break
