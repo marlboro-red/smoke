@@ -110,6 +110,7 @@ export default function NoteColorPicker({ color, onChange }: NoteColorPickerProp
         ref={btnRef}
         className="note-color-btn"
         style={{ background: colors.dot }}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={handleToggle}
         title="Change color"
       />
