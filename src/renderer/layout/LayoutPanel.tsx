@@ -61,11 +61,11 @@ export default function LayoutPanel(): JSX.Element {
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <button className="layout-save-btn" onClick={handleSave}>
+            <button className="layout-save-btn" onClick={handleSave} title="Save current layout">
               Save
             </button>
           </div>
-          <button className="layout-reset-btn" onClick={resetLayout}>
+          <button className="layout-reset-btn" onClick={resetLayout} title="Reset to default layout">
             Reset Layout
           </button>
           {layouts.length > 0 && (
@@ -81,6 +81,7 @@ export default function LayoutPanel(): JSX.Element {
                   <button
                     className="layout-delete-btn"
                     onClick={() => handleDelete(name)}
+                    title="Delete layout"
                   >
                     &times;
                   </button>

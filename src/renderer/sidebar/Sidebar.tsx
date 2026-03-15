@@ -182,16 +182,16 @@ export default function Sidebar(): JSX.Element {
         </div>
       </div>
       <div className="sidebar-actions">
-        <button className="sidebar-new-btn" onClick={handleNewSession}>
+        <button className="sidebar-new-btn" onClick={handleNewSession} title="New terminal session">
           + New
         </button>
-        <button className="sidebar-new-btn" onClick={handleNewNote}>
+        <button className="sidebar-new-btn" onClick={handleNewNote} title="New note">
           + Note
         </button>
-        <button className="sidebar-new-btn" onClick={handleNewWebview}>
+        <button className="sidebar-new-btn" onClick={handleNewWebview} title="New web browser">
           + Web
         </button>
-        <button className="sidebar-new-btn" onClick={handleNewSnippet}>
+        <button className="sidebar-new-btn" onClick={handleNewSnippet} title="New code snippet">
           + Snippet
         </button>
         <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout">

@@ -148,6 +148,7 @@ export default function StatusBar(): JSX.Element {
           <button
             className="status-bar-zoom-btn"
             onClick={() => setShowZoomMenu(!showZoomMenu)}
+            title="Zoom level — click to change"
           >
             {Math.round(zoom * 100)}%
           </button>
