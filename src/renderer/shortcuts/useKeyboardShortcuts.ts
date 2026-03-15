@@ -8,6 +8,7 @@ import { closeSession } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
 import { setZoomTo, zoomIn, zoomOut } from '../canvas/useCanvasControls'
 import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
+import { settingsModalStore } from '../config/settingsStore'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -78,7 +79,7 @@ function executeShortcut(action: ShortcutAction): void {
     }
 
     case 'openSettings':
-      // Settings panel not yet implemented — shortcut reserved
+      settingsModalStore.getState().toggle()
       break
 
     case 'toggleAiPanel':
