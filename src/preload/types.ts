@@ -138,6 +138,12 @@ export type AiStreamEvent =
   | AiStreamMessageComplete
   | AiStreamError
 
+export interface EventLogData {
+  version: number
+  startedAt: number
+  events: Array<{ timestamp: number; type: string; payload: unknown }>
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -164,6 +170,9 @@ export interface SmokeAPI {
   }
   app: {
     getLaunchCwd: () => Promise<string>
+  }
+  recording: {
+    flush: (log: EventLogData) => Promise<string>
   }
   ai: {
     send: (message: string, conversationId?: string) => Promise<{ conversationId: string }>

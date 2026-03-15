@@ -25,6 +25,7 @@ import {
   FS_WRITEFILE,
   TERMINAL_BUFFER_READ,
   TERMINAL_BUFFER_READ_LINES,
+  RECORDING_FLUSH,
   AI_SEND,
   AI_ABORT,
   AI_CLEAR,
@@ -47,6 +48,7 @@ import {
   FsWritefileResponse,
   TerminalBufferReadRequest,
   TerminalBufferReadLinesRequest,
+  RecordingFlushRequest,
   AiSendRequest,
   AiSendResponse,
   AiAbortRequest,
@@ -253,6 +255,17 @@ export function registerIpcHandlers(
 
   ipcMain.handle(TERMINAL_BUFFER_READ_LINES, (_event, request: TerminalBufferReadLinesRequest): string => {
     return terminalOutputBuffer.readLines(request.sessionId, request.lineCount)
+  })
+
+  // Recording handler — flush event log to disk
+  ipcMain.handle(RECORDING_FLUSH, async (_event, request: RecordingFlushRequest): Promise<string> => {
+    const { app } = await import('electron')
+    const recordingsDir = path.join(app.getPath('userData'), 'recordings')
+    await fs.mkdir(recordingsDir, { recursive: true })
+    const filename = `recording-${new Date(request.startedAt).toISOString().replace(/[:.]/g, '-')}.json`
+    const filePath = path.join(recordingsDir, filename)
+    await fs.writeFile(filePath, JSON.stringify(request, null, 2), 'utf-8')
+    return filePath
   })
 
   // App info handlers

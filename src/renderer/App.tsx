@@ -10,12 +10,14 @@ import { canvasStore } from './stores/canvasStore'
 import { useKeyboardShortcuts } from './shortcuts/useKeyboardShortcuts'
 import { useAiCanvasActions } from './ai/useAiCanvasActions'
 import { useAiStream } from './ai/useAiStream'
+import { useEventRecording } from './recording/useEventRecording'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
   useKeyboardShortcuts()
   useAiCanvasActions()
   useAiStream()
+  useEventRecording()
   const { restoreDefault } = useLayoutRestore()
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')

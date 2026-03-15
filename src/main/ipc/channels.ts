@@ -34,6 +34,9 @@ export const AI_STREAM = 'ai:stream' as const
 export const AI_CONFIG = 'ai:config' as const
 export const AI_CANVAS_ACTION = 'ai:canvas-action' as const
 
+// Recording channels
+export const RECORDING_FLUSH = 'recording:flush' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -168,6 +171,13 @@ export interface AiConfigGetResponse {
 export interface AiConfigSetRequest {
   key: string
   value: unknown
+}
+
+// Recording message types
+export interface RecordingFlushRequest {
+  version: number
+  startedAt: number
+  events: Array<{ timestamp: number; type: string; payload: unknown }>
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing
