@@ -12,6 +12,7 @@ import { settingsModalStore } from '../config/settingsStore'
 import { shortcutsOverlayStore } from './shortcutsOverlayStore'
 import { commandPaletteStore } from '../palette/commandPaletteStore'
 import { performAutoLayout } from '../layout/autoLayout'
+import { exportCanvasPng } from '../canvas/exportCanvas'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -119,6 +120,10 @@ function executeShortcut(action: ShortcutAction): void {
 
     case 'commandPalette':
       commandPaletteStore.getState().toggle()
+      break
+
+    case 'exportCanvasPng':
+      exportCanvasPng()
       break
 
     case 'escape':

@@ -189,6 +189,13 @@ export interface RecordingListEntry {
   durationMs: number
 }
 
+export interface CanvasExportRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -231,6 +238,9 @@ export interface SmokeAPI {
     setConfig: (key: string, value: unknown) => Promise<void>
     onStream: (callback: (event: AiStreamEvent) => void) => () => void
     onCanvasAction: (callback: (event: AiStreamCanvasAction) => void) => () => void
+  }
+  canvas: {
+    exportPng: (rect: CanvasExportRect) => Promise<{ filePath: string | null }>
   }
   agent: {
     create: (name: string) => Promise<{ agentId: string; color: string }>

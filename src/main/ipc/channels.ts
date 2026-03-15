@@ -49,6 +49,9 @@ export const AGENT_ASSIGN_GROUP = 'agent:assign-group' as const
 export const AGENT_SET_ROLE = 'agent:set-role' as const
 export const AGENT_UPDATE_SCOPE = 'agent:update-scope' as const
 
+// Canvas export channels
+export const CANVAS_EXPORT_PNG = 'canvas:export-png' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -259,6 +262,18 @@ export interface RecordingImportResponse {
   startedAt: number
   eventCount: number
   durationMs: number
+}
+
+// Canvas export message types
+export interface CanvasExportPngRequest {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface CanvasExportPngResponse {
+  filePath: string | null
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing
