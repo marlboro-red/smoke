@@ -6,6 +6,8 @@ interface WindowChromeProps {
   status: 'running' | 'exited'
   isBroadcasting?: boolean
   isDirty?: boolean
+  agentColor?: string | null
+  agentRole?: string | null
   onTitleChange: (title: string) => void
   onClose: () => void
   onDragStart: (e: React.PointerEvent) => void
@@ -17,6 +19,8 @@ export default function WindowChrome({
   status,
   isBroadcasting,
   isDirty,
+  agentColor,
+  agentRole,
   onTitleChange,
   onClose,
   onDragStart,
@@ -90,6 +94,15 @@ export default function WindowChrome({
           onDoubleClick={handleDoubleClick}
         >
           {isDirty ? `${title} \u2022 Modified` : title}
+        </span>
+      )}
+      {agentColor && (
+        <span
+          className="window-chrome-agent-badge"
+          style={{ background: agentColor }}
+          title={agentRole ? `Agent: ${agentRole}` : 'Agent assigned'}
+        >
+          {agentRole ? agentRole.slice(0, 3).toUpperCase() : 'AI'}
         </span>
       )}
       {isBroadcasting && (

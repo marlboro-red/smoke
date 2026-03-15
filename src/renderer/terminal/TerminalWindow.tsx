@@ -1,6 +1,7 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { sessionStore, useFocusedId, useHighlightedId, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
 import { snapshotStore } from '../stores/snapshotStore'
+import { findAgentBySessionGroupId } from '../stores/agentStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -32,6 +33,12 @@ export default function TerminalWindow({
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
   const isBroadcasting = !!(session.groupId && broadcastGroupId === session.groupId)
+
+  // Find the agent assigned to this session's group
+  const assignedAgent = useMemo(
+    () => findAgentBySessionGroupId(session.groupId),
+    [session.groupId]
+  )
 
   const getCharDims = useCallback(() => charDimsRef.current, [])
 
@@ -123,6 +130,8 @@ export default function TerminalWindow({
         title={session.title}
         status={session.status}
         isBroadcasting={isBroadcasting}
+        agentColor={assignedAgent?.color}
+        agentRole={assignedAgent?.role}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}

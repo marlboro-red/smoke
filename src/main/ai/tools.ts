@@ -7,6 +7,11 @@
  *
  * Each tool returns a string result to the AI.
  * Write tools push canvas_action events to the renderer.
+ *
+ * When an agent is assigned to a group, tools are scoped:
+ * - list_sessions only returns sessions in the agent's scope
+ * - read/write/close_terminal only operate on in-scope sessions
+ * - spawn_terminal auto-adds new sessions to the agent's scope and group
  */
 
 import * as fs from 'fs/promises'
@@ -19,6 +24,15 @@ import type { PtyManager } from '../pty/PtyManager'
 import { AI_CANVAS_ACTION, PTY_DATA_FROM_PTY, PTY_EXIT } from '../ipc/channels'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { AiStreamCanvasAction } from '../../preload/types'
+
+/** Context for scope-aware tool execution. */
+export interface AgentScopeProvider {
+  agentId: string
+  getAllowedSessionIds: () => Set<string> | null
+  getAssignedGroupId: () => string | null
+  addSessionToScope: (sessionId: string) => void
+  getColor: () => string
+}
 
 // ── Tool definitions ────────────────────────────────────────────────
 
@@ -443,7 +457,8 @@ const CHAR_HEIGHT = 18
 
 function createExecutors(
   ptyManager: PtyManager,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  scope?: AgentScopeProvider
 ): Map<string, ToolExecutor> {
   /** Send a canvas action event to the renderer. */
   function emitCanvasAction(
@@ -487,7 +502,11 @@ function createExecutors(
   // ── list_sessions ─────────────────────────────────────────────
 
   executors.set('list_sessions', async () => {
-    const sessions = terminalOutputBuffer.sessions()
+    let sessions = terminalOutputBuffer.sessions()
+    const allowed = scope?.getAllowedSessionIds()
+    if (allowed) {
+      sessions = sessions.filter((id) => allowed.has(id))
+    }
     if (sessions.length === 0) {
       return 'No active terminal sessions.'
     }
@@ -506,6 +525,11 @@ function createExecutors(
   executors.set('read_terminal_output', async (input) => {
     const sessionId = input.session_id as string
     const lines = (input.lines as number) ?? 100
+
+    const allowed = scope?.getAllowedSessionIds()
+    if (allowed && !allowed.has(sessionId)) {
+      throw new Error(`Session ${sessionId} is outside this agent's assigned scope.`)
+    }
 
     const output = terminalOutputBuffer.readLines(sessionId, lines)
     if (!output) {
@@ -562,12 +586,21 @@ function createExecutors(
     const width = cols * CHAR_WIDTH
     const height = rows * CHAR_HEIGHT
 
+    // Auto-add to agent's scope and group if assigned
+    if (scope) {
+      scope.addSessionToScope(sessionId)
+    }
+    const groupId = scope?.getAssignedGroupId() ?? null
+    const agentId = scope?.agentId ?? null
+
     // Notify the renderer to create the session on the canvas
     emitCanvasAction('session_created', {
       sessionId,
       cwd,
       position,
       size: { cols, rows, width, height },
+      agentId,
+      groupId,
     })
 
     return JSON.stringify({ sessionId, cwd, cols, rows, pid: pty.pid })
@@ -578,6 +611,11 @@ function createExecutors(
   executors.set('write_to_terminal', async (input) => {
     const sessionId = input.session_id as string
     const text = input.text as string
+
+    const allowed = scope?.getAllowedSessionIds()
+    if (allowed && !allowed.has(sessionId)) {
+      throw new Error(`Session ${sessionId} is outside this agent's assigned scope.`)
+    }
 
     const pty = ptyManager.get(sessionId)
     if (!pty) {
@@ -592,6 +630,11 @@ function createExecutors(
 
   executors.set('close_terminal', async (input) => {
     const sessionId = input.session_id as string
+
+    const allowed = scope?.getAllowedSessionIds()
+    if (allowed && !allowed.has(sessionId)) {
+      throw new Error(`Session ${sessionId} is outside this agent's assigned scope.`)
+    }
 
     const pty = ptyManager.get(sessionId)
     if (!pty) {
@@ -612,6 +655,11 @@ function createExecutors(
     const sessionId = input.session_id as string
     const position = input.position as { x: number; y: number }
 
+    const allowed = scope?.getAllowedSessionIds()
+    if (allowed && !allowed.has(sessionId)) {
+      throw new Error(`Session ${sessionId} is outside this agent's assigned scope.`)
+    }
+
     emitCanvasAction('session_moved', { sessionId, position })
 
     return `Moved session ${sessionId} to (${position.x}, ${position.y}).`
@@ -625,6 +673,11 @@ function createExecutors(
     const rows = input.rows as number
     const width = (input.width as number) ?? cols * CHAR_WIDTH
     const height = (input.height as number) ?? rows * CHAR_HEIGHT
+
+    const allowed = scope?.getAllowedSessionIds()
+    if (allowed && !allowed.has(sessionId)) {
+      throw new Error(`Session ${sessionId} is outside this agent's assigned scope.`)
+    }
 
     // Resize the underlying PTY
     const pty = ptyManager.get(sessionId)
@@ -844,13 +897,15 @@ function createExecutors(
 /**
  * Register all v1 AI tools with the AiService.
  * Called from ipcHandlers after AiService is instantiated.
+ * When scopeProvider is given, tools are scoped to the agent's assigned group.
  */
 export function registerTools(
   aiService: AiService,
   ptyManager: PtyManager,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  scopeProvider?: AgentScopeProvider
 ): void {
-  const executors = createExecutors(ptyManager, getMainWindow)
+  const executors = createExecutors(ptyManager, getMainWindow, scopeProvider)
 
   for (const tool of tools) {
     const executor = executors.get(tool.executor)

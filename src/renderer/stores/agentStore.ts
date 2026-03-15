@@ -6,9 +6,17 @@ import { v4 as uuidv4 } from 'uuid'
 
 // --- Per-agent state ---
 
+export const AGENT_COLORS = [
+  '#61afef', '#e06c75', '#98c379', '#e5c07b', '#c678dd', '#56b6c2',
+  '#d19a66', '#be5046', '#7ec699', '#a9b1d6',
+]
+
 export interface AgentState {
   id: string
   name: string
+  assignedGroupId: string | null
+  role: string | null
+  color: string
   messages: ChatMessage[]
   isGenerating: boolean
   error: string | null
@@ -21,9 +29,11 @@ interface AgentStoreState {
   activeAgentId: string | null
 
   // Agent lifecycle
-  addAgent: (id: string, name: string) => void
+  addAgent: (id: string, name: string, color?: string) => void
   removeAgent: (id: string) => void
   setActiveAgent: (id: string | null) => void
+  assignGroup: (agentId: string, groupId: string | null) => void
+  setRole: (agentId: string, role: string | null) => void
 
   // Per-agent message operations
   addUserMessage: (agentId: string, text: string) => ChatMessage | null
@@ -52,12 +62,16 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
   agents: new Map(),
   activeAgentId: null,
 
-  addAgent: (id, name) => {
+  addAgent: (id, name, color?) => {
     set((state) => {
+      const agentColor = color ?? AGENT_COLORS[state.agents.size % AGENT_COLORS.length]
       const agents = new Map(state.agents)
       agents.set(id, {
         id,
         name,
+        assignedGroupId: null,
+        role: null,
+        color: agentColor,
         messages: [],
         isGenerating: false,
         error: null,
@@ -84,6 +98,24 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
 
   setActiveAgent: (id) => {
     set({ activeAgentId: id })
+  },
+
+  assignGroup: (agentId, groupId) => {
+    set((state) => ({
+      agents: updateAgent(state.agents, agentId, (a) => ({
+        ...a,
+        assignedGroupId: groupId,
+      })),
+    }))
+  },
+
+  setRole: (agentId, role) => {
+    set((state) => ({
+      agents: updateAgent(state.agents, agentId, (a) => ({
+        ...a,
+        role,
+      })),
+    }))
   },
 
   addUserMessage: (agentId, text) => {
@@ -226,3 +258,19 @@ export const useActiveAgent = (): AgentState | null =>
 
 export const useAgentStore = <T>(selector: (state: AgentStoreState) => T): T =>
   useStore(agentStore, selector)
+
+/** Find which agent is assigned to a given group. */
+export function findAgentByGroupId(groupId: string): AgentState | undefined {
+  for (const agent of agentStore.getState().agents.values()) {
+    if (agent.assignedGroupId === groupId) {
+      return agent
+    }
+  }
+  return undefined
+}
+
+/** Find which agent is assigned to the group containing a specific session. */
+export function findAgentBySessionGroupId(sessionGroupId: string | undefined): AgentState | undefined {
+  if (!sessionGroupId) return undefined
+  return findAgentByGroupId(sessionGroupId)
+}

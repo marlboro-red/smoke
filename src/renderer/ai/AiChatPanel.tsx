@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   agentStore,
   useAgents,
   useActiveAgentId,
   useActiveAgent,
 } from '../stores/agentStore'
+import { useGroupList } from '../stores/groupStore'
+import { useAgentScopeSync } from './useAgentScopeSync'
 import MessageList from './MessageList'
 import ChatInput from './ChatInput'
 import StopButton from './StopButton'
@@ -14,15 +16,21 @@ export default function AiChatPanel(): JSX.Element {
   const agents = useAgents()
   const activeAgentId = useActiveAgentId()
   const activeAgent = useActiveAgent()
+  const groups = useGroupList()
   const initializedRef = useRef(false)
+  const [editingRole, setEditingRole] = useState(false)
+  const [roleInput, setRoleInput] = useState('')
+
+  // Sync group membership changes to main process
+  useAgentScopeSync()
 
   // Create a default agent on first mount if none exist
   useEffect(() => {
     if (initializedRef.current) return
     initializedRef.current = true
     if (agents.length === 0) {
-      window.smokeAPI?.agent.create('Agent 1').then(({ agentId }) => {
-        agentStore.getState().addAgent(agentId, 'Agent 1')
+      window.smokeAPI?.agent.create('Agent 1').then(({ agentId, color }) => {
+        agentStore.getState().addAgent(agentId, 'Agent 1', color)
       })
     }
   }, [agents.length])
@@ -50,8 +58,8 @@ export default function AiChatPanel(): JSX.Element {
 
   const handleAddAgent = useCallback(() => {
     const name = `Agent ${agents.length + 1}`
-    window.smokeAPI?.agent.create(name).then(({ agentId }) => {
-      agentStore.getState().addAgent(agentId, name)
+    window.smokeAPI?.agent.create(name).then(({ agentId, color }) => {
+      agentStore.getState().addAgent(agentId, name, color)
       agentStore.getState().setActiveAgent(agentId)
     })
   }, [agents.length])
@@ -67,6 +75,29 @@ export default function AiChatPanel(): JSX.Element {
   const handleSwitchAgent = useCallback((agentId: string) => {
     agentStore.getState().setActiveAgent(agentId)
   }, [])
+
+  const handleAssignGroup = useCallback(
+    (groupId: string) => {
+      if (!activeAgentId) return
+      const resolvedGroupId = groupId === '' ? null : groupId
+      const group = resolvedGroupId ? groups.find((g) => g.id === resolvedGroupId) : null
+      const memberIds = group?.memberIds ?? []
+      agentStore.getState().assignGroup(activeAgentId, resolvedGroupId)
+      window.smokeAPI?.agent.assignGroup(activeAgentId, resolvedGroupId, memberIds)
+    },
+    [activeAgentId, groups]
+  )
+
+  const handleSetRole = useCallback(
+    (role: string) => {
+      if (!activeAgentId) return
+      const resolvedRole = role.trim() || null
+      agentStore.getState().setRole(activeAgentId, resolvedRole)
+      window.smokeAPI?.agent.setRole(activeAgentId, resolvedRole)
+      setEditingRole(false)
+    },
+    [activeAgentId]
+  )
 
   const messages = activeAgent?.messages ?? []
   const isGenerating = activeAgent?.isGenerating ?? false
@@ -91,6 +122,10 @@ export default function AiChatPanel(): JSX.Element {
             className={`ai-agent-tab ${agent.id === activeAgentId ? 'active' : ''}`}
             onClick={() => handleSwitchAgent(agent.id)}
           >
+            <span
+              className="ai-agent-tab-color"
+              style={{ background: agent.color }}
+            />
             <span className="ai-agent-tab-name">{agent.name}</span>
             {agent.isGenerating && <span className="ai-agent-tab-indicator" />}
             {agents.length > 1 && (
@@ -110,6 +145,56 @@ export default function AiChatPanel(): JSX.Element {
           +
         </button>
       </div>
+
+      {/* Agent configuration bar: group + role */}
+      {activeAgent && (
+        <div className="ai-agent-config">
+          <div className="ai-agent-config-row">
+            <span
+              className="ai-agent-color-swatch"
+              style={{ background: activeAgent.color }}
+            />
+            <select
+              className="ai-agent-group-select"
+              value={activeAgent.assignedGroupId ?? ''}
+              onChange={(e) => handleAssignGroup(e.target.value)}
+            >
+              <option value="">No group (all access)</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ai-agent-config-row">
+            {editingRole ? (
+              <input
+                className="ai-agent-role-input"
+                value={roleInput}
+                onChange={(e) => setRoleInput(e.target.value)}
+                onBlur={() => handleSetRole(roleInput)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSetRole(roleInput)
+                  if (e.key === 'Escape') setEditingRole(false)
+                }}
+                placeholder="e.g. frontend, backend"
+                autoFocus
+              />
+            ) : (
+              <button
+                className="ai-agent-role-btn"
+                onClick={() => {
+                  setRoleInput(activeAgent.role ?? '')
+                  setEditingRole(true)
+                }}
+              >
+                {activeAgent.role ? `Role: ${activeAgent.role}` : 'Set role...'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <MessageList messages={messages} />
       {error && <div className="ai-error-banner">{error}</div>}
