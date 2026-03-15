@@ -9,6 +9,7 @@ import { panToSession } from '../sidebar/useSidebarSync'
 import { setZoomTo, zoomIn, zoomOut } from '../canvas/useCanvasControls'
 import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
 import { settingsModalStore } from '../config/settingsStore'
+import { performAutoLayout } from '../layout/autoLayout'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -105,6 +106,10 @@ function executeShortcut(action: ShortcutAction): void {
       }
       break
     }
+
+    case 'autoLayout':
+      performAutoLayout()
+      break
 
     case 'escape':
       sessionStore.getState().focusSession(null)

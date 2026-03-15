@@ -13,6 +13,7 @@ import { usePanToSession, panToSession as panToSessionStandalone } from './useSi
 import LayoutPanel from '../layout/LayoutPanel'
 import ReplayPanel from '../replay/ReplayPanel'
 import { settingsModalStore } from '../config/settingsStore'
+import { performAutoLayout } from '../layout/autoLayout'
 import FileTree from './FileTree'
 import '../styles/sidebar.css'
 import '../styles/settings-modal.css'
@@ -84,6 +85,10 @@ export default function Sidebar(): JSX.Element {
     }
   }, [])
 
+  const handleAutoLayout = useCallback(() => {
+    performAutoLayout()
+  }, [])
+
   const handleOpenSettings = useCallback(() => {
     settingsModalStore.getState().open()
   }, [])
@@ -97,6 +102,9 @@ export default function Sidebar(): JSX.Element {
         </button>
         <button className="sidebar-new-btn" onClick={handleNewSession}>
           + New
+        </button>
+        <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout (⌘⇧A)">
+          Layout
         </button>
         <button className="sidebar-settings-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
           &#9881;
