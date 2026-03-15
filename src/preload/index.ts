@@ -149,6 +149,13 @@ const smokeAPI: SmokeAPI = {
       ipcRenderer.invoke('agent:update-scope', { agentId, sessionIds }),
   },
 
+  relevance: {
+    score: (taskDescription, candidateFiles, projectRoot, seedFiles?, limit?) =>
+      ipcRenderer.invoke('relevance:score', {
+        taskDescription, candidateFiles, projectRoot, seedFiles, limit,
+      }),
+  },
+
   codegraph: {
     build: (filePath, projectRoot, maxDepth?) =>
       ipcRenderer.invoke('codegraph:build', { filePath, projectRoot, maxDepth }),

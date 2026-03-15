@@ -28,3 +28,10 @@ export {
   type LayoutResult,
   type LayoutOptions,
 } from './layoutEngine'
+export {
+  scoreRelevance,
+  extractKeywords,
+  type ScoredFile,
+  type RelevanceScoringRequest,
+  type RelevanceScoringResult,
+} from './RelevanceScorer'

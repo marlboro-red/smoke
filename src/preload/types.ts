@@ -287,6 +287,24 @@ export interface CodeGraphIndexStats {
   fileCount: number
 }
 
+// Relevance scoring types
+export interface RelevanceScoredFile {
+  filePath: string
+  score: number
+  signals: {
+    pathKeyword: number
+    contentKeyword: number
+    importProximity: number
+    fileTypeBoost: number
+    recency: number
+  }
+}
+
+export interface RelevanceScoringResult {
+  rankedFiles: RelevanceScoredFile[]
+  keywords: string[]
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -355,6 +373,15 @@ export interface SmokeAPI {
     assignGroup: (agentId: string, groupId: string | null, memberSessionIds?: string[]) => Promise<void>
     setRole: (agentId: string, role: string | null) => Promise<void>
     updateScope: (agentId: string, sessionIds: string[]) => Promise<void>
+  }
+  relevance: {
+    score: (
+      taskDescription: string,
+      candidateFiles: string[],
+      projectRoot: string,
+      seedFiles?: string[],
+      limit?: number
+    ) => Promise<RelevanceScoringResult>
   }
   codegraph: {
     build: (filePath: string, projectRoot: string, maxDepth?: number) => Promise<CodeGraphResult>

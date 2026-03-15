@@ -76,6 +76,9 @@ export const CODEGRAPH_EXPAND = 'codegraph:expand' as const
 export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
 export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
 
+// Relevance scoring channels
+export const RELEVANCE_SCORE = 'relevance:score' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -412,6 +415,32 @@ export interface CodeGraphExpandRequest {
 export interface CodeGraphIndexStats {
   root: string
   fileCount: number
+}
+
+// Relevance scoring message types
+export interface RelevanceScoringRequest {
+  taskDescription: string
+  candidateFiles: string[]
+  projectRoot: string
+  seedFiles?: string[]
+  limit?: number
+}
+
+export interface RelevanceScoredFile {
+  filePath: string
+  score: number
+  signals: {
+    pathKeyword: number
+    contentKeyword: number
+    importProximity: number
+    fileTypeBoost: number
+    recency: number
+  }
+}
+
+export interface RelevanceScoringResponse {
+  rankedFiles: RelevanceScoredFile[]
+  keywords: string[]
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

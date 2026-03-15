@@ -9,7 +9,7 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
-import { buildCodeGraph, expandCodeGraph, getIndexStats, invalidateIndex, computeLayout, computeIncrementalLayout } from '../codegraph'
+import { buildCodeGraph, expandCodeGraph, getIndexStats, invalidateIndex, computeLayout, computeIncrementalLayout, scoreRelevance } from '../codegraph'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -58,6 +58,7 @@ import {
   CODEGRAPH_EXPAND,
   CODEGRAPH_INDEX_STATS,
   CODEGRAPH_INVALIDATE,
+  RELEVANCE_SCORE,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
@@ -110,6 +111,8 @@ import {
   CodeGraphBuildResponse,
   CodeGraphExpandRequest,
   CodeGraphIndexStats,
+  RelevanceScoringRequest,
+  RelevanceScoringResponse,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -692,4 +695,12 @@ export function registerIpcHandlers(
   ipcMain.handle(CODEGRAPH_INVALIDATE, (): void => {
     invalidateIndex()
   })
+
+  // Relevance scoring handler
+  ipcMain.handle(
+    RELEVANCE_SCORE,
+    async (_event, request: RelevanceScoringRequest): Promise<RelevanceScoringResponse> => {
+      return scoreRelevance(request)
+    }
+  )
 }
