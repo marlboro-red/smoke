@@ -1,5 +1,6 @@
 import { Terminal } from '@xterm/xterm'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { activityStore } from '../stores/activityStore'
 
 interface TerminalEntry {
   terminal: Terminal
@@ -43,6 +44,7 @@ export function unregisterTerminal(sessionId: string): void {
     entry.terminal.dispose()
     registry.delete(sessionId)
   }
+  activityStore.getState().clearActive(sessionId)
   const timer = disposeTimers.get(sessionId)
   if (timer) {
     clearTimeout(timer)
@@ -71,6 +73,7 @@ export function markHidden(sessionId: string): void {
     const unsub = window.smokeAPI.pty.onData((event) => {
       if (event.id === sessionId) {
         buffer.push(event.data)
+        activityStore.getState().markActive(sessionId)
       }
     })
     hiddenUnsubs.set(sessionId, unsub)
@@ -98,6 +101,9 @@ export function markVisible(sessionId: string): void {
   const entry = registry.get(sessionId)
   if (!entry) return
   entry.hiddenAt = null
+
+  // Clear activity indicator — the user can now see this terminal
+  activityStore.getState().clearActive(sessionId)
 
   // Stop the hidden-buffer PTY listener (buffer data is kept for flushing)
   const unsub = hiddenUnsubs.get(sessionId)
