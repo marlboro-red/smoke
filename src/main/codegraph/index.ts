@@ -38,6 +38,14 @@ export {
 export { SearchIndex, type SearchResult, type SearchResponse, type SearchIndexStats } from './SearchIndex'
 export { StructureAnalyzer, type ModuleInfo, type ModuleType, type StructureMap } from './StructureAnalyzer'
 export {
+  parseTask,
+  parseTaskHeuristic,
+  type ParsedTask,
+  type TaskParseRequest,
+  type TaskIntent,
+  type FileCategory,
+} from './TaskParser'
+export {
   computeWorkspaceLayout,
   type WorkspaceFile,
   type WorkspaceLayoutOptions,

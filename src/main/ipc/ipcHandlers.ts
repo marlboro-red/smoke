@@ -9,7 +9,7 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
-import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout } from '../codegraph'
+import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask } from '../codegraph'
 import { SearchIndex } from '../codegraph/SearchIndex'
 import { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
 import {
@@ -70,6 +70,7 @@ import {
   CODEGRAPH_RESOLVE_IMPORT,
   CODEGRAPH_INDEX_STATS,
   CODEGRAPH_INVALIDATE,
+  TASK_PARSE,
   RELEVANCE_SCORE,
   CODEGRAPH_PLAN_WORKSPACE,
   PtySpawnRequest,
@@ -138,6 +139,8 @@ import {
   CodeGraphResolveImportResponse,
   CodeGraphIndexStats,
   TabStateData,
+  TaskParseRequest,
+  TaskParseResponse,
   RelevanceScoringRequest,
   RelevanceScoringResponse,
 } from './channels'
@@ -797,6 +800,14 @@ export function registerIpcHandlers(
   ipcMain.handle(CODEGRAPH_INVALIDATE, (): void => {
     invalidateIndex()
   })
+
+  // Task parsing handler
+  ipcMain.handle(
+    TASK_PARSE,
+    async (_event, request: TaskParseRequest): Promise<TaskParseResponse> => {
+      return parseTask(request)
+    }
+  )
 
   // Relevance scoring handler
   ipcMain.handle(

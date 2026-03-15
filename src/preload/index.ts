@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -152,6 +152,11 @@ const smokeAPI: SmokeAPI = {
       ipcRenderer.invoke('agent:set-role', { agentId, role }),
     updateScope: (agentId, sessionIds) =>
       ipcRenderer.invoke('agent:update-scope', { agentId, sessionIds }),
+  },
+
+  task: {
+    parse: (taskDescription, useAi?) =>
+      ipcRenderer.invoke('task:parse', { taskDescription, useAi }),
   },
 
   relevance: {
