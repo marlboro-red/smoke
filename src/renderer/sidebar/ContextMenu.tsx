@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { sessionStore } from '../stores/sessionStore'
 
 export interface ContextMenuState {
@@ -84,6 +85,30 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
         }}
       >
         Set Startup Command
+      </button>
+      <button
+        className="context-menu-item"
+        onClick={() => {
+          const session = sessionStore.getState().sessions.get(state.sessionId)
+          if (session) {
+            if (!session.isPinned) {
+              const pan = getCurrentPan()
+              const z = getCurrentZoom()
+              sessionStore.getState().togglePin(state.sessionId, {
+                x: session.position.x * z + pan.x,
+                y: session.position.y * z + pan.y,
+              })
+            } else {
+              sessionStore.getState().togglePin(state.sessionId)
+            }
+          }
+          onClose()
+        }}
+      >
+        {(() => {
+          const session = sessionStore.getState().sessions.get(state.sessionId)
+          return session?.isPinned ? 'Unpin from Viewport' : 'Pin to Viewport'
+        })()}
       </button>
       <button
         className="context-menu-item destructive"
