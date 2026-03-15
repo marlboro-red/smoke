@@ -61,6 +61,7 @@ export function useLayoutAutoSave(): void {
 export function useLayoutRestore(): {
   restoreDefault: () => Promise<void>
   loadLayout: (name: string) => Promise<void>
+  resetLayout: () => Promise<void>
 } {
   const restoreLayout = useCallback(async (layout: Layout) => {
     // Close all existing sessions
@@ -115,5 +116,24 @@ export function useLayoutRestore(): {
     }
   }, [restoreLayout])
 
-  return { restoreDefault, loadLayout }
+  const resetLayout = useCallback(async () => {
+    // Close all existing sessions
+    const { sessions } = sessionStore.getState()
+    for (const session of sessions.values()) {
+      if (session.type === 'terminal') {
+        window.smokeAPI?.pty.kill(session.id)
+      }
+      sessionStore.getState().removeSession(session.id)
+    }
+
+    // Reset viewport to origin
+    canvasStore.getState().setPan(0, 0)
+    canvasStore.getState().setZoom(1.0)
+    gridStore.getState().setGridSize(20)
+
+    // Clear saved default layout
+    await window.smokeAPI?.layout.delete('__default__')
+  }, [])
+
+  return { restoreDefault, loadLayout, resetLayout }
 }

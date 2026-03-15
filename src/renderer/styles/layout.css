@@ -66,6 +66,23 @@
   background: rgba(108, 122, 237, 0.3);
 }
 
+.layout-reset-btn {
+  width: 100%;
+  background: rgba(229, 115, 115, 0.1);
+  border: 1px solid rgba(229, 115, 115, 0.2);
+  border-radius: 4px;
+  color: rgba(229, 115, 115, 0.85);
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.15s;
+}
+
+.layout-reset-btn:hover {
+  background: rgba(229, 115, 115, 0.2);
+}
+
 .layout-list {
   display: flex;
   flex-direction: column;
