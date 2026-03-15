@@ -153,6 +153,12 @@
   white-space: nowrap;
 }
 
+.shortcut-unset {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* ── Footer ── */
 
 .shortcuts-footer {

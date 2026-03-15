@@ -6,6 +6,7 @@ import { canvasStore } from '../stores/canvasStore'
 import { settingsModalStore, useSettingsModalOpen } from './settingsStore'
 import { themes, THEME_IDS } from '../themes/themes'
 import { applyFontSettings } from '../themes/applyTheme'
+import ShortcutSettings from './ShortcutSettings'
 import '../styles/settings-modal.css'
 
 export default function SettingsModal(): JSX.Element | null {
@@ -315,6 +316,15 @@ export default function SettingsModal(): JSX.Element | null {
                 <option value="claude-haiku-4-20250506">Claude Haiku 4</option>
               </select>
             </div>
+          </section>
+
+          {/* ── Keyboard Shortcuts ── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Keyboard Shortcuts</h3>
+            <p className="settings-help" style={{ marginBottom: 8 }}>
+              Click a shortcut to rebind it. Press Escape to cancel.
+            </p>
+            <ShortcutSettings />
           </section>
         </div>
 

@@ -20,6 +20,12 @@ export interface SidebarSectionSizes {
   recordings?: number
 }
 
+export interface ShortcutBindingPref {
+  key: string
+  mod: boolean
+  shift: boolean
+}
+
 export interface Preferences {
   defaultShell: string
   autoLaunchClaude: boolean
@@ -36,6 +42,7 @@ export interface Preferences {
   fontFamily: string
   fontSize: number
   lineHeight: number
+  customShortcuts: Record<string, ShortcutBindingPref | null>
 }
 
 export const defaultPreferences: Preferences = {
@@ -54,6 +61,7 @@ export const defaultPreferences: Preferences = {
   fontFamily: '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace',
   fontSize: 13,
   lineHeight: 1.2,
+  customShortcuts: {},
 }
 
 export interface SmokeConfig {
