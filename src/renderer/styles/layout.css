@@ -118,7 +118,7 @@
 }
 
 .layout-name:hover {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .layout-delete-btn {

@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
+import { EditorState, type Extension } from '@codemirror/state'
 import { basicSetup } from 'codemirror'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { getLanguageExtension } from './codemirrorLanguages'
+import { usePreference } from '../stores/preferencesStore'
+import { getTheme } from '../themes/themes'
 
 interface FileEditorWidgetProps {
   content: string
@@ -23,6 +25,8 @@ export default function FileEditorWidget({
   onSaveRef.current = onSave
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const themePref = usePreference('theme')
+  const themeConfig = getTheme(themePref || 'dark')
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -43,12 +47,14 @@ export default function FileEditorWidget({
       }
     })
 
+    const cmThemeExtensions: Extension[] = themeConfig.isDark ? [oneDark] : []
+
     const state = EditorState.create({
       doc: content,
       extensions: [
         saveKeymap,
         basicSetup,
-        oneDark,
+        ...cmThemeExtensions,
         ...getLanguageExtension(language),
         changeListener,
         EditorView.theme({
@@ -77,7 +83,7 @@ export default function FileEditorWidget({
     return () => {
       view.destroy()
     }
-  }, [language]) // Only recreate on language change, not content
+  }, [language, themeConfig.id]) // Only recreate on language or theme change, not content
 
   return <div ref={containerRef} className="file-editor-container" />
 }

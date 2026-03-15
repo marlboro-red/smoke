@@ -9,6 +9,7 @@ import {
   reattachTerminal,
 } from './terminalRegistry'
 import { sessionStore } from '../stores/sessionStore'
+import { getCurrentTheme } from '../themes/applyTheme'
 
 const TERMINAL_OPTIONS = {
   cursorBlink: true,
@@ -17,10 +18,6 @@ const TERMINAL_OPTIONS = {
   lineHeight: 1.2,
   scrollback: 10000,
   allowTransparency: false,
-  theme: {
-    background: '#1a1a2e',
-    foreground: '#e0e0e0',
-  },
 }
 
 /** Total horizontal + vertical padding inside the .xterm element (4px each side) */
@@ -99,6 +96,7 @@ export function useTerminal(
       // Create new terminal
       const terminal = new Terminal({
         ...TERMINAL_OPTIONS,
+        theme: getCurrentTheme().xtermTheme,
         cols: cols ?? 80,
         rows: rows ?? 24,
       })

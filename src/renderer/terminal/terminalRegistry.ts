@@ -125,3 +125,7 @@ export function reattachTerminal(
 export function getRegistrySize(): number {
   return registry.size
 }
+
+export function getAllTerminals(): TerminalEntry[] {
+  return Array.from(registry.values())
+}
