@@ -7,6 +7,7 @@ interface WindowChromeProps {
   onTitleChange: (title: string) => void
   onClose: () => void
   onDragStart: (e: React.PointerEvent) => void
+  children?: React.ReactNode
 }
 
 export default function WindowChrome({
@@ -15,6 +16,7 @@ export default function WindowChrome({
   onTitleChange,
   onClose,
   onDragStart,
+  children,
 }: WindowChromeProps): JSX.Element {
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(title)
@@ -86,6 +88,7 @@ export default function WindowChrome({
           {title}
         </span>
       )}
+      {children}
       <button
         className="window-chrome-close"
         onPointerDown={(e) => e.stopPropagation()}
