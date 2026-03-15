@@ -93,12 +93,14 @@ export type CanvasActionType =
 export interface AiStreamTextDelta {
   type: 'text_delta'
   conversationId: string
+  agentId?: string
   delta: string
 }
 
 export interface AiStreamToolUse {
   type: 'tool_use'
   conversationId: string
+  agentId?: string
   toolUseId: string
   toolName: string
   input: Record<string, unknown>
@@ -107,6 +109,7 @@ export interface AiStreamToolUse {
 export interface AiStreamToolResult {
   type: 'tool_result'
   conversationId: string
+  agentId?: string
   toolUseId: string
   result: unknown
   isError?: boolean
@@ -115,6 +118,7 @@ export interface AiStreamToolResult {
 export interface AiStreamCanvasAction {
   type: 'canvas_action'
   conversationId: string
+  agentId?: string
   action: CanvasActionType
   payload: Record<string, unknown>
 }
@@ -122,12 +126,14 @@ export interface AiStreamCanvasAction {
 export interface AiStreamMessageComplete {
   type: 'message_complete'
   conversationId: string
+  agentId?: string
   stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence'
 }
 
 export interface AiStreamError {
   type: 'error'
   conversationId: string
+  agentId?: string
   error: string
   code?: string
 }
@@ -144,6 +150,11 @@ export interface EventLogData {
   version: number
   startedAt: number
   events: Array<{ timestamp: number; type: string; payload: unknown }>
+}
+
+export interface AgentInfo {
+  id: string
+  name: string
 }
 
 export interface SmokeAPI {
@@ -177,13 +188,18 @@ export interface SmokeAPI {
     flush: (log: EventLogData) => Promise<string>
   }
   ai: {
-    send: (message: string, conversationId?: string) => Promise<{ conversationId: string }>
-    abort: (conversationId?: string) => Promise<void>
-    clear: (conversationId?: string) => Promise<void>
+    send: (agentId: string, message: string, conversationId?: string) => Promise<{ conversationId: string }>
+    abort: (agentId: string, conversationId?: string) => Promise<void>
+    clear: (agentId: string, conversationId?: string) => Promise<void>
     getConfig: () => Promise<AiConfig>
     setConfig: (key: string, value: unknown) => Promise<void>
     onStream: (callback: (event: AiStreamEvent) => void) => () => void
     onCanvasAction: (callback: (event: AiStreamCanvasAction) => void) => () => void
+  }
+  agent: {
+    create: (name: string) => Promise<{ agentId: string }>
+    remove: (agentId: string) => Promise<void>
+    list: () => Promise<AgentInfo[]>
   }
 }
 

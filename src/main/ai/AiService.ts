@@ -47,8 +47,20 @@ export class AiService {
   private tools: Anthropic.Tool[] = []
   private toolExecutors = new Map<string, ToolExecutor>()
 
-  constructor(getMainWindow: () => BrowserWindow | null) {
+  /** Unique identifier for this agent instance. */
+  readonly agentId: string
+
+  /** Human-readable name for this agent. */
+  name: string
+
+  constructor(
+    getMainWindow: () => BrowserWindow | null,
+    agentId?: string,
+    name?: string
+  ) {
     this.getMainWindow = getMainWindow
+    this.agentId = agentId ?? uuid()
+    this.name = name ?? 'Agent'
   }
 
   /** Register a tool the AI can call. */
@@ -171,7 +183,7 @@ export class AiService {
     // Build a canvas state snapshot so the AI knows what's on screen
     const sessions = terminalOutputBuffer.sessions()
     const parts: string[] = [
-      'You are Smoke AI, an assistant embedded in the Smoke terminal manager.',
+      `You are "${this.name}", an AI agent (ID: ${this.agentId}) embedded in the Smoke terminal manager.`,
       'You can manage terminal sessions on an infinite canvas.',
       '',
       `Active terminal sessions: ${sessions.length}`,
@@ -313,11 +325,12 @@ export class AiService {
     }
   }
 
-  /** Send a stream event to the renderer. */
+  /** Send a stream event to the renderer, tagged with this agent's ID. */
   private emit(event: AiStreamEvent): void {
     const win = this.getMainWindow()
     if (win && !win.isDestroyed()) {
-      win.webContents.send(AI_STREAM, event)
+      const taggedEvent = { ...event, agentId: this.agentId }
+      win.webContents.send(AI_STREAM, taggedEvent)
     }
   }
 }

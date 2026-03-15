@@ -1,0 +1,132 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { agentStore } from '../agentStore'
+
+vi.mock('uuid', () => ({
+  v4: (() => {
+    let counter = 0
+    return () => `msg-${++counter}`
+  })(),
+}))
+
+describe('agentStore', () => {
+  beforeEach(() => {
+    // Reset the store
+    agentStore.setState({
+      agents: new Map(),
+      activeAgentId: null,
+    })
+  })
+
+  describe('addAgent / removeAgent', () => {
+    it('adds an agent and sets it as active if first', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      const state = agentStore.getState()
+      expect(state.agents.size).toBe(1)
+      expect(state.agents.get('a1')?.name).toBe('Agent 1')
+      expect(state.activeAgentId).toBe('a1')
+    })
+
+    it('does not change active agent when adding a second agent', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().addAgent('a2', 'Agent 2')
+      expect(agentStore.getState().activeAgentId).toBe('a1')
+    })
+
+    it('removes an agent and switches active if needed', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().addAgent('a2', 'Agent 2')
+      agentStore.getState().removeAgent('a1')
+      const state = agentStore.getState()
+      expect(state.agents.size).toBe(1)
+      expect(state.activeAgentId).toBe('a2')
+    })
+
+    it('sets activeAgentId to null when last agent is removed', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().removeAgent('a1')
+      expect(agentStore.getState().activeAgentId).toBeNull()
+    })
+  })
+
+  describe('setActiveAgent', () => {
+    it('switches active agent', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().addAgent('a2', 'Agent 2')
+      agentStore.getState().setActiveAgent('a2')
+      expect(agentStore.getState().activeAgentId).toBe('a2')
+    })
+  })
+
+  describe('per-agent messages', () => {
+    beforeEach(() => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().addAgent('a2', 'Agent 2')
+    })
+
+    it('adds user message to correct agent', () => {
+      agentStore.getState().addUserMessage('a1', 'hello from a1')
+      expect(agentStore.getState().agents.get('a1')!.messages).toHaveLength(1)
+      expect(agentStore.getState().agents.get('a2')!.messages).toHaveLength(0)
+    })
+
+    it('adds assistant message and sets isGenerating', () => {
+      const msg = agentStore.getState().addAssistantMessage('a1')
+      expect(msg).toBeTruthy()
+      expect(agentStore.getState().agents.get('a1')!.isGenerating).toBe(true)
+      expect(agentStore.getState().agents.get('a2')!.isGenerating).toBe(false)
+    })
+
+    it('appends text to correct message in correct agent', () => {
+      const msg = agentStore.getState().addAssistantMessage('a1')!
+      agentStore.getState().appendText('a1', msg.id, 'hello ')
+      agentStore.getState().appendText('a1', msg.id, 'world')
+      const messages = agentStore.getState().agents.get('a1')!.messages
+      expect(messages[0].content[0]).toEqual({ type: 'text', text: 'hello world' })
+    })
+
+    it('adds tool use to correct agent', () => {
+      const msg = agentStore.getState().addAssistantMessage('a1')!
+      agentStore.getState().addToolUse('a1', msg.id, {
+        id: 'tu1',
+        name: 'test_tool',
+        input: { key: 'val' },
+      })
+      const content = agentStore.getState().agents.get('a1')!.messages[0].content
+      expect(content[0]).toMatchObject({ type: 'tool_use', name: 'test_tool' })
+    })
+
+    it('adds tool result to correct agent', () => {
+      const msg = agentStore.getState().addAssistantMessage('a1')!
+      agentStore.getState().addToolResult('a1', msg.id, {
+        tool_use_id: 'tu1',
+        content: 'result text',
+      })
+      const content = agentStore.getState().agents.get('a1')!.messages[0].content
+      expect(content[0]).toMatchObject({ type: 'tool_result', content: 'result text' })
+    })
+
+    it('completes generation for specific agent', () => {
+      agentStore.getState().addAssistantMessage('a1')
+      agentStore.getState().addAssistantMessage('a2')
+      agentStore.getState().completeGeneration('a1')
+      expect(agentStore.getState().agents.get('a1')!.isGenerating).toBe(false)
+      expect(agentStore.getState().agents.get('a2')!.isGenerating).toBe(true)
+    })
+
+    it('sets error for specific agent', () => {
+      agentStore.getState().addAssistantMessage('a1')
+      agentStore.getState().setError('a1', 'something broke')
+      expect(agentStore.getState().agents.get('a1')!.error).toBe('something broke')
+      expect(agentStore.getState().agents.get('a1')!.isGenerating).toBe(false)
+      expect(agentStore.getState().agents.get('a2')!.error).toBeNull()
+    })
+
+    it('clears history for specific agent only', () => {
+      agentStore.getState().addUserMessage('a1', 'msg a1')
+      agentStore.getState().addUserMessage('a2', 'msg a2')
+      agentStore.getState().clearHistory('a1')
+      expect(agentStore.getState().agents.get('a1')!.messages).toHaveLength(0)
+      expect(agentStore.getState().agents.get('a2')!.messages).toHaveLength(1)
+    })
+  })
+})

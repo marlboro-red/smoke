@@ -59,14 +59,14 @@ const smokeAPI: SmokeAPI = {
   },
 
   ai: {
-    send: (message, conversationId?) =>
-      ipcRenderer.invoke('ai:send', { message, conversationId }),
+    send: (agentId, message, conversationId?) =>
+      ipcRenderer.invoke('ai:send', { agentId, message, conversationId }),
 
-    abort: (conversationId?) =>
-      ipcRenderer.invoke('ai:abort', { conversationId }),
+    abort: (agentId, conversationId?) =>
+      ipcRenderer.invoke('ai:abort', { agentId, conversationId }),
 
-    clear: (conversationId?) =>
-      ipcRenderer.invoke('ai:clear', { conversationId }),
+    clear: (agentId, conversationId?) =>
+      ipcRenderer.invoke('ai:clear', { agentId, conversationId }),
 
     getConfig: () => ipcRenderer.invoke('ai:config'),
 
@@ -92,6 +92,12 @@ const smokeAPI: SmokeAPI = {
         ipcRenderer.removeListener('ai:canvas-action', listener)
       }
     },
+  },
+
+  agent: {
+    create: (name) => ipcRenderer.invoke('agent:create', { name }),
+    remove: (agentId) => ipcRenderer.invoke('agent:remove', { agentId }),
+    list: () => ipcRenderer.invoke('agent:list'),
   }
 }
 
