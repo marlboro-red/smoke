@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { sessionStore } from '../stores/sessionStore'
+import { snapPreviewStore } from '../stores/snapPreviewStore'
 import { snapPosition } from './useSnapping'
 
 interface UseWindowDragOptions {
@@ -41,8 +42,20 @@ export function useWindowDrag({
         el.style.left = `${newX}px`
         el.style.top = `${newY}px`
       }
+
+      // Show snap preview at the target grid position
+      const session = sessionStore.getState().sessions.get(sessionId)
+      if (session) {
+        const snapped = snapPosition({ x: newX, y: newY }, gridSize)
+        snapPreviewStore.getState().show({
+          x: snapped.x,
+          y: snapped.y,
+          width: session.size.width,
+          height: session.size.height,
+        })
+      }
     },
-    [zoom]
+    [zoom, sessionId, gridSize]
   )
 
   const onPointerUp = useCallback(
@@ -58,6 +71,9 @@ export function useWindowDrag({
         target.classList.add('snapping')
         setTimeout(() => target.classList.remove('snapping'), 150)
       }
+
+      // Hide snap preview
+      snapPreviewStore.getState().hide()
 
       // Sync final position to store and snap to grid
       const snapped = snapPosition(livePosRef.current, gridSize)

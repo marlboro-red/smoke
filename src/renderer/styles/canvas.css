@@ -27,6 +27,16 @@
   will-change: transform;
 }
 
+/* Snap preview overlay */
+.snap-preview {
+  border: 2px dashed var(--accent-strong);
+  background: var(--accent-dim);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  z-index: 999999;
+  opacity: 0.6;
+}
+
 .session-window.highlighted {
   box-shadow: 0 0 16px 3px var(--accent-dim),
     0 0 0 1px var(--accent-strong);

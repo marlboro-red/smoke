@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { sessionStore } from '../stores/sessionStore'
+import { snapPreviewStore } from '../stores/snapPreviewStore'
 import { snapSize } from '../window/useSnapping'
 import type { ResizeDirection } from '../window/ResizeHandle'
 
@@ -54,6 +55,17 @@ export function useFileViewerResize({
           rows: session?.size.rows ?? 24,
         },
       })
+
+      // Show snap preview at the target grid size
+      if (session) {
+        const snapped = snapSize({ width: newWidth, height: newHeight }, gridSize)
+        snapPreviewStore.getState().show({
+          x: session.position.x,
+          y: session.position.y,
+          width: snapped.width,
+          height: snapped.height,
+        })
+      }
     },
     [sessionId, zoom, gridSize]
   )
@@ -67,6 +79,9 @@ export function useFileViewerResize({
         target.classList.add('snapping')
         setTimeout(() => target.classList.remove('snapping'), 150)
       }
+
+      // Hide snap preview
+      snapPreviewStore.getState().hide()
 
       // Snap size to grid (no terminal-specific cols/rows recalculation)
       const session = sessionStore.getState().sessions.get(sessionId)
