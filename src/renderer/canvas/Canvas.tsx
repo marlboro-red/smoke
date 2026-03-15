@@ -10,6 +10,7 @@ import { useGroupList } from '../stores/groupStore'
 import { createNewSession } from '../session/useSessionCreation'
 import Grid from './Grid'
 import ConnectorLayer from './ConnectorLayer'
+import GroupContainer from './GroupContainer'
 import TerminalWindow from '../terminal/TerminalWindow'
 import TerminalThumbnail from '../terminal/TerminalThumbnail'
 import FileViewerWindow from '../fileviewer/FileViewerWindow'
@@ -96,6 +97,9 @@ export default function Canvas(): JSX.Element {
       <div className="canvas-viewport" ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         <ConnectorLayer />
+        {groups.map((group) => (
+          <GroupContainer key={group.id} group={group} />
+        ))}
         {sessions.map((session) => {
           if (!visibleIds.has(session.id)) return null
           if (collapsedMemberIds.has(session.id)) return null

@@ -27,6 +27,46 @@ interface GroupStore {
 
 const DEFAULT_COLORS = ['#4A90D9', '#D94A4A', '#4AD97A', '#D9C74A', '#9B59B6', '#E67E22']
 
+// Visual color mappings for group containers
+const COLOR_TO_BG: Record<string, string> = {
+  '#4A90D9': 'rgba(74, 144, 217, 0.08)',
+  '#D94A4A': 'rgba(217, 74, 74, 0.08)',
+  '#4AD97A': 'rgba(74, 217, 122, 0.08)',
+  '#D9C74A': 'rgba(217, 199, 74, 0.08)',
+  '#9B59B6': 'rgba(155, 89, 182, 0.08)',
+  '#E67E22': 'rgba(230, 126, 34, 0.08)',
+}
+
+const COLOR_TO_BORDER: Record<string, string> = {
+  '#4A90D9': 'rgba(74, 144, 217, 0.30)',
+  '#D94A4A': 'rgba(217, 74, 74, 0.30)',
+  '#4AD97A': 'rgba(74, 217, 122, 0.30)',
+  '#D9C74A': 'rgba(217, 199, 74, 0.30)',
+  '#9B59B6': 'rgba(155, 89, 182, 0.30)',
+  '#E67E22': 'rgba(230, 126, 34, 0.30)',
+}
+
+const COLOR_TO_LABEL: Record<string, string> = {
+  '#4A90D9': 'rgba(74, 144, 217, 0.85)',
+  '#D94A4A': 'rgba(217, 74, 74, 0.85)',
+  '#4AD97A': 'rgba(74, 217, 122, 0.85)',
+  '#D9C74A': 'rgba(217, 199, 74, 0.85)',
+  '#9B59B6': 'rgba(155, 89, 182, 0.85)',
+  '#E67E22': 'rgba(230, 126, 34, 0.85)',
+}
+
+export function getGroupBgColor(group: Group): string {
+  return COLOR_TO_BG[group.color] ?? 'rgba(255, 255, 255, 0.05)'
+}
+
+export function getGroupBorderColor(group: Group): string {
+  return COLOR_TO_BORDER[group.color] ?? 'rgba(255, 255, 255, 0.15)'
+}
+
+export function getGroupLabelColor(group: Group): string {
+  return COLOR_TO_LABEL[group.color] ?? 'rgba(255, 255, 255, 0.7)'
+}
+
 export const groupStore = createStore<GroupStore>((set, get) => ({
   groups: new Map(),
 
@@ -148,6 +188,19 @@ export const groupStore = createStore<GroupStore>((set, get) => ({
     })
   },
 }))
+
+// Clean up group membership when sessions are removed
+sessionStore.subscribe((state, prevState) => {
+  if (state.sessions === prevState.sessions) return
+  const { groups } = groupStore.getState()
+  for (const [, group] of groups) {
+    for (const memberId of group.memberIds) {
+      if (!state.sessions.has(memberId)) {
+        groupStore.getState().removeMember(group.id, memberId)
+      }
+    }
+  }
+})
 
 export const useGroupList = (): Group[] =>
   useStore(groupStore, useShallow((state) => Array.from(state.groups.values())))
