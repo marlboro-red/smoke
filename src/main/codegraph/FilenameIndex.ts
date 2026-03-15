@@ -54,6 +54,11 @@ export class FilenameIndex {
     return this.projectRoot
   }
 
+  /** Iterate all indexed file paths. */
+  get paths(): ReadonlySet<string> {
+    return this.allPaths
+  }
+
   // -- Incremental updates --
 
   /** Add a file to the index (e.g., on file create/rename). */

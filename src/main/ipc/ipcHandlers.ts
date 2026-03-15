@@ -9,7 +9,7 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
-import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask } from '../codegraph'
+import { buildCodeGraph, expandCodeGraph, buildDependentsGraph, getDependents, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask } from '../codegraph'
 import { SearchIndex } from '../codegraph/SearchIndex'
 import { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
 import {
@@ -70,6 +70,8 @@ import {
   CODEGRAPH_RESOLVE_IMPORT,
   CODEGRAPH_INDEX_STATS,
   CODEGRAPH_INVALIDATE,
+  CODEGRAPH_GET_DEPENDENTS,
+  CODEGRAPH_BUILD_DEPENDENTS,
   TASK_PARSE,
   RELEVANCE_SCORE,
   CODEGRAPH_PLAN_WORKSPACE,
@@ -138,6 +140,9 @@ import {
   CodeGraphResolveImportRequest,
   CodeGraphResolveImportResponse,
   CodeGraphIndexStats,
+  CodeGraphGetDependentsRequest,
+  CodeGraphGetDependentsResponse,
+  CodeGraphBuildDependentsRequest,
   TabStateData,
   TaskParseRequest,
   TaskParseResponse,
@@ -800,6 +805,23 @@ export function registerIpcHandlers(
   ipcMain.handle(CODEGRAPH_INVALIDATE, (): void => {
     invalidateIndex()
   })
+
+  ipcMain.handle(
+    CODEGRAPH_GET_DEPENDENTS,
+    async (_event, request: CodeGraphGetDependentsRequest): Promise<CodeGraphGetDependentsResponse> => {
+      const dependents = await getDependents(request.filePath, request.projectRoot)
+      return { dependents }
+    }
+  )
+
+  ipcMain.handle(
+    CODEGRAPH_BUILD_DEPENDENTS,
+    async (_event, request: CodeGraphBuildDependentsRequest): Promise<CodeGraphBuildResponse> => {
+      const result = await buildDependentsGraph(request)
+      const layout = computeLayout(result.graph, result.rootPath)
+      return { ...result, layout }
+    }
+  )
 
   // Task parsing handler
   ipcMain.handle(

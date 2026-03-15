@@ -15,12 +15,15 @@ export {
 export {
   buildCodeGraph,
   expandCodeGraph,
+  buildDependentsGraph,
+  getDependents,
   ensureIndex,
   getIndexStats,
   invalidateIndex,
   type GraphBuildRequest,
   type GraphBuildResult,
 } from './graphBuilder'
+export { ReverseIndex } from './ReverseIndex'
 export {
   computeLayout,
   computeIncrementalLayout,

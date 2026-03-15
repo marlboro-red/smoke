@@ -14,7 +14,7 @@ import { useFileViewerResize } from './useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
 import { addToast } from '../stores/toastStore'
-import { buildDepGraph, expandDepGraph } from '../depgraph/buildDepGraph'
+import { buildDepGraph, expandDepGraph, buildDependentsGraph } from '../depgraph/buildDepGraph'
 import { isInActiveGraph, isNodeExpanded } from '../depgraph/GraphCache'
 import { createTerminalAtFileDir } from '../session/useSessionCreation'
 import { goToLineStore, useGoToLineSessionId } from './goToLineStore'
@@ -201,6 +201,10 @@ export default function FileViewerWindow({
     }
   }, [session])
 
+  const handleShowDependents = useCallback(() => {
+    buildDependentsGraph(session)
+  }, [session])
+
   const handleOpenTerminal = useCallback(() => {
     createTerminalAtFileDir(session)
   }, [session])
@@ -288,6 +292,14 @@ export default function FileViewerWindow({
           title={importsExpanded ? 'Imports already shown — click to expand deeper' : 'Show imports on canvas'}
         >
           {importsLoading ? 'Loading…' : 'Imports'}
+        </button>
+        <button
+          className="file-viewer-edit-toggle"
+          onClick={handleShowDependents}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Show files that import this file"
+        >
+          Rdeps
         </button>
         <button
           className={`file-viewer-edit-toggle ${editing ? 'active' : ''}`}

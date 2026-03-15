@@ -184,6 +184,11 @@ const smokeAPI: SmokeAPI = {
     planWorkspace: (files: WorkspaceFileInput[]) =>
       ipcRenderer.invoke('codegraph:plan-workspace', { files })
         .then((r: WorkspaceLayoutResult) => r),
+    getDependents: (filePath: string, projectRoot: string) =>
+      ipcRenderer.invoke('codegraph:get-dependents', { filePath, projectRoot })
+        .then((r: { dependents: string[] }) => r.dependents),
+    buildDependents: (filePath: string, projectRoot: string) =>
+      ipcRenderer.invoke('codegraph:build-dependents', { filePath, projectRoot }),
   },
 
   search: {
