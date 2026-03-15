@@ -198,6 +198,8 @@ export interface SmokeAPI {
     flush: (log: EventLogData) => Promise<string>
     list: () => Promise<RecordingListEntry[]>
     load: (filename: string) => Promise<EventLogData | null>
+    exportRecording: (filename: string) => Promise<{ filePath: string | null }>
+    importRecording: () => Promise<RecordingListEntry | null>
   }
   ai: {
     send: (agentId: string, message: string, conversationId?: string) => Promise<{ conversationId: string }>

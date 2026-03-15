@@ -207,6 +207,22 @@
   background: var(--accent-muted);
 }
 
+.replay-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.replay-panel-action-secondary {
+  background: var(--bg-elevated);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.replay-panel-action-secondary:hover {
+  background: var(--bg-hover);
+}
+
 .replay-panel-loading,
 .replay-panel-empty {
   padding: var(--space-sm) var(--space-md);
@@ -242,4 +258,40 @@
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
   font-family: var(--font-mono);
+}
+
+/* ─── Item Row with Export Button ─── */
+
+.replay-panel-item-row {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: stretch;
+}
+
+.replay-panel-item-row .replay-panel-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.replay-panel-export-btn {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.replay-panel-export-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-default);
 }

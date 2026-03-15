@@ -7,6 +7,9 @@ import * as os from 'os'
 const handlers: Record<string, (...args: any[]) => any> = {}
 const listeners: Record<string, (...args: any[]) => any> = {}
 
+let mockDialogSaveResult: any = { canceled: false, filePath: '/tmp/test-export.smoke-replay' }
+let mockDialogOpenResult: any = { canceled: false, filePaths: ['/tmp/test-import.smoke-replay'] }
+
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn((channel: string, handler: any) => {
@@ -17,6 +20,13 @@ vi.mock('electron', () => ({
     }),
   },
   BrowserWindow: vi.fn(),
+  app: {
+    getPath: vi.fn(() => os.tmpdir()),
+  },
+  dialog: {
+    showSaveDialog: vi.fn(() => Promise.resolve(mockDialogSaveResult)),
+    showOpenDialog: vi.fn(() => Promise.resolve(mockDialogOpenResult)),
+  },
 }))
 
 // Mock configStore
@@ -324,6 +334,178 @@ describe('registerIpcHandlers', () => {
       await expect(
         handlers['fs:readfile']({}, { path: path.join(tmpDir, 'nope.txt') })
       ).rejects.toThrow()
+    })
+  })
+
+  describe('Recording handlers', () => {
+    let recordingsDir: string
+
+    beforeEach(async () => {
+      recordingsDir = path.join(os.tmpdir(), 'recordings')
+      await fs.mkdir(recordingsDir, { recursive: true })
+    })
+
+    afterEach(async () => {
+      await fs.rm(recordingsDir, { recursive: true, force: true })
+    })
+
+    describe('RECORDING_FLUSH', () => {
+      it('saves an event log to disk and returns file path', async () => {
+        const log = {
+          version: 1,
+          startedAt: 1700000000000,
+          events: [
+            { timestamp: 0, type: 'viewport_changed', payload: { panX: 0, panY: 0, zoom: 1 } },
+          ],
+        }
+        const result = await handlers['recording:flush']({}, log)
+        expect(result).toContain('recording-')
+        expect(result).toContain('.json')
+
+        const content = await fs.readFile(result, 'utf-8')
+        const parsed = JSON.parse(content)
+        expect(parsed.version).toBe(1)
+        expect(parsed.events).toHaveLength(1)
+      })
+    })
+
+    describe('RECORDING_LIST', () => {
+      it('lists saved recordings sorted newest first', async () => {
+        const log1 = { version: 1, startedAt: 1700000000000, events: [{ timestamp: 0, type: 'viewport_changed', payload: {} }] }
+        const log2 = { version: 1, startedAt: 1700001000000, events: [{ timestamp: 0, type: 'viewport_changed', payload: {} }, { timestamp: 5000, type: 'viewport_changed', payload: {} }] }
+
+        await fs.writeFile(path.join(recordingsDir, 'recording-old.json'), JSON.stringify(log1))
+        await fs.writeFile(path.join(recordingsDir, 'recording-new.json'), JSON.stringify(log2))
+
+        const result = await handlers['recording:list']()
+        expect(result).toHaveLength(2)
+        expect(result[0].startedAt).toBeGreaterThan(result[1].startedAt)
+        expect(result[0].eventCount).toBe(2)
+        expect(result[0].durationMs).toBe(5000)
+      })
+
+      it('returns empty array when no recordings directory exists', async () => {
+        await fs.rm(recordingsDir, { recursive: true, force: true })
+        const result = await handlers['recording:list']()
+        expect(result).toEqual([])
+      })
+    })
+
+    describe('RECORDING_LOAD', () => {
+      it('loads a specific recording by filename', async () => {
+        const log = { version: 1, startedAt: 1700000000000, events: [{ timestamp: 0, type: 'viewport_changed', payload: {} }] }
+        await fs.writeFile(path.join(recordingsDir, 'test-rec.json'), JSON.stringify(log))
+
+        const result = await handlers['recording:load']({}, { filename: 'test-rec.json' })
+        expect(result).toEqual(log)
+      })
+
+      it('returns null for nonexistent recording', async () => {
+        const result = await handlers['recording:load']({}, { filename: 'nonexistent.json' })
+        expect(result).toBeNull()
+      })
+    })
+
+    describe('RECORDING_EXPORT', () => {
+      it('exports a recording as .smoke-replay file', async () => {
+        const log = {
+          version: 1,
+          startedAt: 1700000000000,
+          events: [
+            { timestamp: 0, type: 'viewport_changed', payload: { panX: 0, panY: 0, zoom: 1 } },
+            { timestamp: 1000, type: 'session_created', payload: { sessionId: 's1' } },
+          ],
+        }
+        await fs.writeFile(path.join(recordingsDir, 'source.json'), JSON.stringify(log))
+
+        const exportPath = path.join(os.tmpdir(), 'test-export.smoke-replay')
+        mockDialogSaveResult = { canceled: false, filePath: exportPath }
+
+        const result = await handlers['recording:export']({}, { filename: 'source.json' })
+        expect(result.filePath).toBe(exportPath)
+
+        const content = await fs.readFile(exportPath, 'utf-8')
+        const parsed = JSON.parse(content)
+        expect(parsed.format).toBe('smoke-replay')
+        expect(parsed.version).toBe(1)
+        expect(parsed.startedAt).toBe(1700000000000)
+        expect(parsed.eventCount).toBe(2)
+        expect(parsed.events).toHaveLength(2)
+        expect(parsed.exportedAt).toBeGreaterThan(0)
+
+        await fs.unlink(exportPath).catch(() => {})
+      })
+
+      it('returns null filePath when dialog is canceled', async () => {
+        const log = { version: 1, startedAt: 1700000000000, events: [] }
+        await fs.writeFile(path.join(recordingsDir, 'source2.json'), JSON.stringify(log))
+
+        mockDialogSaveResult = { canceled: true }
+
+        const result = await handlers['recording:export']({}, { filename: 'source2.json' })
+        expect(result.filePath).toBeNull()
+      })
+    })
+
+    describe('RECORDING_IMPORT', () => {
+      it('imports a .smoke-replay file into recordings', async () => {
+        const exportData = {
+          format: 'smoke-replay',
+          version: 1,
+          exportedAt: Date.now(),
+          startedAt: 1700000000000,
+          eventCount: 2,
+          events: [
+            { timestamp: 0, type: 'viewport_changed', payload: { panX: 0, panY: 0, zoom: 1 } },
+            { timestamp: 3000, type: 'session_created', payload: { sessionId: 's1' } },
+          ],
+        }
+
+        const importFile = path.join(os.tmpdir(), 'import-test.smoke-replay')
+        await fs.writeFile(importFile, JSON.stringify(exportData))
+        mockDialogOpenResult = { canceled: false, filePaths: [importFile] }
+
+        const result = await handlers['recording:import']({})
+        expect(result).not.toBeNull()
+        expect(result.startedAt).toBe(1700000000000)
+        expect(result.eventCount).toBe(2)
+        expect(result.durationMs).toBe(3000)
+        expect(result.filename).toContain('recording-imported-')
+
+        // Verify the file was written to recordings dir
+        const savedContent = await fs.readFile(path.join(recordingsDir, result.filename), 'utf-8')
+        const saved = JSON.parse(savedContent)
+        expect(saved.version).toBe(1)
+        expect(saved.events).toHaveLength(2)
+
+        await fs.unlink(importFile).catch(() => {})
+      })
+
+      it('imports a raw EventLog JSON file', async () => {
+        const rawLog = {
+          version: 1,
+          startedAt: 1700000000000,
+          events: [
+            { timestamp: 0, type: 'viewport_changed', payload: { panX: 0, panY: 0, zoom: 1 } },
+          ],
+        }
+
+        const importFile = path.join(os.tmpdir(), 'import-raw.json')
+        await fs.writeFile(importFile, JSON.stringify(rawLog))
+        mockDialogOpenResult = { canceled: false, filePaths: [importFile] }
+
+        const result = await handlers['recording:import']({})
+        expect(result).not.toBeNull()
+        expect(result.eventCount).toBe(1)
+
+        await fs.unlink(importFile).catch(() => {})
+      })
+
+      it('returns null when dialog is canceled', async () => {
+        mockDialogOpenResult = { canceled: true, filePaths: [] }
+        const result = await handlers['recording:import']({})
+        expect(result).toBeNull()
+      })
     })
   })
 })

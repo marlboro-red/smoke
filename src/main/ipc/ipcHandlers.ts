@@ -28,6 +28,8 @@ import {
   RECORDING_FLUSH,
   RECORDING_LIST,
   RECORDING_LOAD,
+  RECORDING_EXPORT,
+  RECORDING_IMPORT,
   AI_SEND,
   AI_ABORT,
   AI_CLEAR,
@@ -56,6 +58,9 @@ import {
   RecordingFlushRequest,
   RecordingListEntry,
   RecordingLoadRequest,
+  RecordingExportRequest,
+  RecordingExportResponse,
+  RecordingImportResponse,
   AiSendRequest,
   AiSendResponse,
   AiAbortRequest,
@@ -322,6 +327,90 @@ export function registerIpcHandlers(
       return JSON.parse(content) as RecordingFlushRequest
     } catch {
       return null
+    }
+  })
+
+  // Recording handler — export a recording as .smoke-replay file
+  ipcMain.handle(RECORDING_EXPORT, async (_event, request: RecordingExportRequest): Promise<RecordingExportResponse> => {
+    const { app, dialog } = await import('electron')
+    const recordingsDir = path.join(app.getPath('userData'), 'recordings')
+
+    // Read the source recording
+    const sourcePath = path.join(recordingsDir, request.filename)
+    const content = await fs.readFile(sourcePath, 'utf-8')
+    const log = JSON.parse(content) as RecordingFlushRequest
+
+    // Build the export payload with metadata
+    const exportData = {
+      format: 'smoke-replay',
+      version: log.version,
+      exportedAt: Date.now(),
+      startedAt: log.startedAt,
+      eventCount: log.events.length,
+      events: log.events,
+    }
+
+    const defaultName = request.filename.replace(/\.json$/, '.smoke-replay')
+    const result = await dialog.showSaveDialog(getMainWindow()!, {
+      title: 'Export Recording',
+      defaultPath: defaultName,
+      filters: [
+        { name: 'Smoke Replay', extensions: ['smoke-replay'] },
+        { name: 'JSON', extensions: ['json'] },
+      ],
+    })
+
+    if (result.canceled || !result.filePath) {
+      return { filePath: null }
+    }
+
+    await fs.writeFile(result.filePath, JSON.stringify(exportData, null, 2), 'utf-8')
+    return { filePath: result.filePath }
+  })
+
+  // Recording handler — import a .smoke-replay or JSON recording
+  ipcMain.handle(RECORDING_IMPORT, async (): Promise<RecordingImportResponse | null> => {
+    const { app, dialog } = await import('electron')
+    const recordingsDir = path.join(app.getPath('userData'), 'recordings')
+    await fs.mkdir(recordingsDir, { recursive: true })
+
+    const result = await dialog.showOpenDialog(getMainWindow()!, {
+      title: 'Import Recording',
+      filters: [
+        { name: 'Smoke Replay', extensions: ['smoke-replay', 'json'] },
+      ],
+      properties: ['openFile'],
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    const importPath = result.filePaths[0]
+    const content = await fs.readFile(importPath, 'utf-8')
+    const data = JSON.parse(content)
+
+    // Normalize: accept both smoke-replay format and raw EventLog format
+    const events: Array<{ timestamp: number; type: string; payload: unknown }> = data.events || []
+    const startedAt: number = data.startedAt || (events.length > 0 ? events[0].timestamp : Date.now())
+    const version: number = data.version || 1
+
+    // Generate a unique filename for the imported recording
+    const filename = `recording-imported-${new Date(startedAt).toISOString().replace(/[:.]/g, '-')}-${Date.now().toString(36)}.json`
+    const destPath = path.join(recordingsDir, filename)
+
+    const normalized: RecordingFlushRequest = { version, startedAt, events }
+    await fs.writeFile(destPath, JSON.stringify(normalized, null, 2), 'utf-8')
+
+    const durationMs = events.length > 0
+      ? events[events.length - 1].timestamp - events[0].timestamp
+      : 0
+
+    return {
+      filename,
+      startedAt,
+      eventCount: events.length,
+      durationMs,
     }
   })
 
