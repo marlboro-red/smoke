@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 import { useSessionList, useFocusedId, useHighlightedId, useBroadcastGroupId, findFileSessionByPath, sessionStore } from '../stores/sessionStore'
 import type { Session } from '../stores/sessionStore'
 import { useGroupList } from '../stores/groupStore'
@@ -15,8 +15,18 @@ import ReplayPanel from '../replay/ReplayPanel'
 import { settingsModalStore } from '../config/settingsStore'
 import { performAutoLayout } from '../layout/autoLayout'
 import FileTree from './FileTree'
+import { usePreference } from '../stores/preferencesStore'
+import { preferencesStore } from '../stores/preferencesStore'
+import { useSectionResize } from './useSectionResize'
+import type { SidebarSectionSizes } from '../../preload/types'
 import '../styles/sidebar.css'
 import '../styles/settings-modal.css'
+
+const DEFAULT_SECTION_SIZES: Required<SidebarSectionSizes> = {
+  fileTree: 200,
+  layouts: 120,
+  recordings: 120,
+}
 
 export default function Sidebar(): JSX.Element {
   const sessions = useSessionList()
@@ -27,6 +37,37 @@ export default function Sidebar(): JSX.Element {
   const panToSession = usePanToSession()
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const storedSizes = usePreference('sidebarSectionSizes')
+
+  const fileTreeRef = useRef<HTMLDivElement>(null)
+  const layoutsRef = useRef<HTMLDivElement>(null)
+  const recordingsRef = useRef<HTMLDivElement>(null)
+
+  const sectionRefs = useMemo(() => ({
+    fileTree: fileTreeRef,
+    layouts: layoutsRef,
+    recordings: recordingsRef,
+  }), [])
+
+  const handleSizesChange = useCallback(async (sizes: SidebarSectionSizes) => {
+    preferencesStore.getState().updatePreference('sidebarSectionSizes', sizes)
+    await window.smokeAPI?.config.set('sidebarSectionSizes', sizes)
+  }, [])
+
+  const { handleDividerMouseDown } = useSectionResize(sectionRefs, handleSizesChange)
+
+  // Apply stored sizes on mount and when they change
+  useEffect(() => {
+    const sizes = storedSizes || {}
+    for (const key of ['fileTree', 'layouts', 'recordings'] as const) {
+      const el = sectionRefs[key]?.current
+      if (el) {
+        const height = sizes[key] ?? DEFAULT_SECTION_SIZES[key]
+        el.style.height = `${height}px`
+        el.style.flex = 'none'
+      }
+    }
+  }, [storedSizes, sectionRefs])
 
   const handleContextMenu = useCallback((sessionId: string, x: number, y: number) => {
     setContextMenu({ sessionId, x, y })
@@ -160,9 +201,27 @@ export default function Sidebar(): JSX.Element {
           />
         ))}
       </div>
-      <FileTree onFileOpen={handleFileOpen} />
-      <LayoutPanel />
-      <ReplayPanel />
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'sessions', 'fileTree')}
+      />
+      <div ref={fileTreeRef} className="sidebar-section">
+        <FileTree onFileOpen={handleFileOpen} />
+      </div>
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'fileTree', 'layouts')}
+      />
+      <div ref={layoutsRef} className="sidebar-section">
+        <LayoutPanel />
+      </div>
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'layouts', 'recordings')}
+      />
+      <div ref={recordingsRef} className="sidebar-section">
+        <ReplayPanel />
+      </div>
       {contextMenu && (
         <ContextMenu
           state={contextMenu}

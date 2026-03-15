@@ -45,6 +45,12 @@ export interface Layout {
   gridSize: number
 }
 
+export interface SidebarSectionSizes {
+  fileTree?: number
+  layouts?: number
+  recordings?: number
+}
+
 export interface Preferences {
   defaultShell: string
   autoLaunchClaude: boolean
@@ -52,6 +58,7 @@ export interface Preferences {
   gridSize: number
   sidebarPosition: 'left' | 'right'
   sidebarWidth: number
+  sidebarSectionSizes: SidebarSectionSizes
   theme: string
   defaultCwd: string
   aiApiKey: string

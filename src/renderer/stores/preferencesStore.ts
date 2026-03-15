@@ -9,6 +9,7 @@ const defaultPreferences: Preferences = {
   gridSize: 20,
   sidebarPosition: 'left',
   sidebarWidth: 240,
+  sidebarSectionSizes: {},
   theme: 'dark',
   defaultCwd: '',
   aiApiKey: '',

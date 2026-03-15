@@ -55,6 +55,44 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-xs) 0;
+  min-height: 40px;
+}
+
+/* Resizable sidebar sections */
+
+.sidebar-section {
+  overflow-y: auto;
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.sidebar-section-divider {
+  height: 4px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-section-divider::after {
+  content: '';
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  top: 50%;
+  height: 2px;
+  border-radius: 1px;
+  background: transparent;
+  transition: background var(--duration-fast);
+}
+
+.sidebar-section-divider:hover::after {
+  background: var(--border-strong);
+}
+
+.sidebar-section-divider:active::after {
+  background: var(--accent);
 }
 
 .session-list-item {
@@ -280,7 +318,10 @@
 /* File Tree Panel */
 
 .ft-panel {
-  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .ft-panel-header {
@@ -289,6 +330,7 @@
   gap: var(--space-sm);
   padding: var(--space-md) 14px;
   cursor: pointer;
+  flex-shrink: 0;
   transition: background var(--duration-fast);
 }
 
@@ -316,7 +358,7 @@
 
 .ft-tree {
   overflow-y: auto;
-  max-height: 300px;
+  flex: 1;
   padding-bottom: var(--space-xs);
 }
 
