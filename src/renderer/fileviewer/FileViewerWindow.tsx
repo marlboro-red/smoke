@@ -60,8 +60,14 @@ export default function FileViewerWindow({
   )
 
   const handleClose = useCallback(() => {
+    if (session.isDirty) {
+      const action = window.confirm(
+        'This file has unsaved changes. Close without saving?'
+      )
+      if (!action) return
+    }
     closeSession(session.id)
-  }, [session.id])
+  }, [session.id, session.isDirty])
 
   const handleToggleEdit = useCallback(() => {
     setEditing((prev) => !prev)
@@ -70,15 +76,27 @@ export default function FileViewerWindow({
   const handleSave = useCallback(
     async (content: string) => {
       await window.smokeAPI.fs.writefile(session.filePath, content)
-      sessionStore.getState().updateSession(session.id, { content })
+      sessionStore.getState().updateSession(session.id, { content, isDirty: false })
     },
     [session.id, session.filePath]
+  )
+
+  const handleEditorChange = useCallback(
+    (content: string) => {
+      const isDirty = content !== session.content
+      const current = sessionStore.getState().sessions.get(session.id) as FileViewerSession | undefined
+      if (current && current.isDirty !== isDirty) {
+        sessionStore.getState().updateSession(session.id, { isDirty })
+      }
+    },
+    [session.id, session.content]
   )
 
   const classNames = [
     'terminal-window',
     'file-viewer-window',
     editing && 'file-viewer-editing',
+    session.isDirty && 'file-viewer-dirty',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
     extraClassName,
@@ -102,6 +120,7 @@ export default function FileViewerWindow({
       <WindowChrome
         title={session.title}
         status="running"
+        isDirty={session.isDirty}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
@@ -124,6 +143,7 @@ export default function FileViewerWindow({
             content={session.content}
             language={session.language}
             onSave={handleSave}
+            onChange={handleEditorChange}
           />
         ) : (
           <FileViewerWidget
