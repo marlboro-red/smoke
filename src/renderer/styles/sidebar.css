@@ -1,17 +1,24 @@
-/* Sidebar wrapper for collapse animation */
+/* Sidebar region: positioning context for the collapse button */
 
-.sidebar-wrapper {
+.sidebar-region {
   position: relative;
   display: flex;
   flex-shrink: 0;
+}
+
+/* Sidebar wrapper: handles collapse animation with overflow clipping */
+
+.sidebar-wrapper {
   width: 240px;
   transition: width 200ms ease-out;
   overflow: hidden;
 }
 
-.sidebar-wrapper.collapsed {
+.sidebar-region.collapsed .sidebar-wrapper {
   width: 0;
 }
+
+/* Collapse toggle button — always visible at sidebar edge */
 
 .sidebar-collapse-btn {
   position: absolute;
@@ -32,16 +39,12 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  opacity: 0;
+  opacity: 0.7;
   transition: opacity var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
 }
 
-.sidebar-wrapper:hover .sidebar-collapse-btn,
-.sidebar-wrapper.collapsed .sidebar-collapse-btn {
-  opacity: 1;
-}
-
 .sidebar-collapse-btn:hover {
+  opacity: 1;
   background: var(--bg-hover);
   color: var(--text-primary);
 }
@@ -51,7 +54,7 @@
 }
 
 /* Right-positioned sidebar: flip the collapse button to the left edge */
-.sidebar-wrapper.position-right .sidebar-collapse-btn {
+.sidebar-region.position-right .sidebar-collapse-btn {
   right: auto;
   left: -14px;
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);

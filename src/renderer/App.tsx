@@ -93,8 +93,10 @@ function App(): JSX.Element {
     <div className="app-shell">
       <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
         {!isReplaying && (
-          <div className={`sidebar-wrapper${sidebarCollapsed ? ' collapsed' : ''}${sidebarPosition === 'right' ? ' position-right' : ''}`}>
-            <Sidebar />
+          <div className={`sidebar-region${sidebarCollapsed ? ' collapsed' : ''}${sidebarPosition === 'right' ? ' position-right' : ''}`}>
+            <div className="sidebar-wrapper">
+              <Sidebar />
+            </div>
             <button
               className="sidebar-collapse-btn"
               onClick={() => {
