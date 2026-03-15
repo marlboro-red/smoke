@@ -32,9 +32,7 @@ export function nearestGridLines(
   value: number,
   gridSize: number = DEFAULT_GRID_SIZE
 ): { before: number; after: number } {
-  const snapped = snap(value, gridSize)
-  if (snapped <= value) {
-    return { before: snapped, after: snapped + gridSize }
-  }
-  return { before: snapped - gridSize, after: snapped }
+  const before = Math.floor(value / gridSize) * gridSize
+  const after = before + gridSize
+  return { before, after }
 }
