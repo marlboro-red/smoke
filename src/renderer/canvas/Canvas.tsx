@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useMemo } from 'react'
 import { useCanvasControls } from './useCanvasControls'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
@@ -6,6 +6,7 @@ import type { Session, TerminalSession, FileViewerSession, NoteSession } from '.
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
+import { useGroupList } from '../stores/groupStore'
 import { createNewSession } from '../session/useSessionCreation'
 import Grid from './Grid'
 import ConnectorLayer from './ConnectorLayer'
@@ -15,6 +16,7 @@ import FileViewerWindow from '../fileviewer/FileViewerWindow'
 import FileViewerThumbnail from '../fileviewer/FileViewerThumbnail'
 import NoteWindow from '../note/NoteWindow'
 import NoteThumbnail from '../note/NoteThumbnail'
+import GroupCollapsedCard from './GroupCollapsedCard'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -26,6 +28,7 @@ export default function Canvas(): JSX.Element {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const { rootRef, panRef, zoomRef } = useCanvasControls(viewportRef)
   const sessions = useSessionList()
+  const groups = useGroupList()
   const storeZoom = useCanvasStore((s) => s.zoom)
   const gridSize = useGridStore((s) => s.gridSize)
   const showGrid = useGridStore((s) => s.showGrid)
@@ -34,6 +37,24 @@ export default function Canvas(): JSX.Element {
     panRef,
     zoomRef,
     rootRef
+  )
+
+  // Build set of session IDs hidden by collapsed groups
+  const collapsedMemberIds = useMemo(() => {
+    const hidden = new Set<string>()
+    for (const group of groups) {
+      if (group.collapsed) {
+        for (const memberId of group.memberIds) {
+          hidden.add(memberId)
+        }
+      }
+    }
+    return hidden
+  }, [groups])
+
+  const collapsedGroups = useMemo(
+    () => groups.filter((g) => g.collapsed && g.memberIds.length > 0),
+    [groups]
   )
 
   const getZoom = useCallback(() => zoomRef.current, [zoomRef])
@@ -77,6 +98,7 @@ export default function Canvas(): JSX.Element {
         <ConnectorLayer />
         {sessions.map((session) => {
           if (!visibleIds.has(session.id)) return null
+          if (collapsedMemberIds.has(session.id)) return null
           switch (session.type) {
             case 'terminal':
               if (isThumbnailMode) {
@@ -118,6 +140,9 @@ export default function Canvas(): JSX.Element {
               return null
           }
         })}
+        {collapsedGroups.map((group) => (
+          <GroupCollapsedCard key={group.id} group={group} />
+        ))}
       </div>
     </div>
   )

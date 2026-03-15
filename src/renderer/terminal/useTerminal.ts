@@ -12,7 +12,7 @@ import { sessionStore } from '../stores/sessionStore'
 
 const TERMINAL_OPTIONS = {
   cursorBlink: true,
-  fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+  fontFamily: '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace',
   fontSize: 13,
   lineHeight: 1.2,
   scrollback: 10000,

@@ -1,0 +1,50 @@
+/* ─── Group Collapsed Card ─── */
+
+.group-collapsed-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 8px 14px;
+  background: var(--bg-window);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-window);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: border-color var(--duration-normal), box-shadow var(--duration-normal);
+}
+
+.group-collapsed-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-window-focus);
+}
+
+.group-collapsed-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.group-collapsed-name {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.group-collapsed-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.group-collapsed-expand {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-left: var(--space-xs);
+  transition: color var(--duration-fast);
+}
+
+.group-collapsed-card:hover .group-collapsed-expand {
+  color: var(--text-secondary);
+}

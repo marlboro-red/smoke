@@ -18,6 +18,7 @@ export type ShortcutAction =
   | 'saveLayout'
   | 'openSettings'
   | 'toggleAiPanel'
+  | 'toggleGroupCollapse'
   | 'escape'
 
 export interface ShortcutDef {
@@ -61,6 +62,9 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
       return 'openSettings'
     case 'l':
       return 'toggleAiPanel'
+    case 'g':
+      if (e.shiftKey) return 'toggleGroupCollapse'
+      break
     default:
       break
   }
