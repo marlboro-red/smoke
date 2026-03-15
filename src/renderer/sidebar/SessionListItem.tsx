@@ -8,6 +8,7 @@ interface SessionListItemProps {
   isHighlighted: boolean
   isInBroadcastGroup?: boolean
   onPanTo: (sessionId: string) => void
+  onContextMenu: (sessionId: string, x: number, y: number) => void
 }
 
 function shortenPath(path: string): string {
@@ -17,7 +18,7 @@ function shortenPath(path: string): string {
   return parts[0] + '/.../' + parts[parts.length - 1]
 }
 
-function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup, onPanTo }: SessionListItemProps): JSX.Element {
+function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup, onPanTo, onContextMenu }: SessionListItemProps): JSX.Element {
   const isExited = session.type === 'terminal' && session.status === 'exited'
 
   const handleMouseEnter = useCallback(() => {
@@ -32,6 +33,11 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
     onPanTo(session.id)
   }, [session.id, onPanTo])
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    onContextMenu(session.id, e.clientX, e.clientY)
+  }, [session.id, onContextMenu])
+
   let className = 'session-list-item'
   if (isFocused) className += ' focused'
   if (isHighlighted) className += ' highlighted'
@@ -44,6 +50,7 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
     >
       <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : isExited ? 'exited' : 'running'}`} />
       <div className="session-info">

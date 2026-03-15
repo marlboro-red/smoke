@@ -218,6 +218,44 @@
   box-shadow: 0 0 5px rgba(251, 191, 36, 0.35);
 }
 
+/* Context Menu */
+
+.sidebar-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 140px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  padding: var(--space-sm) var(--space-lg);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--duration-fast);
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu-item.destructive {
+  color: var(--color-error);
+}
+
+.context-menu-item.destructive:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* File Tree Panel */
 
 .ft-panel {
