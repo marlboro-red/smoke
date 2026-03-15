@@ -74,6 +74,17 @@ export const TAB_SAVE_STATE = 'tab:save-state' as const
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
+// Full-text search channels
+export const SEARCH_BUILD = 'search:build' as const
+export const SEARCH_QUERY = 'search:query' as const
+export const SEARCH_STATS = 'search:stats' as const
+export const SEARCH_INDEX_PROGRESS = 'search:index-progress' as const
+
+// Structure analyzer channels
+export const STRUCTURE_ANALYZE = 'structure:analyze' as const
+export const STRUCTURE_GET = 'structure:get' as const
+export const STRUCTURE_GET_MODULE = 'structure:get-module' as const
+
 // Code graph channels
 export const CODEGRAPH_BUILD = 'codegraph:build' as const
 export const CODEGRAPH_EXPAND = 'codegraph:expand' as const
@@ -444,12 +455,12 @@ export interface CodeGraphIndexStats {
   fileCount: number
 }
 
-<<<<<<< HEAD
 // Tab message types
 export interface TabStateData {
   tabs: Array<{ id: string; name: string }>
   activeTabId: string
-=======
+}
+
 // Relevance scoring message types
 export interface RelevanceScoringRequest {
   taskDescription: string
@@ -474,7 +485,71 @@ export interface RelevanceScoredFile {
 export interface RelevanceScoringResponse {
   rankedFiles: RelevanceScoredFile[]
   keywords: string[]
->>>>>>> smoke-phq.3
+}
+
+// Full-text search message types
+export interface SearchBuildRequest {
+  rootPath: string
+}
+
+export interface SearchBuildResponse {
+  fileCount: number
+  tokenCount: number
+}
+
+export interface SearchQueryRequest {
+  query: string
+  maxResults?: number
+}
+
+export interface SearchQueryResponse {
+  results: Array<{
+    filePath: string
+    lineNumber: number
+    lineContent: string
+    matchStart: number
+    matchEnd: number
+    score: number
+  }>
+  totalMatches: number
+  durationMs: number
+}
+
+export interface SearchStatsResponse {
+  fileCount: number
+  tokenCount: number
+  rootPath: string | null
+  indexing: boolean
+}
+
+export interface SearchIndexProgressEvent {
+  indexed: number
+  total: number
+}
+
+// Structure analyzer message types
+export interface StructureAnalyzeRequest {
+  rootPath: string
+}
+
+export interface StructureModuleInfo {
+  id: string
+  name: string
+  rootPath: string
+  entryPoint: string | null
+  type: string
+  children: string[]
+  keyFiles: string[]
+}
+
+export interface StructureAnalyzeResponse {
+  projectRoot: string
+  modules: Record<string, StructureModuleInfo>
+  topLevelDirs: Array<{ name: string; type: string; path: string }>
+}
+
+export interface StructureGetModuleRequest {
+  moduleId: string
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

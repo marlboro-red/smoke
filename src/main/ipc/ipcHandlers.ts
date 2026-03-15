@@ -9,11 +9,9 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
-<<<<<<< HEAD
-import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout } from '../codegraph'
-=======
-import { buildCodeGraph, expandCodeGraph, getIndexStats, invalidateIndex, computeLayout, computeIncrementalLayout, scoreRelevance } from '../codegraph'
->>>>>>> smoke-phq.3
+import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance } from '../codegraph'
+import { SearchIndex } from '../codegraph/SearchIndex'
+import { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -60,6 +58,12 @@ import {
   TAB_GET_STATE,
   TAB_SAVE_STATE,
   APP_GET_LAUNCH_CWD,
+  SEARCH_BUILD,
+  SEARCH_QUERY,
+  SEARCH_STATS,
+  STRUCTURE_ANALYZE,
+  STRUCTURE_GET,
+  STRUCTURE_GET_MODULE,
   CODEGRAPH_BUILD,
   CODEGRAPH_EXPAND,
   CODEGRAPH_GET_IMPORTS,
@@ -115,6 +119,15 @@ import {
   ProjectIndexStatsResponse,
   CanvasExportPngRequest,
   CanvasExportPngResponse,
+  SearchBuildRequest,
+  SearchBuildResponse,
+  SearchQueryRequest,
+  SearchQueryResponse,
+  SearchStatsResponse,
+  StructureAnalyzeRequest,
+  StructureAnalyzeResponse,
+  StructureGetModuleRequest,
+  StructureModuleInfo,
   CodeGraphBuildRequest,
   CodeGraphBuildResponse,
   CodeGraphExpandRequest,
@@ -123,12 +136,9 @@ import {
   CodeGraphResolveImportRequest,
   CodeGraphResolveImportResponse,
   CodeGraphIndexStats,
-<<<<<<< HEAD
   TabStateData,
-=======
   RelevanceScoringRequest,
   RelevanceScoringResponse,
->>>>>>> smoke-phq.3
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -402,6 +412,36 @@ export function registerIpcHandlers(
 
   ipcMain.handle(PROJECT_INDEX_STATS, (): ProjectIndexStatsResponse => {
     return filenameIndex.getStats()
+  })
+
+  // Full-text search index handlers
+  const searchIndex = new SearchIndex(getMainWindow)
+
+  ipcMain.handle(SEARCH_BUILD, async (_event, request: SearchBuildRequest): Promise<SearchBuildResponse> => {
+    return searchIndex.build(request.rootPath)
+  })
+
+  ipcMain.handle(SEARCH_QUERY, (_event, request: SearchQueryRequest): SearchQueryResponse => {
+    return searchIndex.search(request.query, request.maxResults)
+  })
+
+  ipcMain.handle(SEARCH_STATS, (): SearchStatsResponse => {
+    return searchIndex.getStats()
+  })
+
+  // Structure analyzer handlers
+  const structureAnalyzer = new StructureAnalyzer()
+
+  ipcMain.handle(STRUCTURE_ANALYZE, async (_event, request: StructureAnalyzeRequest): Promise<StructureAnalyzeResponse> => {
+    return structureAnalyzer.analyze(request.rootPath)
+  })
+
+  ipcMain.handle(STRUCTURE_GET, (): StructureAnalyzeResponse | null => {
+    return structureAnalyzer.getCached()
+  })
+
+  ipcMain.handle(STRUCTURE_GET_MODULE, (_event, request: StructureGetModuleRequest): StructureModuleInfo | null => {
+    return structureAnalyzer.getModule(request.moduleId)
   })
 
   // Terminal output buffer handlers (AI orchestrator)

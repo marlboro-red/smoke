@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -176,7 +176,32 @@ const smokeAPI: SmokeAPI = {
         .then((r: { resolvedPath: string | null }) => r.resolvedPath),
     indexStats: () => ipcRenderer.invoke('codegraph:index-stats'),
     invalidateIndex: () => ipcRenderer.invoke('codegraph:invalidate'),
-  }
+  },
+
+  search: {
+    build: (rootPath) =>
+      ipcRenderer.invoke('search:build', { rootPath }),
+    query: (query, maxResults?) =>
+      ipcRenderer.invoke('search:query', { query, maxResults }),
+    getStats: () => ipcRenderer.invoke('search:stats'),
+    onProgress: (callback: (event: SearchIndexProgressEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: SearchIndexProgressEvent): void => {
+        callback(data)
+      }
+      ipcRenderer.on('search:index-progress', listener)
+      return () => {
+        ipcRenderer.removeListener('search:index-progress', listener)
+      }
+    },
+  },
+
+  structure: {
+    analyze: (rootPath) =>
+      ipcRenderer.invoke('structure:analyze', { rootPath }),
+    get: () => ipcRenderer.invoke('structure:get'),
+    getModule: (moduleId) =>
+      ipcRenderer.invoke('structure:get-module', { moduleId }),
+  },
 }
 
 contextBridge.exposeInMainWorld('smokeAPI', smokeAPI)

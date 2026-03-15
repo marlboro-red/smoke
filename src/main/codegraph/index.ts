@@ -35,3 +35,5 @@ export {
   type RelevanceScoringRequest,
   type RelevanceScoringResult,
 } from './RelevanceScorer'
+export { SearchIndex, type SearchResult, type SearchResponse, type SearchIndexStats } from './SearchIndex'
+export { StructureAnalyzer, type ModuleInfo, type ModuleType, type StructureMap } from './StructureAnalyzer'

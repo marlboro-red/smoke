@@ -250,6 +250,68 @@ export interface ProjectIndexUpdatedEvent {
   basenameCount: number
 }
 
+// Full-text search types
+export interface SearchResult {
+  filePath: string
+  lineNumber: number
+  lineContent: string
+  matchStart: number
+  matchEnd: number
+  score: number
+}
+
+export interface SearchResponse {
+  results: SearchResult[]
+  totalMatches: number
+  durationMs: number
+}
+
+export interface SearchBuildResult {
+  fileCount: number
+  tokenCount: number
+}
+
+export interface SearchStats {
+  fileCount: number
+  tokenCount: number
+  rootPath: string | null
+  indexing: boolean
+}
+
+export interface SearchIndexProgressEvent {
+  indexed: number
+  total: number
+}
+
+// Structure analyzer types
+export type ModuleType =
+  | 'workspace-root'
+  | 'package'
+  | 'go-module'
+  | 'rust-crate'
+  | 'python-package'
+  | 'service'
+  | 'library'
+  | 'config'
+  | 'tests'
+  | 'source'
+
+export interface StructureModuleInfo {
+  id: string
+  name: string
+  rootPath: string
+  entryPoint: string | null
+  type: ModuleType | string
+  children: string[]
+  keyFiles: string[]
+}
+
+export interface StructureMap {
+  projectRoot: string
+  modules: Record<string, StructureModuleInfo>
+  topLevelDirs: Array<{ name: string; type: string; path: string }>
+}
+
 // Code graph types
 export interface CodeGraphNode {
   filePath: string
@@ -416,6 +478,17 @@ export interface SmokeAPI {
   tab: {
     getState: () => Promise<TabState>
     saveState: (state: TabState) => Promise<void>
+  }
+  search: {
+    build: (rootPath: string) => Promise<SearchBuildResult>
+    query: (query: string, maxResults?: number) => Promise<SearchResponse>
+    getStats: () => Promise<SearchStats>
+    onProgress: (callback: (event: SearchIndexProgressEvent) => void) => () => void
+  }
+  structure: {
+    analyze: (rootPath: string) => Promise<StructureMap>
+    get: () => Promise<StructureMap | null>
+    getModule: (moduleId: string) => Promise<StructureModuleInfo | null>
   }
 }
 
