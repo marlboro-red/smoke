@@ -8,6 +8,7 @@
 
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 
 export interface IndexingState {
   // Search index progress
@@ -89,11 +90,11 @@ export function useSearchIndexing(): boolean {
 }
 
 export function useSearchProgress(): { indexed: number; total: number; startedAt: number | null } {
-  return useStore(indexingStore, (s) => ({
+  return useStore(indexingStore, useShallow((s) => ({
     indexed: s.searchIndexed,
     total: s.searchTotal,
     startedAt: s.searchStartedAt,
-  }))
+  })))
 }
 
 export function useStructureAnalyzing(): boolean {
