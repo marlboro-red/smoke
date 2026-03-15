@@ -3,7 +3,7 @@ import { resolveShortcut, getSortedSessionIds, type ShortcutAction } from './sho
 import { sessionStore } from '../stores/sessionStore'
 import { aiStore } from '../stores/aiStore'
 import { findGroupByElementId, groupStore } from '../stores/groupStore'
-import { createNewSession } from '../session/useSessionCreation'
+import { createNewSession, createTerminalAtFileDir } from '../session/useSessionCreation'
 import { closeSession } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
 import { setZoomTo, zoomIn, zoomOut, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
@@ -153,6 +153,16 @@ function executeShortcut(action: ShortcutAction): void {
         const session = state.sessions.get(state.focusedId)
         if (session?.type === 'file') {
           buildDepGraph(session as FileViewerSession)
+        }
+      }
+      break
+    }
+
+    case 'openTerminalHere': {
+      if (state.focusedId) {
+        const focused = state.sessions.get(state.focusedId)
+        if (focused && focused.type === 'file') {
+          createTerminalAtFileDir(focused)
         }
       }
       break
