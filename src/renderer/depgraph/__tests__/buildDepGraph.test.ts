@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { sessionStore, findFileSessionByPath } from '../../stores/sessionStore'
 import { connectorStore } from '../../stores/connectorStore'
+import { regionStore } from '../../stores/regionStore'
 import { preferencesStore } from '../../stores/preferencesStore'
 import {
   clearActiveGraph,
@@ -34,11 +35,11 @@ Object.defineProperty(globalThis, 'window', {
 })
 
 // Import after mocks are set up
-const { buildDepGraph, expandDepGraph } = await import('../buildDepGraph')
+const { buildDepGraph, expandDepGraph, graphRegionIds } = await import('../buildDepGraph')
 
 function makeCodeGraphResult(opts: {
   rootPath: string
-  nodes: Array<{ filePath: string; imports?: string[]; depth?: number }>
+  nodes: Array<{ filePath: string; imports?: string[]; moduleGroup?: string; depth?: number }>
   edges: Array<{ from: string; to: string; type?: string }>
   positions: Array<{ filePath: string; x: number; y: number; depth?: number }>
 }): CodeGraphResult {
@@ -48,6 +49,7 @@ function makeCodeGraphResult(opts: {
         filePath: n.filePath,
         imports: n.imports ?? [],
         importedBy: [],
+        moduleGroup: n.moduleGroup,
         depth: n.depth ?? 0,
       })),
       edges: opts.edges.map((e) => ({
@@ -82,6 +84,11 @@ describe('buildDepGraph', () => {
     for (const id of connectors.keys()) {
       connectorStore.getState().removeConnector(id)
     }
+    const regions = regionStore.getState().regions
+    for (const id of regions.keys()) {
+      regionStore.getState().removeRegion(id)
+    }
+    graphRegionIds.clear()
     clearActiveGraph()
     clearImportCache()
     preferencesStore.getState().setLaunchCwd('/project')
@@ -424,6 +431,11 @@ describe('expandDepGraph', () => {
     for (const id of connectors.keys()) {
       connectorStore.getState().removeConnector(id)
     }
+    const regions = regionStore.getState().regions
+    for (const id of regions.keys()) {
+      regionStore.getState().removeRegion(id)
+    }
+    graphRegionIds.clear()
     clearActiveGraph()
     clearImportCache()
     preferencesStore.getState().setLaunchCwd('/project')
@@ -498,5 +510,293 @@ describe('expandDepGraph', () => {
       .filter((s) => s.type === 'file' && s.filePath === '/project/src/a.ts')
     expect(aSessions.length).toBe(1)
     expect(aSessions[0].id).toBe(aSession.id)
+  })
+})
+
+describe('auto-group regions', () => {
+  beforeEach(() => {
+    const sessions = sessionStore.getState().sessions
+    for (const id of sessions.keys()) {
+      sessionStore.getState().removeSession(id)
+    }
+    const connectors = connectorStore.getState().connectors
+    for (const id of connectors.keys()) {
+      connectorStore.getState().removeConnector(id)
+    }
+    const regions = regionStore.getState().regions
+    for (const id of regions.keys()) {
+      regionStore.getState().removeRegion(id)
+    }
+    graphRegionIds.clear()
+    clearActiveGraph()
+    clearImportCache()
+    preferencesStore.getState().setLaunchCwd('/project')
+
+    mockBuild.mockReset()
+    mockExpand.mockReset()
+    mockReadfile.mockReset()
+    mockWatch.mockReset()
+    mockReadfile.mockResolvedValue({ content: '// content', size: 10 })
+  })
+
+  it('creates a region for directories with 2+ files', async () => {
+    const rootSession = sessionStore.getState().createFileSession(
+      '/project/src/stores/a.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+
+    const result = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/stores/b.ts', moduleGroup: 'stores', depth: 1 },
+        { filePath: '/project/src/stores/c.ts', moduleGroup: 'stores', depth: 1 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0, depth: 0 },
+        { filePath: '/project/src/stores/b.ts', x: 720, y: 0, depth: 1 },
+        { filePath: '/project/src/stores/c.ts', x: 720, y: 560, depth: 1 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result)
+    await buildDepGraph(rootSession)
+
+    const regions = Array.from(regionStore.getState().regions.values())
+    expect(regions.length).toBe(1)
+    expect(regions[0].name).toBe('stores')
+    // Region should encompass all sessions with padding
+    expect(regions[0].size.width).toBeGreaterThan(0)
+    expect(regions[0].size.height).toBeGreaterThan(0)
+  })
+
+  it('does not create a region for a single-file directory', async () => {
+    const rootSession = sessionStore.getState().createFileSession(
+      '/project/src/stores/a.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+
+    const result = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/utils/helper.ts', moduleGroup: 'utils', depth: 1 },
+      ],
+      edges: [{ from: '/project/src/stores/a.ts', to: '/project/src/utils/helper.ts' }],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0, depth: 0 },
+        { filePath: '/project/src/utils/helper.ts', x: 720, y: 0, depth: 1 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result)
+    await buildDepGraph(rootSession)
+
+    // Both directories have only 1 file — no regions should be created
+    const regions = Array.from(regionStore.getState().regions.values())
+    expect(regions.length).toBe(0)
+  })
+
+  it('creates separate regions for different directories', async () => {
+    const rootSession = sessionStore.getState().createFileSession(
+      '/project/src/stores/a.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+
+    const result = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/stores/b.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/utils/x.ts', moduleGroup: 'utils', depth: 1 },
+        { filePath: '/project/src/utils/y.ts', moduleGroup: 'utils', depth: 1 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0 },
+        { filePath: '/project/src/stores/b.ts', x: 0, y: 560 },
+        { filePath: '/project/src/utils/x.ts', x: 720, y: 0 },
+        { filePath: '/project/src/utils/y.ts', x: 720, y: 560 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result)
+    await buildDepGraph(rootSession)
+
+    const regions = Array.from(regionStore.getState().regions.values())
+    expect(regions.length).toBe(2)
+
+    const names = regions.map((r) => r.name).sort()
+    expect(names).toEqual(['stores', 'utils'])
+  })
+
+  it('clears old regions on fresh build', async () => {
+    const rootSession = sessionStore.getState().createFileSession(
+      '/project/src/stores/a.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+
+    // First build — creates region
+    const result1 = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/stores/b.ts', moduleGroup: 'stores', depth: 1 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0 },
+        { filePath: '/project/src/stores/b.ts', x: 720, y: 0 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result1)
+    await buildDepGraph(rootSession)
+
+    expect(regionStore.getState().regions.size).toBe(1)
+
+    // Second build — different files, old region should be cleared
+    const result2 = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result2)
+    await buildDepGraph(rootSession)
+
+    // Only 1 file in stores now — no region should exist
+    expect(regionStore.getState().regions.size).toBe(0)
+    expect(graphRegionIds.size).toBe(0)
+  })
+
+  it('tracks graph region IDs for cleanup', async () => {
+    const rootSession = sessionStore.getState().createFileSession(
+      '/project/src/stores/a.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+
+    const result = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/stores/b.ts', moduleGroup: 'stores', depth: 1 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0 },
+        { filePath: '/project/src/stores/b.ts', x: 720, y: 0 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result)
+    await buildDepGraph(rootSession)
+
+    // graphRegionIds should track the created region
+    expect(graphRegionIds.size).toBe(1)
+    const regionId = Array.from(graphRegionIds)[0]
+    expect(regionStore.getState().regions.has(regionId)).toBe(true)
+  })
+
+  it('does not remove manually created regions on rebuild', async () => {
+    // Manually create a region (not from graph)
+    regionStore.getState().createRegion('manual', { x: 0, y: 0 }, { width: 200, height: 200 })
+
+    const rootSession = sessionStore.getState().createFileSession(
+      '/project/src/stores/a.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+
+    const result = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/stores/b.ts', moduleGroup: 'stores', depth: 1 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0 },
+        { filePath: '/project/src/stores/b.ts', x: 720, y: 0 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result)
+    await buildDepGraph(rootSession)
+
+    // Should have 2 regions: 1 manual + 1 auto-generated
+    expect(regionStore.getState().regions.size).toBe(2)
+
+    // Rebuild with no groupable nodes
+    const result2 = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [{ filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 }],
+      edges: [],
+      positions: [{ filePath: '/project/src/stores/a.ts', x: 0, y: 0 }],
+    })
+
+    mockBuild.mockResolvedValue(result2)
+    await buildDepGraph(rootSession)
+
+    // Manual region should survive, auto region should be gone
+    expect(regionStore.getState().regions.size).toBe(1)
+    const remaining = Array.from(regionStore.getState().regions.values())
+    expect(remaining[0].name).toBe('manual')
+  })
+
+  it('falls back to directory name from file path when moduleGroup is missing', async () => {
+    const rootSession = sessionStore.getState().createFileSession(
+      '/project/src/hooks/useA.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+
+    const result = makeCodeGraphResult({
+      rootPath: '/project/src/hooks/useA.ts',
+      nodes: [
+        { filePath: '/project/src/hooks/useA.ts', depth: 0 },
+        { filePath: '/project/src/hooks/useB.ts', depth: 1 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/hooks/useA.ts', x: 0, y: 0 },
+        { filePath: '/project/src/hooks/useB.ts', x: 720, y: 0 },
+      ],
+    })
+
+    mockBuild.mockResolvedValue(result)
+    await buildDepGraph(rootSession)
+
+    const regions = Array.from(regionStore.getState().regions.values())
+    expect(regions.length).toBe(1)
+    expect(regions[0].name).toBe('hooks')
+  })
+
+  it('updates regions on incremental expand', async () => {
+    const { registerGraphNode } = await import('../GraphCache')
+
+    const aSession = sessionStore.getState().createFileSession(
+      '/project/src/stores/a.ts', 'code', 'typescript', { x: 0, y: 0 },
+    )
+    registerGraphNode('/project/src/stores/a.ts', aSession.id)
+
+    const result = makeCodeGraphResult({
+      rootPath: '/project/src/stores/a.ts',
+      nodes: [
+        { filePath: '/project/src/stores/a.ts', moduleGroup: 'stores', depth: 0 },
+        { filePath: '/project/src/stores/b.ts', moduleGroup: 'stores', depth: 1 },
+        { filePath: '/project/src/stores/c.ts', moduleGroup: 'stores', depth: 1 },
+      ],
+      edges: [],
+      positions: [
+        { filePath: '/project/src/stores/a.ts', x: 0, y: 0 },
+        { filePath: '/project/src/stores/b.ts', x: 720, y: 0 },
+        { filePath: '/project/src/stores/c.ts', x: 720, y: 560 },
+      ],
+    })
+
+    mockExpand.mockResolvedValue(result)
+    await expandDepGraph('/project/src/stores/a.ts')
+
+    const regions = Array.from(regionStore.getState().regions.values())
+    expect(regions.length).toBe(1)
+    expect(regions[0].name).toBe('stores')
   })
 })
