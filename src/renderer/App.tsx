@@ -21,6 +21,7 @@ import SearchModal from './search/SearchModal'
 import PresentationMode from './presentation/PresentationMode'
 import ToastContainer from './toast/ToastContainer'
 import StatusBar from './statusbar/StatusBar'
+import { useIndexingProgress } from './statusbar/useIndexingProgress'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 
 function App(): JSX.Element {
@@ -29,6 +30,7 @@ function App(): JSX.Element {
   useAiCanvasActions()
   useAiStream()
   useEventRecording()
+  useIndexingProgress()
   const { restoreDefault } = useLayoutRestore()
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')
