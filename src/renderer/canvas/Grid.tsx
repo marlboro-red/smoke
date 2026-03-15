@@ -11,6 +11,9 @@ const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
   const opacity = Math.min(1, (zoom - 0.3) * 2)
   // Make the SVG large enough to cover a very large canvas area
   const svgSize = 10000
+  // Align the SVG offset to a gridSize multiple so dot positions
+  // coincide with snap positions (multiples of gridSize) in canvas space.
+  const offset = Math.ceil(svgSize / 2 / gridSize) * gridSize
 
   return (
     <svg
@@ -18,8 +21,8 @@ const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
       height={svgSize}
       style={{
         position: 'absolute',
-        top: -svgSize / 2,
-        left: -svgSize / 2,
+        top: -offset,
+        left: -offset,
         opacity,
         pointerEvents: 'none',
       }}
@@ -27,13 +30,15 @@ const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
       <defs>
         <pattern
           id="grid-pattern"
+          x={-gridSize / 2}
+          y={-gridSize / 2}
           width={gridSize}
           height={gridSize}
           patternUnits="userSpaceOnUse"
         >
           <circle
-            cx={gridSize}
-            cy={gridSize}
+            cx={gridSize / 2}
+            cy={gridSize / 2}
             r="0.8"
             fill="rgba(255,255,255,0.12)"
           />
