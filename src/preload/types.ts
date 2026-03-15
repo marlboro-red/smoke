@@ -51,6 +51,12 @@ export interface SidebarSectionSizes {
   recordings?: number
 }
 
+export interface ShortcutBindingPref {
+  key: string
+  mod: boolean
+  shift: boolean
+}
+
 export interface Preferences {
   defaultShell: string
   autoLaunchClaude: boolean
@@ -67,6 +73,7 @@ export interface Preferences {
   fontFamily: string
   fontSize: number
   lineHeight: number
+  customShortcuts: Record<string, ShortcutBindingPref | null>
 }
 
 export interface FsReaddirEntry {

@@ -1,75 +1,26 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { shortcutsOverlayStore, useShortcutsOverlayOpen } from './shortcutsOverlayStore'
-import { isMac } from './shortcutMap'
+import {
+  isMac,
+  ACTION_LABELS,
+  SHORTCUT_GROUPS,
+  formatBindingParts,
+  useShortcutBindings,
+  type ShortcutBinding,
+} from './shortcutMap'
 import '../styles/shortcuts-overlay.css'
 
 const MOD = isMac ? '\u2318' : 'Ctrl'
-
-interface ShortcutEntry {
-  keys: string
-  description: string
-}
-
-interface ShortcutGroup {
-  title: string
-  shortcuts: ShortcutEntry[]
-}
-
-const shortcutGroups: ShortcutGroup[] = [
-  {
-    title: 'Session Management',
-    shortcuts: [
-      { keys: `${MOD} N`, description: 'New session' },
-      { keys: `${MOD} W`, description: 'Close session' },
-      { keys: `${MOD} Tab`, description: 'Next session' },
-      { keys: `${MOD} Shift Tab`, description: 'Previous session' },
-      { keys: `${MOD} 1–9`, description: 'Focus session by index' },
-    ],
-  },
-  {
-    title: 'Canvas',
-    shortcuts: [
-      { keys: `${MOD} =`, description: 'Zoom in' },
-      { keys: `${MOD} -`, description: 'Zoom out' },
-      { keys: `${MOD} 0`, description: 'Reset zoom' },
-      { keys: `${MOD} Shift A`, description: 'Auto layout' },
-    ],
-  },
-  {
-    title: 'Groups',
-    shortcuts: [
-      { keys: `${MOD} Shift G`, description: 'Toggle group collapse' },
-      { keys: `${MOD} Shift B`, description: 'Toggle broadcast' },
-    ],
-  },
-  {
-    title: 'Layout & Settings',
-    shortcuts: [
-      { keys: `${MOD} S`, description: 'Save layout' },
-      { keys: `${MOD} ,`, description: 'Open settings' },
-    ],
-  },
-  {
-    title: 'AI & Tools',
-    shortcuts: [
-      { keys: `${MOD} L`, description: 'Toggle AI panel' },
-    ],
-  },
-  {
-    title: 'General',
-    shortcuts: [
-      { keys: `${MOD} /`, description: 'Show this help' },
-      { keys: 'Esc', description: 'Unfocus session' },
-    ],
-  },
-]
 
 function KeyBadge({ label }: { label: string }): JSX.Element {
   return <kbd className="shortcut-key">{label}</kbd>
 }
 
-function ShortcutKeys({ keys }: { keys: string }): JSX.Element {
-  const parts = keys.split(' ')
+function ShortcutKeys({ binding }: { binding: ShortcutBinding | null }): JSX.Element {
+  if (!binding) {
+    return <span className="shortcut-keys shortcut-unset">Not set</span>
+  }
+  const parts = formatBindingParts(binding)
   return (
     <span className="shortcut-keys">
       {parts.map((part, i) => (
@@ -82,6 +33,7 @@ function ShortcutKeys({ keys }: { keys: string }): JSX.Element {
 export default function ShortcutsOverlay(): JSX.Element | null {
   const isOpen = useShortcutsOverlayOpen()
   const backdropRef = useRef<HTMLDivElement>(null)
+  const bindings = useShortcutBindings()
 
   useEffect(() => {
     if (!isOpen) return
@@ -120,19 +72,30 @@ export default function ShortcutsOverlay(): JSX.Element | null {
 
         <div className="shortcuts-body">
           <div className="shortcuts-grid">
-            {shortcutGroups.map((group) => (
+            {SHORTCUT_GROUPS.map((group) => (
               <section key={group.title} className="shortcuts-section">
                 <h3 className="shortcuts-section-title">{group.title}</h3>
                 <ul className="shortcuts-list">
-                  {group.shortcuts.map((shortcut) => (
-                    <li key={shortcut.description} className="shortcuts-row">
-                      <ShortcutKeys keys={shortcut.keys} />
-                      <span className="shortcuts-desc">{shortcut.description}</span>
+                  {group.actions.map((action) => (
+                    <li key={action} className="shortcuts-row">
+                      <ShortcutKeys binding={bindings[action]} />
+                      <span className="shortcuts-desc">{ACTION_LABELS[action]}</span>
                     </li>
                   ))}
                 </ul>
               </section>
             ))}
+            <section className="shortcuts-section">
+              <h3 className="shortcuts-section-title">Other</h3>
+              <ul className="shortcuts-list">
+                <li className="shortcuts-row">
+                  <span className="shortcut-keys">
+                    <KeyBadge label="Esc" />
+                  </span>
+                  <span className="shortcuts-desc">Unfocus Session</span>
+                </li>
+              </ul>
+            </section>
           </div>
         </div>
 

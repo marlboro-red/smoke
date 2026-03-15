@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
 import type { Preferences } from '../../preload/types'
+import { shortcutBindingsStore } from '../shortcuts/shortcutMap'
 
 const defaultPreferences: Preferences = {
   defaultShell: '',
@@ -15,6 +16,10 @@ const defaultPreferences: Preferences = {
   aiApiKey: '',
   aiModel: 'claude-sonnet-4-20250514',
   terminalOpacity: 1,
+  fontFamily: '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace',
+  fontSize: 13,
+  lineHeight: 1.2,
+  customShortcuts: {},
 }
 
 interface PreferencesStore {
@@ -34,6 +39,9 @@ export const preferencesStore = createStore<PreferencesStore>((set) => ({
 
   setPreferences: (prefs: Preferences) => {
     set({ preferences: prefs, loaded: true })
+    if (prefs.customShortcuts && Object.keys(prefs.customShortcuts).length > 0) {
+      shortcutBindingsStore.getState().setCustomBindings(prefs.customShortcuts)
+    }
   },
 
   setLaunchCwd: (cwd: string) => {

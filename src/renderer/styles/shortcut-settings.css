@@ -1,0 +1,196 @@
+/* ─── Shortcut Settings ─── */
+
+.sc-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sc-group {
+  padding: 4px 0;
+}
+
+.sc-group-title {
+  margin: 0 0 6px;
+  font-size: var(--font-size-xs, 10px);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast);
+}
+
+.sc-row:hover {
+  background: var(--bg-hover);
+}
+
+.sc-row-capturing {
+  background: var(--accent-dim);
+}
+
+.sc-action-label {
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.sc-binding-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sc-edit-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.sc-edit-btn:hover {
+  border-color: var(--border-default);
+  background: var(--bg-elevated);
+}
+
+.sc-binding-keys {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.sc-binding-unset {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sc-capture-btn {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-muted);
+  border-radius: var(--radius-sm);
+  color: var(--accent-text);
+  font-size: var(--font-size-sm);
+  padding: 3px 10px;
+  cursor: pointer;
+  animation: sc-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sc-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.sc-reset-single-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast), background var(--duration-fast);
+}
+
+.sc-reset-single-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* ── Conflict Banner ── */
+
+.sc-conflict-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255, 180, 50, 0.1);
+  border: 1px solid rgba(255, 180, 50, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.sc-conflict-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.sc-conflict-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sc-conflict-btn {
+  font-size: var(--font-size-sm);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.sc-conflict-replace {
+  background: var(--accent-dim);
+  border-color: var(--accent-muted);
+  color: var(--accent-text);
+}
+
+.sc-conflict-replace:hover {
+  background: var(--accent-muted);
+}
+
+.sc-conflict-cancel {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.sc-conflict-cancel:hover {
+  background: var(--bg-hover);
+}
+
+/* ── Footer ── */
+
+.sc-footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sc-reset-all-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background var(--duration-fast), color var(--duration-fast),
+    border-color var(--duration-fast);
+}
+
+.sc-reset-all-btn:hover:not(:disabled) {
+  background: var(--bg-active);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.sc-reset-all-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
