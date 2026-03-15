@@ -277,6 +277,23 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+    case 'groupSelected': {
+      const sel = state.selectedIds
+      if (sel.size >= 2) {
+        const group = groupStore.getState().createGroup('Group')
+        for (const id of sel) {
+          const session = state.sessions.get(id)
+          if (session) {
+            sessionStore.getState().updateSession(id, { groupId: group.id })
+            groupStore.getState().addMember(group.id, id)
+          }
+        }
+        groupStore.getState().recomputeBoundingBox(group.id)
+        sessionStore.getState().clearSelection()
+      }
+      break
+    }
+
     case 'selectAll': {
       // Only select all when no terminal is focused (avoid intercepting Cmd+A in terminal)
       const active = document.activeElement

@@ -46,6 +46,7 @@ export type ShortcutAction =
   | 'terminalSearch'
   | 'deleteSelected'
   | 'selectAll'
+  | 'groupSelected'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -105,6 +106,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   terminalSearch: 'Find in Terminal',
   deleteSelected: 'Delete Selected',
   selectAll: 'Select All',
+  groupSelected: 'Group Selected',
   escape: 'Unfocus Session',
 }
 
@@ -153,6 +155,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   terminalSearch: { key: 'f', mod: true, shift: false, alt: false },
   deleteSelected: { key: 'Backspace', mod: true, shift: false, alt: false },
   selectAll: { key: 'a', mod: true, shift: false, alt: false },
+  groupSelected: { key: 'g', mod: true, shift: false, alt: false },
   escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
 
@@ -180,7 +183,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'groupSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit'],
   },
   {
     title: 'Groups',
