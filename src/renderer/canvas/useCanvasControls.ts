@@ -120,6 +120,34 @@ export function useCanvasControls(
     if (!root) return
 
     const onWheel = (e: WheelEvent): void => {
+      // Let scrollable child elements (file viewer, note, editor) handle
+      // wheel events when they can still scroll in the wheel direction.
+      const target = e.target as HTMLElement
+      const scrollable = (
+        target.closest('.file-viewer-body, .file-editor-container') ??
+        target.closest('.note-textarea')
+      ) as HTMLElement | null
+      if (scrollable && !e.ctrlKey && !e.metaKey) {
+        const { scrollTop, scrollHeight, clientHeight, scrollLeft, scrollWidth, clientWidth } = scrollable
+        const canScrollY = scrollHeight > clientHeight
+        const canScrollX = scrollWidth > clientWidth
+        const atTop = scrollTop <= 0
+        const atBottom = scrollTop + clientHeight >= scrollHeight
+        const atLeft = scrollLeft <= 0
+        const atRight = scrollLeft + clientWidth >= scrollWidth
+
+        const scrollingVertically = Math.abs(e.deltaY) > Math.abs(e.deltaX)
+        if (scrollingVertically && canScrollY) {
+          if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
+            return // let the element scroll naturally
+          }
+        } else if (!scrollingVertically && canScrollX) {
+          if ((e.deltaX < 0 && !atLeft) || (e.deltaX > 0 && !atRight)) {
+            return // let the element scroll naturally
+          }
+        }
+      }
+
       e.preventDefault()
 
       if (e.ctrlKey || e.metaKey) {
