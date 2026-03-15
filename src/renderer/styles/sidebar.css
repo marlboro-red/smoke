@@ -65,6 +65,7 @@
 .sidebar {
   width: 240px;
   min-width: 240px;
+  height: 100%;
   flex-shrink: 0;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-subtle);
