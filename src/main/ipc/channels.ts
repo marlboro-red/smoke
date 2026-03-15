@@ -165,6 +165,7 @@ export interface AiSendRequest {
 
 export interface AiSendResponse {
   conversationId: string
+  error?: string
 }
 
 export interface AiAbortRequest {

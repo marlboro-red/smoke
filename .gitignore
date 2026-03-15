@@ -2,6 +2,10 @@
 .dolt/
 *.db
 
+# Obelisk
+.obelisk/
+obelisk.toml
+
 # Dependencies
 node_modules/
 

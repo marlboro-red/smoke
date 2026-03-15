@@ -206,7 +206,7 @@ export interface SmokeAPI {
     importRecording: () => Promise<RecordingListEntry | null>
   }
   ai: {
-    send: (agentId: string, message: string, conversationId?: string) => Promise<{ conversationId: string }>
+    send: (agentId: string, message: string, conversationId?: string) => Promise<{ conversationId: string; error?: string }>
     abort: (agentId: string, conversationId?: string) => Promise<void>
     clear: (agentId: string, conversationId?: string) => Promise<void>
     getConfig: () => Promise<AiConfig>

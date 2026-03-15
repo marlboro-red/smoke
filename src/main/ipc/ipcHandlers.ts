@@ -343,8 +343,13 @@ export function registerIpcHandlers(
 
     // Read the source recording
     const sourcePath = path.join(recordingsDir, request.filename)
-    const content = await fs.readFile(sourcePath, 'utf-8')
-    const log = JSON.parse(content) as RecordingFlushRequest
+    let log: RecordingFlushRequest
+    try {
+      const content = await fs.readFile(sourcePath, 'utf-8')
+      log = JSON.parse(content) as RecordingFlushRequest
+    } catch {
+      throw new Error(`Failed to read recording: ${request.filename}`)
+    }
 
     // Build the export payload with metadata
     const exportData = {
@@ -357,7 +362,9 @@ export function registerIpcHandlers(
     }
 
     const defaultName = request.filename.replace(/\.json$/, '.smoke-replay')
-    const result = await dialog.showSaveDialog(getMainWindow()!, {
+    const win = getMainWindow()
+    if (!win) return { filePath: null }
+    const result = await dialog.showSaveDialog(win, {
       title: 'Export Recording',
       defaultPath: defaultName,
       filters: [
@@ -380,7 +387,9 @@ export function registerIpcHandlers(
     const recordingsDir = path.join(app.getPath('userData'), 'recordings')
     await fs.mkdir(recordingsDir, { recursive: true })
 
-    const result = await dialog.showOpenDialog(getMainWindow()!, {
+    const win = getMainWindow()
+    if (!win) return null
+    const result = await dialog.showOpenDialog(win, {
       title: 'Import Recording',
       filters: [
         { name: 'Smoke Replay', extensions: ['smoke-replay', 'json'] },
@@ -393,8 +402,13 @@ export function registerIpcHandlers(
     }
 
     const importPath = result.filePaths[0]
-    const content = await fs.readFile(importPath, 'utf-8')
-    const data = JSON.parse(content)
+    let data: Record<string, unknown>
+    try {
+      const content = await fs.readFile(importPath, 'utf-8')
+      data = JSON.parse(content) as Record<string, unknown>
+    } catch {
+      throw new Error(`Failed to parse recording file: ${path.basename(importPath)}`)
+    }
 
     // Normalize: accept both smoke-replay format and raw EventLog format
     const events: Array<{ timestamp: number; type: string; payload: unknown }> = data.events || []
@@ -461,13 +475,17 @@ export function registerIpcHandlers(
     async (_event, request: AiSendRequest): Promise<AiSendResponse> => {
       const agent = agentManager.getAgent(request.agentId)
       if (!agent) {
-        throw new Error(`Agent ${request.agentId} not found`)
+        return { conversationId: '', error: `Agent ${request.agentId} not found` }
       }
-      const conversationId = await agent.sendMessage(
-        request.message,
-        request.conversationId
-      )
-      return { conversationId }
+      try {
+        const conversationId = await agent.sendMessage(
+          request.message,
+          request.conversationId
+        )
+        return { conversationId }
+      } catch (err: unknown) {
+        return { conversationId: request.conversationId ?? '', error: err instanceof Error ? err.message : 'AI request failed' }
+      }
     }
   )
 

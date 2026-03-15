@@ -75,16 +75,28 @@ export class PtyProcess extends EventEmitter {
 
   write(data: string): void {
     if (this.exited) return
-    this.pty.write(data)
+    try {
+      this.pty.write(data)
+    } catch {
+      // Process may have exited between check and write
+    }
   }
 
   resize(cols: number, rows: number): void {
     if (this.exited) return
-    this.pty.resize(cols, rows)
+    try {
+      this.pty.resize(cols, rows)
+    } catch {
+      // Process may have exited between check and resize
+    }
   }
 
   kill(): void {
     if (this.exited) return
-    this.pty.kill()
+    try {
+      this.pty.kill()
+    } catch {
+      // Process may have already been killed externally
+    }
   }
 }
