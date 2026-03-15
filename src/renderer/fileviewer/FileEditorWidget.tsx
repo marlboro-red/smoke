@@ -12,6 +12,7 @@ interface FileEditorWidgetProps {
   language: string
   onSave: (content: string) => void
   onChange?: (content: string) => void
+  editorViewRef?: React.MutableRefObject<EditorView | null>
 }
 
 export default function FileEditorWidget({
@@ -19,6 +20,7 @@ export default function FileEditorWidget({
   language,
   onSave,
   onChange,
+  editorViewRef,
 }: FileEditorWidgetProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const onSaveRef = useRef(onSave)
@@ -78,9 +80,11 @@ export default function FileEditorWidget({
       parent: containerRef.current,
     })
 
+    if (editorViewRef) editorViewRef.current = view
     view.focus()
 
     return () => {
+      if (editorViewRef) editorViewRef.current = null
       view.destroy()
     }
   }, [language, themeConfig.id]) // Only recreate on language or theme change, not content
