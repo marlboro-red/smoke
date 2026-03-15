@@ -1,11 +1,14 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSessionList, useFocusedId, useHighlightedId, useBroadcastGroupId, findFileSessionByPath, sessionStore } from '../stores/sessionStore'
 import type { Session } from '../stores/sessionStore'
 import { useGroupList } from '../stores/groupStore'
 import { createNewSession } from '../session/useSessionCreation'
 import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import SessionListItem from './SessionListItem'
+import ContextMenu from './ContextMenu'
+import type { ContextMenuState } from './ContextMenu'
 import GroupHeader from './GroupHeader'
+import { closeSession } from '../session/useSessionClose'
 import { usePanToSession, panToSession as panToSessionStandalone } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
 import ReplayPanel from '../replay/ReplayPanel'
@@ -21,6 +24,19 @@ export default function Sidebar(): JSX.Element {
   const highlightedId = useHighlightedId()
   const broadcastGroupId = useBroadcastGroupId()
   const panToSession = usePanToSession()
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+
+  const handleContextMenu = useCallback((sessionId: string, x: number, y: number) => {
+    setContextMenu({ sessionId, x, y })
+  }, [])
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
+
+  const handleCloseSession = useCallback((sessionId: string) => {
+    closeSession(sessionId)
+  }, [])
 
   const sortedSessions = useMemo(
     () => [...sessions].sort((a, b) => a.createdAt - b.createdAt),
@@ -101,6 +117,7 @@ export default function Sidebar(): JSX.Element {
                   isHighlighted={highlightedId === session.id}
                   isInBroadcastGroup={broadcastGroupId === group.id}
                   onPanTo={panToSession}
+                  onContextMenu={handleContextMenu}
                 />
               ))}
             </div>
@@ -114,12 +131,20 @@ export default function Sidebar(): JSX.Element {
             isHighlighted={highlightedId === session.id}
             isInBroadcastGroup={false}
             onPanTo={panToSession}
+            onContextMenu={handleContextMenu}
           />
         ))}
       </div>
       <FileTree onFileOpen={handleFileOpen} />
       <LayoutPanel />
       <ReplayPanel />
+      {contextMenu && (
+        <ContextMenu
+          state={contextMenu}
+          onClose={handleCloseContextMenu}
+          onCloseSession={handleCloseSession}
+        />
+      )}
     </div>
   )
 }

@@ -1,0 +1,64 @@
+import { useEffect, useRef } from 'react'
+
+export interface ContextMenuState {
+  sessionId: string
+  x: number
+  y: number
+}
+
+interface ContextMenuProps {
+  state: ContextMenuState
+  onClose: () => void
+  onCloseSession: (sessionId: string) => void
+}
+
+export default function ContextMenu({ state, onClose, onCloseSession }: ContextMenuProps): JSX.Element {
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent): void {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent): void {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose])
+
+  // Adjust position so menu doesn't overflow viewport
+  useEffect(() => {
+    if (!menuRef.current) return
+    const rect = menuRef.current.getBoundingClientRect()
+    if (rect.bottom > window.innerHeight) {
+      menuRef.current.style.top = `${state.y - rect.height}px`
+    }
+    if (rect.right > window.innerWidth) {
+      menuRef.current.style.left = `${state.x - rect.width}px`
+    }
+  }, [state.x, state.y])
+
+  return (
+    <div
+      ref={menuRef}
+      className="sidebar-context-menu"
+      style={{ top: state.y, left: state.x }}
+    >
+      <button
+        className="context-menu-item destructive"
+        onClick={() => {
+          onCloseSession(state.sessionId)
+          onClose()
+        }}
+      >
+        Close
+      </button>
+    </div>
+  )
+}
