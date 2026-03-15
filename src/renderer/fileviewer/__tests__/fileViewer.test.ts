@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { sessionStore } from '../../stores/sessionStore'
+import { sessionStore, findFileSessionByPath } from '../../stores/sessionStore'
 import type { FileViewerSession } from '../../stores/sessionStore'
 import { canvasStore } from '../../stores/canvasStore'
 import { gridStore } from '../../stores/gridStore'
@@ -107,6 +107,49 @@ describe('FileViewerSession', () => {
     sessionStore.getState().bringToFront(s1.id)
     const updated = sessionStore.getState().sessions.get(s1.id)!
     expect(updated.zIndex).toBeGreaterThan(s2.zIndex)
+  })
+})
+
+describe('findFileSessionByPath', () => {
+  beforeEach(() => {
+    sessionStore.setState({
+      sessions: new Map(),
+      focusedId: null,
+      highlightedId: null,
+      nextZIndex: 1,
+    })
+  })
+
+  it('returns undefined when no file sessions exist', () => {
+    expect(findFileSessionByPath('/tmp/a.ts')).toBeUndefined()
+  })
+
+  it('returns undefined when path does not match any file session', () => {
+    sessionStore.getState().createFileSession('/tmp/a.ts', 'code', 'typescript')
+    expect(findFileSessionByPath('/tmp/b.ts')).toBeUndefined()
+  })
+
+  it('finds a file session by its path', () => {
+    const session = sessionStore.getState().createFileSession('/tmp/a.ts', 'code', 'typescript')
+    const found = findFileSessionByPath('/tmp/a.ts')
+    expect(found).toBeDefined()
+    expect(found!.id).toBe(session.id)
+    expect(found!.filePath).toBe('/tmp/a.ts')
+  })
+
+  it('does not match terminal sessions', () => {
+    sessionStore.getState().createSession('/tmp/a.ts')
+    expect(findFileSessionByPath('/tmp/a.ts')).toBeUndefined()
+  })
+
+  it('finds the correct session among multiple file sessions', () => {
+    sessionStore.getState().createFileSession('/tmp/a.ts', 'a', 'typescript')
+    const target = sessionStore.getState().createFileSession('/tmp/b.ts', 'b', 'typescript')
+    sessionStore.getState().createFileSession('/tmp/c.ts', 'c', 'typescript')
+
+    const found = findFileSessionByPath('/tmp/b.ts')
+    expect(found).toBeDefined()
+    expect(found!.id).toBe(target.id)
   })
 })
 
