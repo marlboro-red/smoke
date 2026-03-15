@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { sessionStore, useFocusedId, useHighlightedId, useSelectedIds, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
+import { useFocusModeActiveIds } from '../stores/focusModeStore'
 import { snapshotStore } from '../stores/snapshotStore'
 import { findAgentBySessionGroupId } from '../stores/agentStore'
 import { splitPaneStore, useSplitPaneStore } from '../stores/splitPaneStore'
@@ -37,10 +38,13 @@ export default function TerminalWindow({
   const charDimsRef = useRef({ width: 8, height: 16 })
   const getSnapshotRef = useRef<(() => string[]) | null>(null)
 
+  const focusModeActiveIds = useFocusModeActiveIds()
+
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
   const isSelected = selectedIds.has(session.id)
   const isBroadcasting = !!(session.groupId && broadcastGroupId === session.groupId)
+  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
 
   // Split pane state
   const splitTree = useSplitPaneStore((s) => s.getTree(session.id))
@@ -143,6 +147,7 @@ export default function TerminalWindow({
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
     isBroadcasting && 'broadcasting',
+    isDimmedByFocusMode && 'focus-mode-dimmed',
   ]
     .filter(Boolean)
     .join(' ')

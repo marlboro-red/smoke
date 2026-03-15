@@ -7,6 +7,7 @@ import {
   useSelectedIds,
   type FileViewerSession,
 } from '../stores/sessionStore'
+import { useFocusModeActiveIds } from '../stores/focusModeStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from './useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -45,9 +46,12 @@ export default function FileViewerWindow({
   const viewerBodyRef = useRef<HTMLDivElement>(null)
   const goToLineInputRef = useRef<HTMLInputElement>(null)
 
+  const focusModeActiveIds = useFocusModeActiveIds()
+
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
   const isSelected = selectedIds.has(session.id)
+  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
 
   // Focus input when go-to-line activates
   useEffect(() => {
@@ -198,6 +202,7 @@ export default function FileViewerWindow({
     isFocused && 'focused',
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
+    isDimmedByFocusMode && 'focus-mode-dimmed',
     extraClassName,
   ]
     .filter(Boolean)

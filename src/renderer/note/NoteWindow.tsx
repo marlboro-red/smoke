@@ -6,6 +6,7 @@ import {
   useSelectedIds,
   type NoteSession,
 } from '../stores/sessionStore'
+import { useFocusModeActiveIds } from '../stores/focusModeStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from '../fileviewer/useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -31,9 +32,12 @@ export default function NoteWindow({
   const selectedIds = useSelectedIds()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
+  const focusModeActiveIds = useFocusModeActiveIds()
+
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
   const isSelected = selectedIds.has(session.id)
+  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -99,6 +103,7 @@ export default function NoteWindow({
     isFocused && 'focused',
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
+    isDimmedByFocusMode && 'focus-mode-dimmed',
   ]
     .filter(Boolean)
     .join(' ')

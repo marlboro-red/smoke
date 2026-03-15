@@ -21,6 +21,7 @@ import { goToLineStore } from '../fileviewer/goToLineStore'
 import type { FileViewerSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { terminalSearchStore } from '../terminal/terminalSearchStore'
+import { focusModeStore } from '../stores/focusModeStore'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -277,7 +278,14 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+    case 'toggleFocusMode':
+      focusModeStore.getState().toggle()
+      break
+
     case 'escape':
+      if (focusModeStore.getState().enabled) {
+        focusModeStore.getState().toggle()
+      }
       if (terminalSearchStore.getState().activeSessionId) {
         terminalSearchStore.getState().close()
       } else {

@@ -5,6 +5,7 @@ import {
   useHighlightedId,
   type WebviewSession,
 } from '../stores/sessionStore'
+import { useFocusModeActiveIds } from '../stores/focusModeStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from '../fileviewer/useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -34,8 +35,11 @@ export default function WebviewWindow({
   const [isLoading, setIsLoading] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
 
+  const focusModeActiveIds = useFocusModeActiveIds()
+
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
+  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -179,6 +183,7 @@ export default function WebviewWindow({
     'webview-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    isDimmedByFocusMode && 'focus-mode-dimmed',
   ]
     .filter(Boolean)
     .join(' ')

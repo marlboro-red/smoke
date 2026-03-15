@@ -3,6 +3,7 @@ import { useConnectorList } from '../stores/connectorStore'
 import type { Connector } from '../stores/connectorStore'
 import { useSessionList } from '../stores/sessionStore'
 import type { Session } from '../stores/sessionStore'
+import { useFocusModeActiveIds } from '../stores/focusModeStore'
 
 interface Point {
   x: number
@@ -42,9 +43,10 @@ const SVG_SIZE = 20000
 interface ConnectorPathProps {
   connector: Connector
   sessions: Map<string, Session>
+  dimmed?: boolean
 }
 
-const ConnectorPath: React.FC<ConnectorPathProps> = React.memo(({ connector, sessions }) => {
+const ConnectorPath: React.FC<ConnectorPathProps> = React.memo(({ connector, sessions, dimmed }) => {
   const source = sessions.get(connector.sourceId)
   const target = sessions.get(connector.targetId)
   if (!source || !target) return null
@@ -62,7 +64,7 @@ const ConnectorPath: React.FC<ConnectorPathProps> = React.memo(({ connector, ses
   const midY = (start.y + end.y) / 2
 
   return (
-    <g>
+    <g opacity={dimmed ? 0.15 : 1}>
       <path
         d={path}
         fill="none"
@@ -91,6 +93,7 @@ ConnectorPath.displayName = 'ConnectorPath'
 const ConnectorLayer: React.FC = React.memo(() => {
   const connectors = useConnectorList()
   const sessions = useSessionList()
+  const focusModeActiveIds = useFocusModeActiveIds()
 
   const sessionMap = useMemo(() => {
     const map = new Map<string, Session>()
@@ -125,7 +128,12 @@ const ConnectorLayer: React.FC = React.memo(() => {
         </marker>
       </defs>
       {connectors.map((c) => (
-        <ConnectorPath key={c.id} connector={c} sessions={sessionMap} />
+        <ConnectorPath
+          key={c.id}
+          connector={c}
+          sessions={sessionMap}
+          dimmed={focusModeActiveIds !== null && (!focusModeActiveIds.has(c.sourceId) || !focusModeActiveIds.has(c.targetId))}
+        />
       ))}
     </svg>
   )
