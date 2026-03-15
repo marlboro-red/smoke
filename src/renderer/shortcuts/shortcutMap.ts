@@ -26,6 +26,7 @@ export type ShortcutAction =
   | 'autoLayout'
   | 'showShortcutsHelp'
   | 'commandPalette'
+  | 'saveBookmark'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -64,6 +65,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   autoLayout: 'Auto Layout',
   showShortcutsHelp: 'Keyboard Shortcuts',
   commandPalette: 'Command Palette',
+  saveBookmark: 'Save Bookmark',
   escape: 'Unfocus Session',
 }
 
@@ -92,6 +94,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   autoLayout: { key: 'a', mod: true, shift: true },
   showShortcutsHelp: { key: '/', mod: true, shift: false },
   commandPalette: { key: 'p', mod: true, shift: false },
+  saveBookmark: { key: 'd', mod: true, shift: false },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -123,7 +126,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Layout & Settings',
-    actions: ['saveLayout', 'openSettings'],
+    actions: ['saveLayout', 'saveBookmark', 'openSettings'],
   },
   {
     title: 'AI & Tools',

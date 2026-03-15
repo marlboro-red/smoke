@@ -46,9 +46,17 @@ export interface Layout {
   gridSize: number
 }
 
+export interface Bookmark {
+  name: string
+  panX: number
+  panY: number
+  zoom: number
+}
+
 export interface SidebarSectionSizes {
   fileTree?: number
   layouts?: number
+  bookmarks?: number
   recordings?: number
 }
 
@@ -203,6 +211,11 @@ export interface SmokeAPI {
     save: (name: string, layout: Layout) => Promise<void>
     load: (name: string) => Promise<Layout | null>
     list: () => Promise<string[]>
+    delete: (name: string) => Promise<void>
+  }
+  bookmark: {
+    save: (name: string, bookmark: Bookmark) => Promise<void>
+    list: () => Promise<Bookmark[]>
     delete: (name: string) => Promise<void>
   }
   config: {

@@ -13,6 +13,11 @@ export const LAYOUT_LOAD = 'layout:load' as const
 export const LAYOUT_LIST = 'layout:list' as const
 export const LAYOUT_DELETE = 'layout:delete' as const
 
+// Bookmark channels
+export const BOOKMARK_SAVE = 'bookmark:save' as const
+export const BOOKMARK_LIST = 'bookmark:list' as const
+export const BOOKMARK_DELETE = 'bookmark:delete' as const
+
 // Config channels
 export const CONFIG_GET = 'config:get' as const
 export const CONFIG_SET = 'config:set' as const
@@ -106,6 +111,16 @@ export interface LayoutLoadRequest {
 }
 
 export interface LayoutDeleteRequest {
+  name: string
+}
+
+// Bookmark message types
+export interface BookmarkSaveRequest {
+  name: string
+  bookmark: import('../config/ConfigStore').Bookmark
+}
+
+export interface BookmarkDeleteRequest {
   name: string
 }
 

@@ -6,7 +6,7 @@ import { findGroupByElementId, groupStore } from '../stores/groupStore'
 import { createNewSession } from '../session/useSessionCreation'
 import { closeSession } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
-import { setZoomTo, zoomIn, zoomOut } from '../canvas/useCanvasControls'
+import { setZoomTo, zoomIn, zoomOut, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
 import { settingsModalStore } from '../config/settingsStore'
 import { shortcutsOverlayStore } from './shortcutsOverlayStore'
@@ -112,6 +112,21 @@ function executeShortcut(action: ShortcutAction): void {
     case 'autoLayout':
       performAutoLayout()
       break
+
+    case 'saveBookmark': {
+      const name = prompt('Bookmark name:')
+      if (name?.trim()) {
+        const pan = getCurrentPan()
+        const zoom = getCurrentZoom()
+        window.smokeAPI?.bookmark.save(name.trim(), {
+          name: name.trim(),
+          panX: pan.x,
+          panY: pan.y,
+          zoom,
+        })
+      }
+      break
+    }
 
     case 'showShortcutsHelp':
       shortcutsOverlayStore.getState().toggle()

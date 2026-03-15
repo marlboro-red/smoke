@@ -11,6 +11,7 @@ import GroupHeader from './GroupHeader'
 import { closeSession } from '../session/useSessionClose'
 import { usePanToSession, panToSession as panToSessionStandalone } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
+import BookmarkPanel from '../bookmarks/BookmarkPanel'
 import ReplayPanel from '../replay/ReplayPanel'
 import { settingsModalStore } from '../config/settingsStore'
 import { shortcutsOverlayStore } from '../shortcuts/shortcutsOverlayStore'
@@ -26,6 +27,7 @@ import '../styles/settings-modal.css'
 const DEFAULT_SECTION_SIZES: Required<SidebarSectionSizes> = {
   fileTree: 200,
   layouts: 120,
+  bookmarks: 120,
   recordings: 120,
 }
 
@@ -42,11 +44,13 @@ export default function Sidebar(): JSX.Element {
 
   const fileTreeRef = useRef<HTMLDivElement>(null)
   const layoutsRef = useRef<HTMLDivElement>(null)
+  const bookmarksRef = useRef<HTMLDivElement>(null)
   const recordingsRef = useRef<HTMLDivElement>(null)
 
   const sectionRefs = useMemo(() => ({
     fileTree: fileTreeRef,
     layouts: layoutsRef,
+    bookmarks: bookmarksRef,
     recordings: recordingsRef,
   }), [])
 
@@ -60,7 +64,7 @@ export default function Sidebar(): JSX.Element {
   // Apply stored sizes on mount and when they change
   useEffect(() => {
     const sizes = storedSizes || {}
-    for (const key of ['fileTree', 'layouts', 'recordings'] as const) {
+    for (const key of ['fileTree', 'layouts', 'bookmarks', 'recordings'] as const) {
       const el = sectionRefs[key]?.current
       if (el) {
         const height = sizes[key] ?? DEFAULT_SECTION_SIZES[key]
@@ -235,7 +239,14 @@ export default function Sidebar(): JSX.Element {
       </div>
       <div
         className="sidebar-section-divider"
-        onMouseDown={(e) => handleDividerMouseDown(e, 'layouts', 'recordings')}
+        onMouseDown={(e) => handleDividerMouseDown(e, 'layouts', 'bookmarks')}
+      />
+      <div ref={bookmarksRef} className="sidebar-section">
+        <BookmarkPanel />
+      </div>
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'bookmarks', 'recordings')}
       />
       <div ref={recordingsRef} className="sidebar-section">
         <ReplayPanel />

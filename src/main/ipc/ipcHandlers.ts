@@ -3,7 +3,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { PtyManager } from '../pty/PtyManager'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
-import type { Layout, Preferences, SmokeConfig } from '../config/ConfigStore'
+import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/ConfigStore'
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
@@ -18,6 +18,9 @@ import {
   LAYOUT_LOAD,
   LAYOUT_LIST,
   LAYOUT_DELETE,
+  BOOKMARK_SAVE,
+  BOOKMARK_LIST,
+  BOOKMARK_DELETE,
   CONFIG_GET,
   CONFIG_SET,
   FS_READDIR,
@@ -49,6 +52,8 @@ import {
   LayoutSaveRequest,
   LayoutLoadRequest,
   LayoutDeleteRequest,
+  BookmarkSaveRequest,
+  BookmarkDeleteRequest,
   ConfigSetRequest,
   FsReaddirRequest,
   FsReaddirEntry,
@@ -177,6 +182,24 @@ export function registerIpcHandlers(
     const layouts = configStore.get('namedLayouts', {})
     delete layouts[request.name]
     configStore.set('namedLayouts', layouts)
+  })
+
+  // Bookmark persistence handlers
+  ipcMain.handle(BOOKMARK_SAVE, (_event, request: BookmarkSaveRequest): void => {
+    const bookmarks = configStore.get('canvasBookmarks', {})
+    bookmarks[request.name] = request.bookmark
+    configStore.set('canvasBookmarks', bookmarks)
+  })
+
+  ipcMain.handle(BOOKMARK_LIST, (): Bookmark[] => {
+    const bookmarks = configStore.get('canvasBookmarks', {})
+    return Object.values(bookmarks)
+  })
+
+  ipcMain.handle(BOOKMARK_DELETE, (_event, request: BookmarkDeleteRequest): void => {
+    const bookmarks = configStore.get('canvasBookmarks', {})
+    delete bookmarks[request.name]
+    configStore.set('canvasBookmarks', bookmarks)
   })
 
   // Config handlers
