@@ -87,16 +87,32 @@ export interface SmokeConfig {
   activeTabId: string
 }
 
-const configStore = new Store<SmokeConfig>({
-  name: 'smoke-config',
+const storeOptions = {
+  name: 'smoke-config' as const,
   defaults: {
-    defaultLayout: null,
-    namedLayouts: {},
-    canvasBookmarks: {},
+    defaultLayout: null as Layout | null,
+    namedLayouts: {} as Record<string, Layout>,
+    canvasBookmarks: {} as Record<string, Bookmark>,
     preferences: { ...defaultPreferences },
-    tabs: [{ id: 'default', name: 'Canvas 1' }],
+    tabs: [{ id: 'default', name: 'Canvas 1' }] as TabInfo[],
     activeTabId: 'default',
   },
-})
+  // Allow E2E tests to redirect config to an isolated temp directory
+  ...(process.env.SMOKE_E2E_CONFIG_DIR ? { cwd: process.env.SMOKE_E2E_CONFIG_DIR } : {}),
+}
+
+let configStore: Store<SmokeConfig>
+try {
+  configStore = new Store<SmokeConfig>(storeOptions)
+} catch {
+  // Corrupted config file — delete it and recreate with defaults
+  const Store2 = Store
+  const fs = require('fs')
+  const path = require('path')
+  const configDir = storeOptions.cwd || require('electron').app.getPath('userData')
+  const configFile = path.join(configDir, 'smoke-config.json')
+  try { fs.unlinkSync(configFile) } catch { /* may not exist */ }
+  configStore = new Store2<SmokeConfig>(storeOptions)
+}
 
 export { configStore }
