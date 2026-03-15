@@ -67,6 +67,10 @@ export interface FsReadfileResult {
   size: number
 }
 
+export interface FsWritefileResult {
+  size: number
+}
+
 // AI types — defined here so both main and renderer can import them
 
 export interface AiConfig {
@@ -154,6 +158,7 @@ export interface SmokeAPI {
   fs: {
     readdir: (path: string) => Promise<FsReaddirEntry[]>
     readfile: (path: string, maxSize?: number) => Promise<FsReadfileResult>
+    writefile: (path: string, content: string) => Promise<FsWritefileResult>
   }
   app: {
     getLaunchCwd: () => Promise<string>
