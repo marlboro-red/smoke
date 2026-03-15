@@ -27,6 +27,9 @@ export const FS_READDIR = 'fs:readdir' as const
 export const FS_READFILE = 'fs:readfile' as const
 export const FS_READFILE_BASE64 = 'fs:readfile-base64' as const
 export const FS_WRITEFILE = 'fs:writefile' as const
+export const FS_WATCH = 'fs:watch' as const
+export const FS_UNWATCH = 'fs:unwatch' as const
+export const FS_FILE_CHANGED = 'fs:file-changed' as const
 
 // Terminal output buffer channels (AI orchestrator)
 export const TERMINAL_BUFFER_READ = 'terminal-buffer:read' as const
@@ -173,6 +176,18 @@ export interface FsWritefileRequest {
 
 export interface FsWritefileResponse {
   size: number
+}
+
+export interface FsWatchRequest {
+  path: string
+}
+
+export interface FsUnwatchRequest {
+  path: string
+}
+
+export interface FsFileChangedEvent {
+  path: string
 }
 
 // Terminal output buffer message types

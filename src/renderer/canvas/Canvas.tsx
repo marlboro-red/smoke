@@ -25,6 +25,7 @@ import GroupCollapsedCard from './GroupCollapsedCard'
 import SnapPreview from './SnapPreview'
 import Minimap from './Minimap'
 import AlignmentToolbar from './AlignmentToolbar'
+import { useFileWatchManager } from '../fileviewer/useFileWatcher'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -46,6 +47,8 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
     zoomRef,
     rootRef
   )
+
+  useFileWatchManager(visibleIds)
 
   // Build set of session IDs hidden by collapsed groups
   const collapsedMemberIds = useMemo(() => {

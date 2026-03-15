@@ -7,6 +7,7 @@ import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/Confi
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
+import { FileWatcher } from '../watcher/FileWatcher'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -27,6 +28,8 @@ import {
   FS_READFILE,
   FS_READFILE_BASE64,
   FS_WRITEFILE,
+  FS_WATCH,
+  FS_UNWATCH,
   TERMINAL_BUFFER_READ,
   TERMINAL_BUFFER_READ_LINES,
   RECORDING_FLUSH,
@@ -65,6 +68,8 @@ import {
   FsReadfileBase64Response,
   FsWritefileRequest,
   FsWritefileResponse,
+  FsWatchRequest,
+  FsUnwatchRequest,
   TerminalBufferReadRequest,
   TerminalBufferReadLinesRequest,
   RecordingFlushRequest,
@@ -330,6 +335,17 @@ export function registerIpcHandlers(
 
     await fs.writeFile(filePath, request.content, 'utf-8')
     return { size: content.length }
+  })
+
+  // File watcher handlers
+  const fileWatcher = new FileWatcher(getMainWindow)
+
+  ipcMain.handle(FS_WATCH, (_event, request: FsWatchRequest): void => {
+    fileWatcher.watch(request.path)
+  })
+
+  ipcMain.handle(FS_UNWATCH, (_event, request: FsUnwatchRequest): void => {
+    fileWatcher.unwatch(request.path)
   })
 
   // Terminal output buffer handlers (AI orchestrator)

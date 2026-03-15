@@ -241,6 +241,9 @@ export interface SmokeAPI {
     readfile: (path: string, maxSize?: number) => Promise<FsReadfileResult>
     readfileBase64: (path: string, maxSize?: number) => Promise<FsReadfileBase64Result>
     writefile: (path: string, content: string) => Promise<FsWritefileResult>
+    watch: (path: string) => Promise<void>
+    unwatch: (path: string) => Promise<void>
+    onFileChanged: (callback: (event: { path: string }) => void) => () => void
   }
   app: {
     getLaunchCwd: () => Promise<string>
