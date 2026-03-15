@@ -1,33 +1,32 @@
 /**
- * Build a dependency graph visualization on the canvas.
+ * Graph renderer: materialize CodeGraph as file viewers and arrows on canvas.
  *
- * Given a root file viewer session, this module:
- * 1. Parses imports from the file content
- * 2. Resolves them to absolute paths
- * 3. Recursively traverses dependencies (up to a max depth)
- * 4. Creates file viewer sessions in a tree layout
- * 5. Connects them with arrow connectors
+ * Uses the IPC-based codegraph system (codegraph:build / codegraph:expand)
+ * to get a CodeGraph with layout positions, then:
+ * 1. Creates file viewer sessions for each node
+ * 2. Creates arrow connectors for each edge
+ * 3. Positions elements according to layout engine output
+ * 4. Animates elements into position
+ * 5. Handles incremental updates via expand
+ * 6. Avoids duplicating already-open file viewers
  */
 
 import { sessionStore, findFileSessionByPath, type FileViewerSession } from '../stores/sessionStore'
 import { connectorStore } from '../stores/connectorStore'
 import { gridStore } from '../stores/gridStore'
-import { parseImports } from './importParser'
-import { resolveAllImports } from './importResolver'
-import { setCachedImports, registerGraphNode, clearActiveGraph, clearImportCache } from './GraphCache'
+import { preferencesStore } from '../stores/preferencesStore'
+import {
+  setCachedImports,
+  registerGraphNode,
+  clearActiveGraph,
+  clearImportCache,
+  getActiveGraphEntries,
+  getGraphSessionId,
+} from './GraphCache'
+import type { CodeGraphResult, CodeGraphPosition, CodeGraphNode, CodeGraphEdge } from '../../preload/types'
 
-const MAX_DEPTH = 3
-const HORIZONTAL_SPACING = 720   // px between columns
-const VERTICAL_SPACING = 540     // px between rows in same column
-const FILE_VIEWER_WIDTH = 640
-const FILE_VIEWER_HEIGHT = 480
-
-interface GraphNode {
-  filePath: string
-  sessionId: string
-  depth: number
-  children: string[] // file paths of dependencies
-}
+const CONNECTOR_COLOR = '#4A90D9'
+const ANIMATION_DURATION_MS = 300
 
 function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
@@ -39,20 +38,14 @@ function detectLanguage(filePath: string): string {
   return langMap[ext] || 'text'
 }
 
-function getImporterDir(filePath: string): string {
-  const parts = filePath.split('/')
-  parts.pop()
-  return parts.join('/')
-}
-
 /**
- * Create or find a file viewer session for a given path, positioned in a tree layout.
+ * Create or reuse a file viewer session at the given position.
+ * Returns null if the file can't be read.
  */
 async function ensureFileSession(
   filePath: string,
-  position: { x: number; y: number }
+  position: { x: number; y: number },
 ): Promise<FileViewerSession | null> {
-  // Reuse existing session if the file is already open
   const existing = findFileSessionByPath(filePath)
   if (existing) return existing
 
@@ -62,163 +55,320 @@ async function ensureFileSession(
     const { snapToGrid } = gridStore.getState()
     const snappedPos = { x: snapToGrid(position.x), y: snapToGrid(position.y) }
 
-    const session = sessionStore.getState().createFileSession(
+    return sessionStore.getState().createFileSession(
       filePath,
       result.content,
       language,
-      snappedPos
+      snappedPos,
     )
-    return session
   } catch {
-    // File unreadable — skip
     return null
   }
 }
 
 /**
- * Build the dependency graph starting from a root file viewer session.
+ * Check if a connector already exists between two sessions.
+ */
+function connectorExists(sourceId: string, targetId: string): boolean {
+  for (const c of connectorStore.getState().connectors.values()) {
+    if (c.sourceId === sourceId && c.targetId === targetId) return true
+  }
+  return false
+}
+
+/**
+ * Animate session elements into their target positions using CSS transitions.
+ */
+function animateSessionPositions(
+  sessionPositions: Array<{ sessionId: string; x: number; y: number }>,
+): void {
+  for (const { sessionId, x, y } of sessionPositions) {
+    if (typeof document !== 'undefined') {
+      const el = document.querySelector(`[data-session-id="${sessionId}"]`) as HTMLElement | null
+      if (el) {
+        el.style.transition = `left ${ANIMATION_DURATION_MS}ms ease-out, top ${ANIMATION_DURATION_MS}ms ease-out`
+        setTimeout(() => {
+          el.style.transition = ''
+        }, ANIMATION_DURATION_MS + 50)
+      }
+    }
+
+    sessionStore.getState().updateSession(sessionId, {
+      position: { x, y },
+    })
+  }
+}
+
+/**
+ * Build and materialize a full dependency graph from a root file viewer.
+ *
+ * Calls codegraph:build via IPC to get the graph + layout, then creates
+ * file viewer sessions and arrow connectors on the canvas.
  */
 export async function buildDepGraph(rootSession: FileViewerSession): Promise<void> {
+  const projectRoot = preferencesStore.getState().launchCwd
+  if (!projectRoot) return
+
   // Reset graph cache for fresh build
   clearActiveGraph()
   clearImportCache()
 
-  const visited = new Map<string, GraphNode>()
-  const rootX = rootSession.position.x
-  const rootY = rootSession.position.y
+  // Build graph via IPC — returns nodes, edges, and layout positions
+  const result: CodeGraphResult = await window.smokeAPI.codegraph.build(
+    rootSession.filePath,
+    projectRoot,
+  )
 
-  // Track nodes per depth level for vertical positioning
-  const depthCounts = new Map<number, number>()
-
-  // Register root node
-  visited.set(rootSession.filePath, {
-    filePath: rootSession.filePath,
-    sessionId: rootSession.id,
-    depth: 0,
-    children: [],
-  })
-
-  // BFS traversal
-  const queue: Array<{ filePath: string; content: string; language: string; depth: number }> = [{
-    filePath: rootSession.filePath,
-    content: rootSession.content,
-    language: rootSession.language,
-    depth: 0,
-  }]
-
-  while (queue.length > 0) {
-    const current = queue.shift()!
-    if (current.depth >= MAX_DEPTH) continue
-
-    const parsed = parseImports(current.content, current.language)
-    const importerDir = getImporterDir(current.filePath)
-    const resolvedPaths = await resolveAllImports(parsed, importerDir, current.language)
-
-    const parentNode = visited.get(current.filePath)!
-    parentNode.children = resolvedPaths
-
-    for (const depPath of resolvedPaths) {
-      if (visited.has(depPath)) continue
-
-      const childDepth = current.depth + 1
-      const depthCount = depthCounts.get(childDepth) ?? 0
-      depthCounts.set(childDepth, depthCount + 1)
-
-      // Position: root + offset based on depth (x) and index within depth (y)
-      const posX = rootX + childDepth * HORIZONTAL_SPACING
-      const posY = rootY + depthCount * VERTICAL_SPACING
-
-      const session = await ensureFileSession(depPath, { x: posX, y: posY })
-      if (!session) continue
-
-      visited.set(depPath, {
-        filePath: depPath,
-        sessionId: session.id,
-        depth: childDepth,
-        children: [],
-      })
-
-      // Read content for further traversal
-      try {
-        const result = await window.smokeAPI.fs.readfile(depPath)
-        const language = detectLanguage(depPath)
-        queue.push({
-          filePath: depPath,
-          content: result.content,
-          language,
-          depth: childDepth,
-        })
-      } catch {
-        // Can't read — stop traversal for this node
-      }
-    }
-  }
-
-  // Populate graph cache with resolved imports and active node mappings
-  for (const [filePath, node] of visited) {
-    registerGraphNode(filePath, node.sessionId)
-    setCachedImports(filePath, node.children)
-    // Start watching all graph files for incremental invalidation
-    window.smokeAPI?.fs.watch(filePath)
-  }
-
-  // Create connectors for all edges
-  for (const [, node] of visited) {
-    for (const childPath of node.children) {
-      const childNode = visited.get(childPath)
-      if (!childNode) continue
-
-      // Avoid duplicate connectors
-      const existingConnectors = Array.from(connectorStore.getState().connectors.values())
-      const alreadyExists = existingConnectors.some(
-        (c) => c.sourceId === node.sessionId && c.targetId === childNode.sessionId
-      )
-      if (alreadyExists) continue
-
-      connectorStore.getState().addConnector(node.sessionId, childNode.sessionId, {
-        label: 'imports',
-        color: '#4A90D9',
-      })
-    }
-  }
-
-  // Center the tree vertically around the root
-  centerTreeAroundRoot(rootSession, visited, depthCounts)
+  await materializeGraph(result, rootSession)
 }
 
 /**
- * Adjust child positions so the tree is centered vertically around the root.
+ * Expand an existing graph by adding dependencies of a new file.
+ *
+ * Only creates new sessions and repositions existing ones with animation.
  */
-function centerTreeAroundRoot(
+export async function expandDepGraph(expandPath: string): Promise<void> {
+  const projectRoot = preferencesStore.getState().launchCwd
+  if (!projectRoot) return
+
+  // Build existing graph state from GraphCache
+  const existingGraph = buildExistingGraphState()
+  const existingPositions = buildExistingPositions()
+
+  const result: CodeGraphResult = await window.smokeAPI.codegraph.expand(
+    existingGraph,
+    existingPositions,
+    expandPath,
+    projectRoot,
+  )
+
+  await materializeIncrementalGraph(result, existingPositions)
+}
+
+/**
+ * Materialize a full graph result on the canvas.
+ * Creates file sessions for each node, connectors for each edge.
+ */
+async function materializeGraph(
+  result: CodeGraphResult,
   rootSession: FileViewerSession,
-  visited: Map<string, GraphNode>,
-  depthCounts: Map<number, number>
+): Promise<void> {
+  const { positions } = result.layout
+  const { nodes, edges } = result.graph
+
+  // Find the layout position for the root to compute offset
+  const rootLayoutPos = positions.find((p) => p.filePath === rootSession.filePath)
+  const offsetX = rootSession.position.x - (rootLayoutPos?.x ?? 0)
+  const offsetY = rootSession.position.y - (rootLayoutPos?.y ?? 0)
+
+  // Map filePath → sessionId for connector creation
+  const fileToSession = new Map<string, string>()
+
+  // Register root node
+  fileToSession.set(rootSession.filePath, rootSession.id)
+  registerGraphNode(rootSession.filePath, rootSession.id)
+
+  // Create file sessions for each node (except root which already exists)
+  for (const pos of positions) {
+    if (pos.filePath === rootSession.filePath) continue
+
+    const canvasX = pos.x + offsetX
+    const canvasY = pos.y + offsetY
+
+    const session = await ensureFileSession(pos.filePath, { x: canvasX, y: canvasY })
+    if (!session) continue
+
+    fileToSession.set(pos.filePath, session.id)
+    registerGraphNode(pos.filePath, session.id)
+  }
+
+  // Populate import cache from graph nodes
+  for (const node of nodes) {
+    setCachedImports(node.filePath, node.imports)
+    window.smokeAPI?.fs.watch(node.filePath)
+  }
+
+  // Create connectors for all edges
+  createConnectors(edges, fileToSession)
+
+  // Animate newly created sessions — reposition any existing sessions that
+  // were reused but need to move to their layout positions
+  const repositions: Array<{ sessionId: string; x: number; y: number }> = []
+  const { snapToGrid } = gridStore.getState()
+
+  for (const pos of positions) {
+    const sessionId = fileToSession.get(pos.filePath)
+    if (!sessionId) continue
+    if (pos.filePath === rootSession.filePath) continue
+
+    const session = sessionStore.getState().sessions.get(sessionId)
+    if (!session) continue
+
+    const targetX = snapToGrid(pos.x + offsetX)
+    const targetY = snapToGrid(pos.y + offsetY)
+
+    // Only animate if position differs (reused sessions may be elsewhere)
+    if (session.position.x !== targetX || session.position.y !== targetY) {
+      repositions.push({ sessionId, x: targetX, y: targetY })
+    }
+  }
+
+  if (repositions.length > 0) {
+    animateSessionPositions(repositions)
+  }
+}
+
+/**
+ * Materialize incremental graph changes — only create new sessions
+ * and reposition existing ones with animation.
+ */
+async function materializeIncrementalGraph(
+  result: CodeGraphResult,
+  existingPositions: CodeGraphPosition[],
+): Promise<void> {
+  const { positions } = result.layout
+  const { nodes, edges } = result.graph
+
+  const existingSet = new Set(existingPositions.map((p) => p.filePath))
+  const fileToSession = new Map<string, string>()
+
+  // Map existing graph nodes
+  for (const entry of getActiveGraphEntries()) {
+    fileToSession.set(entry[0], entry[1])
+  }
+
+  // Create sessions for new nodes only
+  for (const pos of positions) {
+    if (existingSet.has(pos.filePath)) continue
+
+    const session = await ensureFileSession(pos.filePath, { x: pos.x, y: pos.y })
+    if (!session) continue
+
+    fileToSession.set(pos.filePath, session.id)
+    registerGraphNode(pos.filePath, session.id)
+  }
+
+  // Update import cache for new nodes
+  for (const node of nodes) {
+    if (!existingSet.has(node.filePath)) {
+      setCachedImports(node.filePath, node.imports)
+      window.smokeAPI?.fs.watch(node.filePath)
+    }
+  }
+
+  // Create connectors for new edges
+  createConnectors(edges, fileToSession)
+
+  // Animate all positions — existing nodes may shift, new nodes animate in
+  const repositions: Array<{ sessionId: string; x: number; y: number }> = []
+  const { snapToGrid } = gridStore.getState()
+
+  for (const pos of positions) {
+    const sessionId = fileToSession.get(pos.filePath)
+    if (!sessionId) continue
+
+    const session = sessionStore.getState().sessions.get(sessionId)
+    if (!session) continue
+
+    const targetX = snapToGrid(pos.x)
+    const targetY = snapToGrid(pos.y)
+
+    if (session.position.x !== targetX || session.position.y !== targetY) {
+      repositions.push({ sessionId, x: targetX, y: targetY })
+    }
+  }
+
+  if (repositions.length > 0) {
+    animateSessionPositions(repositions)
+  }
+}
+
+/**
+ * Create arrow connectors for graph edges, skipping duplicates.
+ */
+function createConnectors(
+  edges: CodeGraphEdge[],
+  fileToSession: Map<string, string>,
 ): void {
-  const rootY = rootSession.position.y
-  const rootCenterY = rootY + FILE_VIEWER_HEIGHT / 2
+  for (const edge of edges) {
+    const sourceId = fileToSession.get(edge.from)
+    const targetId = fileToSession.get(edge.to)
+    if (!sourceId || !targetId) continue
 
-  for (const [depth, count] of depthCounts) {
-    if (depth === 0) continue
-    const totalHeight = (count - 1) * VERTICAL_SPACING + FILE_VIEWER_HEIGHT
-    const startY = rootCenterY - totalHeight / 2
+    if (connectorExists(sourceId, targetId)) continue
 
-    // Gather nodes at this depth, sorted by current Y
-    const nodesAtDepth = Array.from(visited.values())
-      .filter((n) => n.depth === depth)
-      .sort((a, b) => {
-        const sa = sessionStore.getState().sessions.get(a.sessionId)
-        const sb = sessionStore.getState().sessions.get(b.sessionId)
-        return (sa?.position.y ?? 0) - (sb?.position.y ?? 0)
-      })
-
-    nodesAtDepth.forEach((node, idx) => {
-      const newY = gridStore.getState().snapToGrid(startY + idx * VERTICAL_SPACING)
-      sessionStore.getState().updateSession(node.sessionId, {
-        position: {
-          x: sessionStore.getState().sessions.get(node.sessionId)!.position.x,
-          y: newY,
-        },
-      })
+    connectorStore.getState().addConnector(sourceId, targetId, {
+      label: edge.type,
+      color: CONNECTOR_COLOR,
     })
   }
+}
+
+/**
+ * Build the existing graph structure from GraphCache for incremental expansion.
+ */
+function buildExistingGraphState(): CodeGraphResult['graph'] {
+  const nodes: CodeGraphNode[] = []
+  const edges: CodeGraphEdge[] = []
+  const activeEntries = getActiveGraphEntries()
+
+  for (const [filePath] of activeEntries) {
+    const session = findFileSessionByPath(filePath)
+    if (!session) continue
+
+    // Find connectors from this session to get imports
+    const imports: string[] = []
+    const importedBy: string[] = []
+
+    for (const c of connectorStore.getState().connectors.values()) {
+      if (c.sourceId === session.id) {
+        // Find the target file path
+        for (const [fp, sid] of activeEntries) {
+          if (sid === c.targetId) {
+            imports.push(fp)
+            edges.push({ from: filePath, to: fp, type: 'import' })
+            break
+          }
+        }
+      }
+      if (c.targetId === session.id) {
+        for (const [fp, sid] of activeEntries) {
+          if (sid === c.sourceId) {
+            importedBy.push(fp)
+            break
+          }
+        }
+      }
+    }
+
+    nodes.push({
+      filePath,
+      imports,
+      importedBy,
+      depth: 0, // depth will be recalculated by the server
+    })
+  }
+
+  return { nodes, edges }
+}
+
+/**
+ * Build existing positions from active graph sessions.
+ */
+function buildExistingPositions(): CodeGraphPosition[] {
+  const positions: CodeGraphPosition[] = []
+
+  for (const [filePath, sessionId] of getActiveGraphEntries()) {
+    const session = sessionStore.getState().sessions.get(sessionId)
+    if (!session) continue
+
+    positions.push({
+      filePath,
+      x: session.position.x,
+      y: session.position.y,
+      depth: 0,
+    })
+  }
+
+  return positions
 }

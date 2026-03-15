@@ -4,7 +4,7 @@
  *
  * When a file in the active graph changes on disk:
  * 1. Invalidate its cache entry
- * 2. Re-parse and resolve its imports
+ * 2. Re-parse and resolve imports via IPC (codegraph:get-imports + resolve)
  * 3. Diff against old imports
  * 4. Update connectors (remove stale, add new)
  * 5. If visible → re-layout affected nodes with animation
@@ -21,15 +21,15 @@ import {
   getActiveGraphEntries,
   registerGraphNode,
 } from './GraphCache'
-import { parseImports } from './importParser'
-import { resolveAllImports } from './importResolver'
 import { sessionStore, findFileSessionByPath, type FileViewerSession } from '../stores/sessionStore'
 import { connectorStore } from '../stores/connectorStore'
 import { gridStore } from '../stores/gridStore'
+import { preferencesStore } from '../stores/preferencesStore'
 
 const CONNECTOR_COLOR = '#4A90D9'
 const HORIZONTAL_SPACING = 720
 const FILE_VIEWER_HEIGHT = 480
+const ANIMATION_DURATION_MS = 300
 
 function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
@@ -39,12 +39,6 @@ function detectLanguage(filePath: string): string {
     mjs: 'javascript', cjs: 'javascript',
   }
   return langMap[ext] || 'text'
-}
-
-function getImporterDir(filePath: string): string {
-  const parts = filePath.split('/')
-  parts.pop()
-  return parts.join('/')
 }
 
 /**
@@ -111,7 +105,7 @@ function countSiblingsAtDepth(x: number): number {
 }
 
 /**
- * Process a single file change: invalidate cache, re-parse, diff, update graph.
+ * Process a single file change: invalidate cache, re-parse via IPC, diff, update graph.
  */
 async function handleFileChanged(
   filePath: string,
@@ -126,21 +120,31 @@ async function handleFileChanged(
   const oldEntry = invalidateCachedImports(filePath)
   const oldPaths = oldEntry?.resolvedPaths ?? []
 
-  // 2. Re-read, re-parse, re-resolve
-  let newContent: string
+  // 2. Re-parse imports via IPC
+  const projectRoot = preferencesStore.getState().launchCwd
+  let newPaths: string[]
+
   try {
-    const result = await window.smokeAPI.fs.readfile(filePath)
-    newContent = result.content
+    const importEntries = await window.smokeAPI.codegraph.getImports(filePath)
+
+    // Resolve each import specifier to a file path
+    const resolved = await Promise.all(
+      importEntries.map(async (entry) => {
+        if (!projectRoot) return null
+        return window.smokeAPI.codegraph.resolveImport(
+          entry.specifier,
+          filePath,
+          projectRoot,
+        )
+      }),
+    )
+
+    newPaths = resolved.filter((p): p is string => p !== null)
   } catch {
-    // File deleted or unreadable — remove from graph silently
+    // File deleted or unreadable — clear cache
     setCachedImports(filePath, [])
     return
   }
-
-  const language = detectLanguage(filePath)
-  const importerDir = getImporterDir(filePath)
-  const parsed = parseImports(newContent, language)
-  const newPaths = await resolveAllImports(parsed, importerDir, language)
 
   // 3. Cache new imports
   setCachedImports(filePath, newPaths)
@@ -192,7 +196,7 @@ async function handleFileChanged(
 
 /**
  * Trigger a smooth position update for nodes connected to the changed file.
- * Applies CSS transition class, adjusts positions, then removes the class.
+ * Applies CSS transition, adjusts positions, then removes the transition.
  */
 function animateLayoutUpdate(sessionId: string): void {
   const session = sessionStore.getState().sessions.get(sessionId)
@@ -221,13 +225,13 @@ function animateLayoutUpdate(sessionId: string): void {
     const newX = snapToGrid(baseX)
     const existing = sessionStore.getState().sessions.get(entry.sessionId)
     if (existing && (existing.position.x !== newX || existing.position.y !== newY)) {
-      // Add transition class to the DOM element
-      const el = document.querySelector(`[data-session-id="${entry.sessionId}"]`)
+      // Add transition to the DOM element
+      const el = document.querySelector(`[data-session-id="${entry.sessionId}"]`) as HTMLElement | null
       if (el) {
-        ;(el as HTMLElement).style.transition = 'transform 300ms ease-out'
+        el.style.transition = `left ${ANIMATION_DURATION_MS}ms ease-out, top ${ANIMATION_DURATION_MS}ms ease-out`
         setTimeout(() => {
-          ;(el as HTMLElement).style.transition = ''
-        }, 350)
+          el.style.transition = ''
+        }, ANIMATION_DURATION_MS + 50)
       }
       sessionStore.getState().updateSession(entry.sessionId, {
         position: { x: newX, y: newY },

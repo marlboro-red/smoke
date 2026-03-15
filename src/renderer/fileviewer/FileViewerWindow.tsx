@@ -14,7 +14,8 @@ import { useFileViewerResize } from './useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
 import { addToast } from '../stores/toastStore'
-import { buildDepGraph } from '../depgraph/buildDepGraph'
+import { buildDepGraph, expandDepGraph } from '../depgraph/buildDepGraph'
+import { isInActiveGraph } from '../depgraph/GraphCache'
 import { createTerminalAtFileDir } from '../session/useSessionCreation'
 import { goToLineStore, useGoToLineSessionId } from './goToLineStore'
 import WindowChrome from '../window/WindowChrome'
@@ -185,7 +186,11 @@ export default function FileViewerWindow({
   }, [session.id, editing])
 
   const handleShowDepGraph = useCallback(() => {
-    buildDepGraph(session)
+    if (isInActiveGraph(session.filePath)) {
+      expandDepGraph(session.filePath)
+    } else {
+      buildDepGraph(session)
+    }
   }, [session])
 
   const handleOpenTerminal = useCallback(() => {
