@@ -307,8 +307,7 @@ const tools: Array<{ definition: ToolDefinition; executor: string }> = [
           color: {
             type: 'string',
             description:
-              'Note color: "yellow", "pink", "blue", "green", or "purple". Defaults to "yellow".',
-            enum: ['yellow', 'pink', 'blue', 'green', 'purple'],
+              'Note color: preset name ("yellow", "pink", "blue", "green", "purple") or a hex color like "#ff6b2b". Defaults to "yellow".',
           },
         },
         required: ['text'],

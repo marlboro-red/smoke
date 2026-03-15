@@ -11,15 +11,8 @@ import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
+import NoteColorPicker, { resolveNoteColors } from './NoteColorPicker'
 import '../styles/note.css'
-
-const NOTE_COLORS: Record<string, { bg: string; border: string; dot: string }> = {
-  yellow: { bg: 'rgba(251, 191, 36, 0.08)', border: 'rgba(251, 191, 36, 0.25)', dot: '#fbbf24' },
-  pink: { bg: 'rgba(244, 114, 182, 0.08)', border: 'rgba(244, 114, 182, 0.25)', dot: '#f472b6' },
-  blue: { bg: 'rgba(96, 165, 250, 0.08)', border: 'rgba(96, 165, 250, 0.25)', dot: '#60a5fa' },
-  green: { bg: 'rgba(74, 222, 128, 0.08)', border: 'rgba(74, 222, 128, 0.25)', dot: '#4ade80' },
-  purple: { bg: 'rgba(167, 139, 250, 0.08)', border: 'rgba(167, 139, 250, 0.25)', dot: '#a78bfa' },
-}
 
 interface NoteWindowProps {
   session: NoteSession
@@ -74,12 +67,12 @@ export default function NoteWindow({
     [session.id]
   )
 
-  const handleColorCycle = useCallback(() => {
-    const colorKeys = Object.keys(NOTE_COLORS)
-    const currentIndex = colorKeys.indexOf(session.color)
-    const nextColor = colorKeys[(currentIndex + 1) % colorKeys.length]
-    sessionStore.getState().updateSession(session.id, { color: nextColor })
-  }, [session.id, session.color])
+  const handleColorChange = useCallback(
+    (color: string) => {
+      sessionStore.getState().updateSession(session.id, { color })
+    },
+    [session.id]
+  )
 
   // Focus textarea when window is focused
   useEffect(() => {
@@ -88,7 +81,7 @@ export default function NoteWindow({
     }
   }, [isFocused])
 
-  const colors = NOTE_COLORS[session.color] ?? NOTE_COLORS.yellow
+  const colors = resolveNoteColors(session.color)
 
   const classNames = [
     'terminal-window',
@@ -122,12 +115,7 @@ export default function NoteWindow({
         onDragStart={onDragStart}
       />
       <div className="note-chrome-extras">
-        <button
-          className="note-color-btn"
-          style={{ background: colors.dot }}
-          onClick={handleColorCycle}
-          title="Change color"
-        />
+        <NoteColorPicker color={session.color} onChange={handleColorChange} />
       </div>
       <div
         className="note-body"
