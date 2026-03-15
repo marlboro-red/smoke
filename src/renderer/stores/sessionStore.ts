@@ -4,6 +4,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { v4 as uuidv4 } from 'uuid'
 import { connectorStore } from './connectorStore'
 import { preferencesStore } from './preferencesStore'
+import { snap } from '../window/useSnapping'
+import { gridStore } from './gridStore'
 
 export type ElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
 
@@ -171,8 +173,9 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       height = 480
       width = height * aspectRatio
     }
-    width = Math.max(200, Math.round(width))
-    height = Math.max(150, Math.round(height))
+    const gs = gridStore.getState().gridSize
+    width = Math.max(200, snap(width, gs))
+    height = Math.max(150, snap(height, gs))
     const session: ImageSession = {
       id: uuidv4(),
       type: 'image',

@@ -4,6 +4,7 @@ import { canvasStore } from '../stores/canvasStore'
 import { gridStore } from '../stores/gridStore'
 import { regionStore } from '../stores/regionStore'
 import { tabStore } from '../stores/tabStore'
+import { snapPosition, snapSize } from '../window/useSnapping'
 import type { Layout } from '../../preload/types'
 
 function serializeCurrentLayout(name: string): Layout {
@@ -76,17 +77,24 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
   canvasStore.getState().setPan(layout.viewport.panX, layout.viewport.panY)
   canvasStore.getState().setZoom(layout.viewport.zoom)
   gridStore.getState().setGridSize(layout.gridSize)
+  canvasStore.getState().setGridSize(layout.gridSize)
+
+  const gs = layout.gridSize
 
   // Create sessions from layout
   for (const saved of layout.sessions) {
     const elementType = saved.type ?? 'terminal'
+    // Snap restored positions/sizes to the current grid so elements align
+    // with grid dots even when the saved layout used a different grid size.
+    const pos = snapPosition(saved.position, gs)
+    const size = snapSize(saved.size, gs)
     switch (elementType) {
       case 'terminal': {
         const cwd = saved.cwd
-        const session = sessionStore.getState().createSession(cwd, saved.position)
+        const session = sessionStore.getState().createSession(cwd, pos)
         sessionStore.getState().updateSession(session.id, {
           title: saved.title,
-          size: saved.size,
+          size: { ...saved.size, width: size.width, height: size.height },
           ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
         })
         window.smokeAPI?.pty.spawn({
@@ -107,11 +115,11 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
                 saved.filePath,
                 result.content,
                 saved.language || 'text',
-                saved.position
+                pos
               )
               sessionStore.getState().updateSession(session.id, {
                 title: saved.title,
-                size: saved.size,
+                size: { ...saved.size, width: size.width, height: size.height },
               })
             }
           } catch {
@@ -122,24 +130,24 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
       }
       case 'note': {
         const session = sessionStore.getState().createNoteSession(
-          saved.position,
+          pos,
           saved.color
         )
         sessionStore.getState().updateSession(session.id, {
           title: saved.title,
           content: saved.content ?? '',
-          size: saved.size,
+          size: { ...saved.size, width: size.width, height: size.height },
         })
         break
       }
       case 'webview': {
         const session = sessionStore.getState().createWebviewSession(
           saved.url || 'http://localhost:3000',
-          saved.position
+          pos
         )
         sessionStore.getState().updateSession(session.id, {
           title: saved.title,
-          size: saved.size,
+          size: { ...saved.size, width: size.width, height: size.height },
         })
         break
       }
@@ -159,11 +167,11 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
                 result.dataUrl,
                 img.naturalWidth,
                 img.naturalHeight,
-                saved.position
+                pos
               )
               sessionStore.getState().updateSession(session.id, {
                 title: saved.title,
-                size: saved.size,
+                size: { ...saved.size, width: size.width, height: size.height },
               })
             }
           } catch {
@@ -176,11 +184,11 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
         const session = sessionStore.getState().createSnippetSession(
           saved.language || 'javascript',
           saved.content ?? '',
-          saved.position
+          pos
         )
         sessionStore.getState().updateSession(session.id, {
           title: saved.title,
-          size: saved.size,
+          size: { ...saved.size, width: size.width, height: size.height },
         })
         break
       }
@@ -244,29 +252,37 @@ export function useLayoutRestore(): {
     for (const id of existingRegions.keys()) {
       regionStore.getState().removeRegion(id)
     }
-    if (layout.regions) {
-      for (const saved of layout.regions) {
-        regionStore.getState().createRegion(saved.name, saved.position, saved.size, saved.color)
-      }
-    }
-
     // Restore viewport
     canvasStore.getState().setPan(layout.viewport.panX, layout.viewport.panY)
     canvasStore.getState().setZoom(layout.viewport.zoom)
     gridStore.getState().setGridSize(layout.gridSize)
+    canvasStore.getState().setGridSize(layout.gridSize)
+
+    const gs = layout.gridSize
+
+    if (layout.regions) {
+      for (const saved of layout.regions) {
+        const rPos = snapPosition(saved.position, gs)
+        const rSize = snapSize(saved.size, gs)
+        regionStore.getState().createRegion(saved.name, rPos, rSize, saved.color)
+      }
+    }
 
     // Create sessions from layout
     for (const saved of layout.sessions) {
       const elementType = saved.type ?? 'terminal'
       let createdId: string | null = null
+      // Snap restored positions/sizes to the current grid
+      const pos = snapPosition(saved.position, gs)
+      const size = snapSize(saved.size, gs)
       switch (elementType) {
         case 'terminal': {
           const cwd = saved.cwd
-          const session = sessionStore.getState().createSession(cwd, saved.position)
+          const session = sessionStore.getState().createSession(cwd, pos)
           createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
-            size: saved.size,
+            size: { ...saved.size, width: size.width, height: size.height },
             ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
             ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
@@ -289,12 +305,12 @@ export function useLayoutRestore(): {
                   saved.filePath,
                   result.content,
                   saved.language || 'text',
-                  saved.position
+                  pos
                 )
                 createdId = session.id
                 sessionStore.getState().updateSession(session.id, {
                   title: saved.title,
-                  size: saved.size,
+                  size: { ...saved.size, width: size.width, height: size.height },
                   ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
                 })
               }
@@ -306,14 +322,14 @@ export function useLayoutRestore(): {
         }
         case 'note': {
           const session = sessionStore.getState().createNoteSession(
-            saved.position,
+            pos,
             saved.color
           )
           createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             content: saved.content ?? '',
-            size: saved.size,
+            size: { ...saved.size, width: size.width, height: size.height },
             ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
           break
@@ -321,12 +337,12 @@ export function useLayoutRestore(): {
         case 'webview': {
           const session = sessionStore.getState().createWebviewSession(
             saved.url || 'http://localhost:3000',
-            saved.position
+            pos
           )
           createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
-            size: saved.size,
+            size: { ...saved.size, width: size.width, height: size.height },
             ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
           break
@@ -347,12 +363,12 @@ export function useLayoutRestore(): {
                   result.dataUrl,
                   img.naturalWidth,
                   img.naturalHeight,
-                  saved.position
+                  pos
                 )
                 createdId = session.id
                 sessionStore.getState().updateSession(session.id, {
                   title: saved.title,
-                  size: saved.size,
+                  size: { ...saved.size, width: size.width, height: size.height },
                   ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
                 })
               }
@@ -366,12 +382,12 @@ export function useLayoutRestore(): {
           const session = sessionStore.getState().createSnippetSession(
             saved.language || 'javascript',
             saved.content ?? '',
-            saved.position
+            pos
           )
           createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
-            size: saved.size,
+            size: { ...saved.size, width: size.width, height: size.height },
             ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
           break
@@ -429,6 +445,7 @@ export function useLayoutRestore(): {
     canvasStore.getState().setPan(0, 0)
     canvasStore.getState().setZoom(1.0)
     gridStore.getState().setGridSize(20)
+    canvasStore.getState().setGridSize(20)
 
     // Clear saved default layout
     await window.smokeAPI?.layout.delete('__default__')
