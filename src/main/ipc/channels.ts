@@ -20,6 +20,7 @@ export const CONFIG_SET = 'config:set' as const
 // File system channels
 export const FS_READDIR = 'fs:readdir' as const
 export const FS_READFILE = 'fs:readfile' as const
+export const FS_WRITEFILE = 'fs:writefile' as const
 
 // Terminal output buffer channels (AI orchestrator)
 export const TERMINAL_BUFFER_READ = 'terminal-buffer:read' as const
@@ -117,6 +118,15 @@ export interface FsReadfileRequest {
 
 export interface FsReadfileResponse {
   content: string
+  size: number
+}
+
+export interface FsWritefileRequest {
+  path: string
+  content: string
+}
+
+export interface FsWritefileResponse {
   size: number
 }
 

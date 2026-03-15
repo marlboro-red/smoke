@@ -22,6 +22,7 @@ import {
   CONFIG_SET,
   FS_READDIR,
   FS_READFILE,
+  FS_WRITEFILE,
   TERMINAL_BUFFER_READ,
   TERMINAL_BUFFER_READ_LINES,
   AI_SEND,
@@ -42,6 +43,8 @@ import {
   FsReaddirEntry,
   FsReadfileRequest,
   FsReadfileResponse,
+  FsWritefileRequest,
+  FsWritefileResponse,
   TerminalBufferReadRequest,
   TerminalBufferReadLinesRequest,
   AiSendRequest,
@@ -216,6 +219,31 @@ export function registerIpcHandlers(
 
     const content = await fs.readFile(filePath, 'utf-8')
     return { content, size: stat.size }
+  })
+
+  ipcMain.handle(FS_WRITEFILE, async (_event, request: FsWritefileRequest): Promise<FsWritefileResponse> => {
+    const filePath = path.resolve(request.path)
+
+    // Safety: reject absolute paths outside the user's home directory
+    const homedir = require('os').homedir()
+    if (!filePath.startsWith(homedir)) {
+      throw new Error(`Write denied: path must be within the user home directory`)
+    }
+
+    // Safety: reject writes to dotfiles/hidden config directories at the home root
+    const relToHome = path.relative(homedir, filePath)
+    const topSegment = relToHome.split(path.sep)[0]
+    if (topSegment.startsWith('.') && topSegment !== '.') {
+      throw new Error(`Write denied: cannot write to hidden config directories`)
+    }
+
+    const content = Buffer.from(request.content, 'utf-8')
+    if (content.length > MAX_FILE_SIZE) {
+      throw new Error(`Content too large: ${content.length} bytes (max ${MAX_FILE_SIZE})`)
+    }
+
+    await fs.writeFile(filePath, request.content, 'utf-8')
+    return { size: content.length }
   })
 
   // Terminal output buffer handlers (AI orchestrator)
