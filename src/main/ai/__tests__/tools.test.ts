@@ -123,7 +123,7 @@ describe('AI Tools', () => {
   }
 
   describe('registerTools', () => {
-    it('registers all 13 tools', () => {
+    it('registers all 16 tools', () => {
       const toolNames = (service as unknown as { tools: Array<{ name: string }> }).tools.map(t => t.name)
       expect(toolNames).toEqual([
         'get_canvas_state',
@@ -139,6 +139,9 @@ describe('AI Tools', () => {
         'pan_canvas',
         'create_note',
         'create_arrow',
+        'create_group',
+        'add_to_group',
+        'broadcast_to_group',
       ])
     })
   })
@@ -417,6 +420,77 @@ describe('AI Tools', () => {
 
       expect(result.connectorId).toBe('mock-session-id')
       expect(result.label).toBeUndefined()
+    })
+  })
+
+  describe('create_group', () => {
+    it('emits group_created canvas action', async () => {
+      const executor = getExecutor('create_group')!
+      const result = JSON.parse(await executor({
+        name: 'Web Servers',
+        color: '#4A90D9',
+      }))
+
+      expect(result.groupId).toBe('mock-session-id')
+      expect(result.name).toBe('Web Servers')
+      expect(result.color).toBe('#4A90D9')
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      expect(canvasActions).toHaveLength(1)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.action).toBe('group_created')
+      expect(action.payload.groupId).toBe('mock-session-id')
+      expect(action.payload.name).toBe('Web Servers')
+      expect(action.payload.color).toBe('#4A90D9')
+    })
+
+    it('works without optional color', async () => {
+      const executor = getExecutor('create_group')!
+      const result = JSON.parse(await executor({ name: 'Logs' }))
+
+      expect(result.groupId).toBe('mock-session-id')
+      expect(result.name).toBe('Logs')
+      expect(result.color).toBeUndefined()
+    })
+  })
+
+  describe('add_to_group', () => {
+    it('emits group_member_added canvas action', async () => {
+      const executor = getExecutor('add_to_group')!
+      const result = await executor({
+        element_id: 'existing-session',
+        group_id: 'group-1',
+      })
+
+      expect(result).toContain('existing-session')
+      expect(result).toContain('group-1')
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      expect(canvasActions).toHaveLength(1)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.action).toBe('group_member_added')
+      expect(action.payload.groupId).toBe('group-1')
+      expect(action.payload.elementId).toBe('existing-session')
+    })
+  })
+
+  describe('broadcast_to_group', () => {
+    it('emits group_broadcast canvas action', async () => {
+      const executor = getExecutor('broadcast_to_group')!
+      const result = await executor({
+        group_id: 'group-1',
+        command: 'npm test\n',
+      })
+
+      expect(result).toContain('9 characters')
+      expect(result).toContain('group-1')
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      expect(canvasActions).toHaveLength(1)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.action).toBe('group_broadcast')
+      expect(action.payload.groupId).toBe('group-1')
+      expect(action.payload.command).toBe('npm test\n')
     })
   })
 

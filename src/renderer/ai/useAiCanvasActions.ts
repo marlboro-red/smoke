@@ -3,8 +3,10 @@ import type { AiStreamCanvasAction } from '../../preload/types'
 import type { NoteSession, TerminalSession } from '../stores/sessionStore'
 import { sessionStore } from '../stores/sessionStore'
 import { connectorStore } from '../stores/connectorStore'
+import { groupStore } from '../stores/groupStore'
 import { setPanTo } from '../canvas/useCanvasControls'
 import { closeSession } from '../session/useSessionClose'
+import { broadcastToGroup } from '../terminal/usePty'
 
 interface SessionCreatedPayload {
   sessionId: string
@@ -45,6 +47,22 @@ interface ConnectorCreatedPayload {
   targetId: string
   label?: string
   color?: string
+}
+
+interface GroupCreatedPayload {
+  groupId: string
+  name: string
+  color?: string
+}
+
+interface GroupMemberAddedPayload {
+  groupId: string
+  elementId: string
+}
+
+interface GroupBroadcastPayload {
+  groupId: string
+  command: string
 }
 
 export function handleCanvasAction(event: AiStreamCanvasAction): void {
@@ -135,6 +153,37 @@ export function handleCanvasAction(event: AiStreamCanvasAction): void {
         connectors.set(connectorId, connector)
         return { connectors }
       })
+      break
+    }
+
+    case 'group_created': {
+      const { groupId, name, color } = event.payload as unknown as GroupCreatedPayload
+      // Use the store's createGroup, then update the ID to match the one from main
+      const group = groupStore.getState().createGroup(name, color)
+      // Replace the auto-generated ID with the one from the AI tool
+      if (group.id !== groupId) {
+        groupStore.setState((state) => {
+          const groups = new Map(state.groups)
+          const created = groups.get(group.id)
+          if (created) {
+            groups.delete(group.id)
+            groups.set(groupId, { ...created, id: groupId })
+          }
+          return { groups }
+        })
+      }
+      break
+    }
+
+    case 'group_member_added': {
+      const { groupId, elementId } = event.payload as unknown as GroupMemberAddedPayload
+      groupStore.getState().addMember(groupId, elementId)
+      break
+    }
+
+    case 'group_broadcast': {
+      const { groupId, command } = event.payload as unknown as GroupBroadcastPayload
+      broadcastToGroup(groupId, command)
       break
     }
   }
