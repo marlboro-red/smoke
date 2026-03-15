@@ -3,6 +3,7 @@ import type { Preferences } from '../../preload/types'
 import { preferencesStore, usePreferences } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
+import { applyTerminalOpacity } from '../themes/applyTheme'
 import '../styles/config.css'
 
 export default function ConfigPanel(): JSX.Element {
@@ -27,6 +28,11 @@ export default function ConfigPanel(): JSX.Element {
         const size = value as number
         gridStore.getState().setGridSize(size)
         canvasStore.getState().setGridSize(size)
+      }
+
+      // Apply terminal opacity change immediately
+      if (key === 'terminalOpacity') {
+        applyTerminalOpacity(value as number)
       }
     },
     []
@@ -84,6 +90,20 @@ export default function ConfigPanel(): JSX.Element {
               max={50}
               value={prefs.gridSize}
               onChange={(e) => updatePref('gridSize', Number(e.target.value))}
+            />
+          </div>
+
+          <div className="config-group">
+            <label className="config-label">
+              Window Opacity: {Math.round((prefs.terminalOpacity ?? 1) * 100)}%
+            </label>
+            <input
+              className="config-slider"
+              type="range"
+              min={10}
+              max={100}
+              value={Math.round((prefs.terminalOpacity ?? 1) * 100)}
+              onChange={(e) => updatePref('terminalOpacity', Number(e.target.value) / 100)}
             />
           </div>
 

@@ -63,6 +63,7 @@ export interface Preferences {
   defaultCwd: string
   aiApiKey: string
   aiModel: string
+  terminalOpacity: number
 }
 
 export interface FsReaddirEntry {

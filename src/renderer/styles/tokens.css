@@ -5,6 +5,8 @@
   --bg-base: #0d0d1a;
   --bg-sidebar: #0a0a14;
   --bg-window: rgba(22, 22, 40, 0.96);
+  --bg-terminal: var(--bg-window);
+  --terminal-backdrop: none;
   --bg-chrome: rgba(255, 255, 255, 0.03);
   --bg-thumbnail: rgba(22, 22, 40, 0.92);
   --bg-elevated: rgba(255, 255, 255, 0.05);

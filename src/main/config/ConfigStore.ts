@@ -32,6 +32,7 @@ export interface Preferences {
   defaultCwd: string
   aiApiKey: string
   aiModel: string
+  terminalOpacity: number
 }
 
 export const defaultPreferences: Preferences = {
@@ -46,6 +47,7 @@ export const defaultPreferences: Preferences = {
   defaultCwd: '',
   aiApiKey: '',
   aiModel: 'claude-sonnet-4-20250514',
+  terminalOpacity: 1,
 }
 
 export interface SmokeConfig {
