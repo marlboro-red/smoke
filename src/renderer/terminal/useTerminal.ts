@@ -7,6 +7,7 @@ import {
   registerTerminal,
   markHidden,
   reattachTerminal,
+  flushHiddenBuffer,
 } from './terminalRegistry'
 import { sessionStore } from '../stores/sessionStore'
 
@@ -95,6 +96,9 @@ export function useTerminal(
       }
       // Force full redraw of the buffer after reattach + fit
       terminal.refresh(0, terminal.rows - 1)
+
+      // Flush any PTY data that arrived while the terminal was off-screen
+      flushHiddenBuffer(sessionId, terminal)
     } else {
       // Create new terminal
       const terminal = new Terminal({
