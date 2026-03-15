@@ -6,7 +6,7 @@ import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Preferences, SmokeConfig } from '../config/ConfigStore'
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AiService } from '../ai/AiService'
-import { registerTools } from '../ai/tools'
+import { AgentManager } from '../ai/AgentManager'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -30,6 +30,9 @@ import {
   AI_ABORT,
   AI_CLEAR,
   AI_CONFIG,
+  AGENT_CREATE,
+  AGENT_REMOVE,
+  AGENT_LIST,
   APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
   PtySpawnResponse,
@@ -55,13 +58,17 @@ import {
   AiClearRequest,
   AiConfigSetRequest,
   AiConfigGetResponse,
+  AgentCreateRequest,
+  AgentCreateResponse,
+  AgentRemoveRequest,
 } from './channels'
+import type { AgentInfo } from '../../preload/types'
 
-let aiServiceInstance: AiService | null = null
+let agentManagerInstance: AgentManager | null = null
 
-/** Get the shared AiService (available after registerIpcHandlers is called). */
-export function getAiService(): AiService | null {
-  return aiServiceInstance
+/** Get the shared AgentManager (available after registerIpcHandlers is called). */
+export function getAgentManager(): AgentManager | null {
+  return agentManagerInstance
 }
 
 export function registerIpcHandlers(
@@ -69,10 +76,10 @@ export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
   launchCwd: string
 ): void {
-  // Instantiate the AI service and register tools
-  const aiService = new AiService(getMainWindow)
-  aiServiceInstance = aiService
-  registerTools(aiService, ptyManager, getMainWindow)
+  // Instantiate the agent manager for multi-agent support
+  const agentManager = new AgentManager(getMainWindow)
+  agentManager.setPtyManager(ptyManager)
+  agentManagerInstance = agentManager
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
     const preferences = configStore.get('preferences', defaultPreferences)
 
@@ -172,9 +179,11 @@ export function registerIpcHandlers(
     const key = `preferences.${request.key}` as keyof SmokeConfig
     configStore.set(key, request.value as never)
 
-    // Invalidate AiService client cache when API key changes
+    // Invalidate all agents' client cache when API key changes
     if (request.key === 'aiApiKey') {
-      aiService.setConfig('aiApiKey', request.value)
+      for (const agent of agentManager.listAgents()) {
+        agentManager.getAgent(agent.id)?.setConfig('aiApiKey', request.value)
+      }
     }
   })
 
@@ -273,11 +282,32 @@ export function registerIpcHandlers(
     return launchCwd
   })
 
-  // AI handlers
+  // Agent management handlers
+  ipcMain.handle(
+    AGENT_CREATE,
+    (_event, request: AgentCreateRequest): AgentCreateResponse => {
+      const agentId = agentManager.createAgent(request.name)
+      return { agentId }
+    }
+  )
+
+  ipcMain.handle(AGENT_REMOVE, (_event, request: AgentRemoveRequest): void => {
+    agentManager.removeAgent(request.agentId)
+  })
+
+  ipcMain.handle(AGENT_LIST, (): AgentInfo[] => {
+    return agentManager.listAgents()
+  })
+
+  // AI handlers — route to the correct agent via agentId
   ipcMain.handle(
     AI_SEND,
     async (_event, request: AiSendRequest): Promise<AiSendResponse> => {
-      const conversationId = await aiService.sendMessage(
+      const agent = agentManager.getAgent(request.agentId)
+      if (!agent) {
+        throw new Error(`Agent ${request.agentId} not found`)
+      }
+      const conversationId = await agent.sendMessage(
         request.message,
         request.conversationId
       )
@@ -286,18 +316,30 @@ export function registerIpcHandlers(
   )
 
   ipcMain.handle(AI_ABORT, (_event, request: AiAbortRequest): void => {
-    aiService.abort(request.conversationId)
+    const agent = agentManager.getAgent(request.agentId)
+    agent?.abort(request.conversationId)
   })
 
   ipcMain.handle(AI_CLEAR, (_event, request: AiClearRequest): void => {
-    aiService.clear(request.conversationId)
+    const agent = agentManager.getAgent(request.agentId)
+    agent?.clear(request.conversationId)
   })
 
   ipcMain.handle(AI_CONFIG, (_event, request?: AiConfigSetRequest): AiConfigGetResponse | void => {
     if (request && request.key) {
-      aiService.setConfig(request.key, request.value)
+      // Apply config to all agents
+      for (const info of agentManager.listAgents()) {
+        agentManager.getAgent(info.id)?.setConfig(request.key, request.value)
+      }
       return
     }
-    return aiService.getConfig()
+    // Config is global — use any agent or create a temp service to read it
+    const agents = agentManager.listAgents()
+    if (agents.length > 0) {
+      return agentManager.getAgent(agents[0].id)!.getConfig()
+    }
+    // No agents yet — read config directly
+    const tempService = new AiService(() => null)
+    return tempService.getConfig()
   })
 }

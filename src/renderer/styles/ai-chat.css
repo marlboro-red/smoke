@@ -42,6 +42,101 @@
   background: var(--bg-hover);
 }
 
+/* ─── Agent Tabs ─── */
+
+.ai-agent-tabs {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-chrome);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.ai-agent-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--duration-fast), border-color var(--duration-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ai-agent-tab:hover {
+  color: var(--text-secondary);
+}
+
+.ai-agent-tab.active {
+  color: var(--accent-text);
+  border-bottom-color: var(--accent-strong);
+}
+
+.ai-agent-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.ai-agent-tab-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  flex-shrink: 0;
+  animation: agent-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes agent-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.ai-agent-tab-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity var(--duration-fast), color var(--duration-fast);
+}
+
+.ai-agent-tab:hover .ai-agent-tab-close {
+  opacity: 1;
+}
+
+.ai-agent-tab-close:hover {
+  color: var(--color-error-text);
+}
+
+.ai-agent-tab-add {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  padding: var(--space-sm) var(--space-md);
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast), background var(--duration-fast);
+  flex-shrink: 0;
+}
+
+.ai-agent-tab-add:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
 /* ─── Message List ─── */
 
 .ai-message-list {

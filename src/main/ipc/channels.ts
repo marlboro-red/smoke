@@ -37,6 +37,11 @@ export const AI_CANVAS_ACTION = 'ai:canvas-action' as const
 // Recording channels
 export const RECORDING_FLUSH = 'recording:flush' as const
 
+// Agent management channels
+export const AGENT_CREATE = 'agent:create' as const
+export const AGENT_REMOVE = 'agent:remove' as const
+export const AGENT_LIST = 'agent:list' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -146,6 +151,7 @@ export interface TerminalBufferReadLinesRequest {
 // AI message types
 
 export interface AiSendRequest {
+  agentId: string
   message: string
   conversationId?: string
 }
@@ -155,11 +161,32 @@ export interface AiSendResponse {
 }
 
 export interface AiAbortRequest {
+  agentId: string
   conversationId?: string
 }
 
 export interface AiClearRequest {
+  agentId: string
   conversationId?: string
+}
+
+// Agent management message types
+
+export interface AgentCreateRequest {
+  name: string
+}
+
+export interface AgentCreateResponse {
+  agentId: string
+}
+
+export interface AgentRemoveRequest {
+  agentId: string
+}
+
+export interface AgentInfo {
+  id: string
+  name: string
 }
 
 export interface AiConfigGetResponse {
