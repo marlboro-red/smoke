@@ -5,6 +5,7 @@ import SessionListItem from './SessionListItem'
 import { usePanToSession } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
 import ConfigPanel from '../config/ConfigPanel'
+import FileTree from './FileTree'
 import '../styles/sidebar.css'
 
 export default function Sidebar(): JSX.Element {
@@ -41,6 +42,7 @@ export default function Sidebar(): JSX.Element {
           />
         ))}
       </div>
+      <FileTree />
       <LayoutPanel />
       <ConfigPanel />
     </div>
