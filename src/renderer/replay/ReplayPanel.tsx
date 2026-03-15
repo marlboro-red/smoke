@@ -4,6 +4,7 @@ import { replayEngine } from './ReplayEngine'
 import type { CanvasEvent } from '../recording/types'
 import type { RecordingListEntry } from '../../preload/types'
 import { eventRecorder } from '../recording/EventRecorder'
+import { addToast } from '../stores/toastStore'
 import '../styles/replay.css'
 
 function formatDate(ts: number): string {
@@ -67,7 +68,12 @@ export default function ReplayPanel(): JSX.Element {
 
   const handleExport = useCallback(async (e: React.MouseEvent, filename: string) => {
     e.stopPropagation()
-    await window.smokeAPI.recording.exportRecording(filename)
+    try {
+      await window.smokeAPI.recording.exportRecording(filename)
+      addToast(`Recording "${filename}" exported`, 'success')
+    } catch (err) {
+      addToast(`Export failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+    }
   }, [])
 
   const handleImport = useCallback(async () => {

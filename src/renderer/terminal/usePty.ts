@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import { sessionStore, getGroupSessionIds } from '../stores/sessionStore'
+import { addToast } from '../stores/toastStore'
 
 export function usePty(
   sessionId: string,
@@ -43,6 +44,14 @@ export function usePty(
         status: 'exited',
         exitCode: event.exitCode,
       })
+
+      const session = sessionStore.getState().sessions.get(sessionId)
+      const label = session?.title || sessionId
+      if (event.exitCode === 0) {
+        addToast(`"${label}" exited successfully`, 'success')
+      } else {
+        addToast(`"${label}" exited with code ${event.exitCode}`, 'error')
+      }
     })
 
     return () => {

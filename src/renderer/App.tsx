@@ -18,6 +18,7 @@ import ShortcutsOverlay from './shortcuts/ShortcutsOverlay'
 import CommandPalette from './palette/CommandPalette'
 import SearchModal from './search/SearchModal'
 import PresentationMode from './presentation/PresentationMode'
+import ToastContainer from './toast/ToastContainer'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 
 function App(): JSX.Element {
@@ -91,6 +92,7 @@ function App(): JSX.Element {
       <CommandPalette />
       <SearchModal />
       <PresentationMode />
+      <ToastContainer />
       {isReplaying && (
         <>
           <div className="replay-read-only-overlay">

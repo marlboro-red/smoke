@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { AiStreamEvent } from '../../preload/types'
 import { agentStore } from '../stores/agentStore'
+import { addToast } from '../stores/toastStore'
 
 /**
  * Connects window.smokeAPI.ai.onStream to agentStore, dispatching
@@ -61,12 +62,14 @@ export function useAiStream(): void {
         case 'message_complete': {
           store.completeGeneration(agentId)
           currentMessageIds.current.delete(agentId)
+          addToast('AI task completed', 'success')
           break
         }
 
         case 'error': {
           store.setError(agentId, event.error)
           currentMessageIds.current.delete(agentId)
+          addToast(`AI error: ${event.error}`, 'error')
           break
         }
 
