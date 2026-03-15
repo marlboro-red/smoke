@@ -105,12 +105,12 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
           <GroupContainer key={group.id} group={group} />
         ))}
         {sessions.map((session) => {
-          if (!visibleIds.has(session.id)) return null
           if (collapsedMemberIds.has(session.id)) return null
+          const isVisible = visibleIds.has(session.id)
           switch (session.type) {
             case 'terminal':
               if (isThumbnailMode) {
-                return <ThumbnailRenderer key={session.id} session={session} />
+                return isVisible ? <ThumbnailRenderer key={session.id} session={session} /> : null
               }
               return (
                 <TerminalWindow
@@ -118,9 +118,11 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
                   session={session}
                   zoom={getZoom}
                   gridSize={gridSize}
+                  hidden={!isVisible}
                 />
               )
             case 'file':
+              if (!isVisible) return null
               return (
                 <React.Fragment key={session.id}>
                   <FileViewerThumbnail
@@ -136,6 +138,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
                 </React.Fragment>
               )
             case 'note':
+              if (!isVisible) return null
               if (isThumbnailMode) {
                 return <NoteThumbnail key={session.id} session={session} />
               }
