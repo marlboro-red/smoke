@@ -26,6 +26,7 @@ export default function Sidebar(): JSX.Element {
   const broadcastGroupId = useBroadcastGroupId()
   const panToSession = usePanToSession()
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
 
   const handleContextMenu = useCallback((sessionId: string, x: number, y: number) => {
     setContextMenu({ sessionId, x, y })
@@ -37,6 +38,14 @@ export default function Sidebar(): JSX.Element {
 
   const handleCloseSession = useCallback((sessionId: string) => {
     closeSession(sessionId)
+  }, [])
+
+  const handleStartRename = useCallback((sessionId: string) => {
+    setRenamingId(sessionId)
+  }, [])
+
+  const handleFinishRename = useCallback(() => {
+    setRenamingId(null)
   }, [])
 
   const sortedSessions = useMemo(
@@ -126,8 +135,11 @@ export default function Sidebar(): JSX.Element {
                   isFocused={focusedId === session.id}
                   isHighlighted={highlightedId === session.id}
                   isInBroadcastGroup={broadcastGroupId === group.id}
+                  isRenaming={renamingId === session.id}
                   onPanTo={panToSession}
                   onContextMenu={handleContextMenu}
+                  onStartRename={handleStartRename}
+                  onFinishRename={handleFinishRename}
                 />
               ))}
             </div>
@@ -140,8 +152,11 @@ export default function Sidebar(): JSX.Element {
             isFocused={focusedId === session.id}
             isHighlighted={highlightedId === session.id}
             isInBroadcastGroup={false}
+            isRenaming={renamingId === session.id}
             onPanTo={panToSession}
             onContextMenu={handleContextMenu}
+            onStartRename={handleStartRename}
+            onFinishRename={handleFinishRename}
           />
         ))}
       </div>
@@ -153,6 +168,7 @@ export default function Sidebar(): JSX.Element {
           state={contextMenu}
           onClose={handleCloseContextMenu}
           onCloseSession={handleCloseSession}
+          onRenameSession={handleStartRename}
         />
       )}
     </div>

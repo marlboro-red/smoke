@@ -10,9 +10,10 @@ interface ContextMenuProps {
   state: ContextMenuState
   onClose: () => void
   onCloseSession: (sessionId: string) => void
+  onRenameSession: (sessionId: string) => void
 }
 
-export default function ContextMenu({ state, onClose, onCloseSession }: ContextMenuProps): JSX.Element {
+export default function ContextMenu({ state, onClose, onCloseSession, onRenameSession }: ContextMenuProps): JSX.Element {
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,6 +51,15 @@ export default function ContextMenu({ state, onClose, onCloseSession }: ContextM
       className="sidebar-context-menu"
       style={{ top: state.y, left: state.x }}
     >
+      <button
+        className="context-menu-item"
+        onClick={() => {
+          onRenameSession(state.sessionId)
+          onClose()
+        }}
+      >
+        Rename
+      </button>
       <button
         className="context-menu-item destructive"
         onClick={() => {
