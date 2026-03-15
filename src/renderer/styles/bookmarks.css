@@ -1,0 +1,126 @@
+.bookmark-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+}
+
+.bookmark-toggle-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  flex-shrink: 0;
+  transition: color var(--duration-fast), background var(--duration-fast);
+}
+
+.bookmark-toggle-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.bookmark-panel-content {
+  padding: 0 14px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.bookmark-save-row {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.bookmark-name-input {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-family: inherit;
+  padding: var(--space-xs) var(--space-md);
+  outline: none;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.bookmark-name-input:focus {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.bookmark-name-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.bookmark-save-btn {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-muted);
+  border-radius: var(--radius-sm);
+  color: var(--accent-text);
+  font-size: var(--font-size-md);
+  padding: var(--space-xs) 10px;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.bookmark-save-btn:hover {
+  background: var(--accent-muted);
+}
+
+.bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bookmark-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast);
+}
+
+.bookmark-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.bookmark-name {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--duration-fast);
+}
+
+.bookmark-name:hover {
+  color: var(--text-primary);
+}
+
+.bookmark-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 var(--space-xs);
+  line-height: 1;
+  transition: color var(--duration-fast);
+}
+
+.bookmark-delete-btn:hover {
+  color: var(--color-error);
+}

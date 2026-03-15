@@ -17,6 +17,7 @@ export interface Layout {
 export interface SidebarSectionSizes {
   fileTree?: number
   layouts?: number
+  bookmarks?: number
   recordings?: number
 }
 
@@ -64,9 +65,17 @@ export const defaultPreferences: Preferences = {
   customShortcuts: {},
 }
 
+export interface Bookmark {
+  name: string
+  panX: number
+  panY: number
+  zoom: number
+}
+
 export interface SmokeConfig {
   defaultLayout: Layout | null
   namedLayouts: Record<string, Layout>
+  canvasBookmarks: Record<string, Bookmark>
   preferences: Preferences
 }
 
@@ -75,6 +84,7 @@ const configStore = new Store<SmokeConfig>({
   defaults: {
     defaultLayout: null,
     namedLayouts: {},
+    canvasBookmarks: {},
     preferences: { ...defaultPreferences },
   },
 })

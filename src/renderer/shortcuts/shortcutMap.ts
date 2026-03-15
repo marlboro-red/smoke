@@ -28,6 +28,7 @@ export type ShortcutAction =
   | 'showShortcutsHelp'
   | 'commandPalette'
   | 'exportCanvasPng'
+  | 'saveBookmark'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -68,6 +69,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   showShortcutsHelp: 'Keyboard Shortcuts',
   commandPalette: 'Command Palette',
   exportCanvasPng: 'Export Canvas as PNG',
+  saveBookmark: 'Save Bookmark',
   escape: 'Unfocus Session',
 }
 
@@ -98,6 +100,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   showShortcutsHelp: { key: '/', mod: true, shift: false },
   commandPalette: { key: 'p', mod: true, shift: false },
   exportCanvasPng: { key: 'e', mod: true, shift: true },
+  saveBookmark: { key: 'd', mod: true, shift: false },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -129,7 +132,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Layout & Settings',
-    actions: ['saveLayout', 'openSettings'],
+    actions: ['saveLayout', 'saveBookmark', 'openSettings'],
   },
   {
     title: 'AI & Tools',

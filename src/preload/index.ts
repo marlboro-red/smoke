@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -37,6 +37,12 @@ const smokeAPI: SmokeAPI = {
     load: (name) => ipcRenderer.invoke('layout:load', { name }),
     list: () => ipcRenderer.invoke('layout:list'),
     delete: (name) => ipcRenderer.invoke('layout:delete', { name }),
+  },
+
+  bookmark: {
+    save: (name, bookmark) => ipcRenderer.invoke('bookmark:save', { name, bookmark }),
+    list: () => ipcRenderer.invoke('bookmark:list'),
+    delete: (name) => ipcRenderer.invoke('bookmark:delete', { name }),
   },
 
   config: {
