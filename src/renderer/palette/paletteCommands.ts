@@ -14,6 +14,7 @@ import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import { getSortedSessionIds } from '../shortcuts/shortcutMap'
 import { presentationStore } from '../presentation/presentationStore'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
+import { regionStore } from '../stores/regionStore'
 
 export interface PaletteItem {
   id: string
@@ -77,6 +78,22 @@ function getActionItems(): PaletteItem[] {
       action: () => {
         const session = sessionStore.getState().createSnippetSession()
         sessionStore.getState().focusSession(session.id)
+      },
+    },
+    {
+      id: 'action:new-region',
+      title: 'New Region',
+      category: 'Canvas',
+      icon: '[]',
+      action: () => {
+        const pan = getCurrentPan()
+        const zoom = getCurrentZoom()
+        // Place region in the center of the current viewport
+        const rootW = window.innerWidth
+        const rootH = window.innerHeight
+        const centerX = (-pan.x + rootW / 2) / zoom - 300
+        const centerY = (-pan.y + rootH / 2) / zoom - 200
+        regionStore.getState().createRegion('New Region', { x: centerX, y: centerY })
       },
     },
     {

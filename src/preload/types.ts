@@ -42,11 +42,19 @@ export interface LayoutSession {
   size: { width: number; height: number; cols: number; rows: number }
 }
 
+export interface LayoutRegion {
+  name: string
+  color: string
+  position: { x: number; y: number }
+  size: { width: number; height: number }
+}
+
 export interface Layout {
   name: string
   sessions: LayoutSession[]
   viewport: { panX: number; panY: number; zoom: number }
   gridSize: number
+  regions?: LayoutRegion[]
 }
 
 export interface Bookmark {

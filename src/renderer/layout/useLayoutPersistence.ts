@@ -2,12 +2,14 @@ import { useEffect, useRef, useCallback } from 'react'
 import { sessionStore } from '../stores/sessionStore'
 import { canvasStore } from '../stores/canvasStore'
 import { gridStore } from '../stores/gridStore'
+import { regionStore } from '../stores/regionStore'
 import type { Layout } from '../../preload/types'
 
 function serializeCurrentLayout(name: string): Layout {
   const { sessions } = sessionStore.getState()
   const { panX, panY, zoom } = canvasStore.getState()
   const { gridSize } = gridStore.getState()
+  const { regions } = regionStore.getState()
 
   return {
     name,
@@ -46,6 +48,12 @@ function serializeCurrentLayout(name: string): Layout {
     }),
     viewport: { panX, panY, zoom },
     gridSize,
+    regions: Array.from(regions.values()).map((r) => ({
+      name: r.name,
+      color: r.color,
+      position: { x: r.position.x, y: r.position.y },
+      size: { width: r.size.width, height: r.size.height },
+    })),
   }
 }
 
@@ -71,9 +79,18 @@ export function useLayoutAutoSave(): void {
       }, 2000)
     })
 
+    const unsubRegion = regionStore.subscribe(() => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        const layout = serializeCurrentLayout('__default__')
+        window.smokeAPI?.layout.save('__default__', layout)
+      }, 2000)
+    })
+
     return () => {
       unsubSession()
       unsubCanvas()
+      unsubRegion()
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [])
@@ -92,6 +109,17 @@ export function useLayoutRestore(): {
         window.smokeAPI?.pty.kill(session.id)
       }
       sessionStore.getState().removeSession(session.id)
+    }
+
+    // Clear existing regions and restore saved ones
+    const { regions: existingRegions } = regionStore.getState()
+    for (const id of existingRegions.keys()) {
+      regionStore.getState().removeRegion(id)
+    }
+    if (layout.regions) {
+      for (const saved of layout.regions) {
+        regionStore.getState().createRegion(saved.name, saved.position, saved.size, saved.color)
+      }
     }
 
     // Restore viewport
@@ -233,6 +261,12 @@ export function useLayoutRestore(): {
         window.smokeAPI?.pty.kill(session.id)
       }
       sessionStore.getState().removeSession(session.id)
+    }
+
+    // Clear all regions
+    const { regions } = regionStore.getState()
+    for (const id of regions.keys()) {
+      regionStore.getState().removeRegion(id)
     }
 
     // Reset viewport to origin

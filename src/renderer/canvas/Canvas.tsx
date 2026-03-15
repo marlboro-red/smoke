@@ -7,10 +7,12 @@ import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
 import { useGroupList } from '../stores/groupStore'
+import { useRegionList } from '../stores/regionStore'
 import { createNewSession } from '../session/useSessionCreation'
 import Grid from './Grid'
 import ConnectorLayer from './ConnectorLayer'
 import GroupContainer from './GroupContainer'
+import RegionShape from './RegionShape'
 import TerminalWindow from '../terminal/TerminalWindow'
 import TerminalThumbnail from '../terminal/TerminalThumbnail'
 import FileViewerWindow from '../fileviewer/FileViewerWindow'
@@ -40,6 +42,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
   const { rootRef, panRef, zoomRef } = useCanvasControls(viewportRef)
   const sessions = useSessionList()
   const groups = useGroupList()
+  const regions = useRegionList()
   const storeZoom = useCanvasStore((s) => s.zoom)
   const gridSize = useGridStore((s) => s.gridSize)
   const showGrid = useGridStore((s) => s.showGrid)
@@ -75,8 +78,9 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       if (readOnly) return
-      // Only on empty canvas, not on terminal windows
+      // Only on empty canvas, not on terminal windows or regions
       if ((e.target as HTMLElement).closest('.terminal-window')) return
+      if ((e.target as HTMLElement).closest('.region-shape')) return
 
       const root = rootRef.current
       if (!root) return
@@ -114,6 +118,9 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         <SnapPreview />
         <ConnectorLayer />
+        {regions.map((region) => (
+          <RegionShape key={region.id} region={region} zoom={getZoom} gridSize={gridSize} />
+        ))}
         {groups.map((group) => (
           <GroupContainer key={group.id} group={group} />
         ))}

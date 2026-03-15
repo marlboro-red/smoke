@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback } from 'react'
 import { sessionStore, useSessionList } from '../stores/sessionStore'
 import { useCanvasStore, canvasStore } from '../stores/canvasStore'
 import { activityStore, useActiveIds } from '../stores/activityStore'
+import { regionStore, useRegionList, getRegionBorderColor } from '../stores/regionStore'
 import { setPanTo, getCanvasRootElement } from './useCanvasControls'
 import '../styles/minimap.css'
 
@@ -47,6 +48,7 @@ function computeBounds(
 export default function Minimap(): JSX.Element | null {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sessions = useSessionList()
+  const regions = useRegionList()
   const panX = useCanvasStore((s) => s.panX)
   const panY = useCanvasStore((s) => s.panY)
   const zoom = useCanvasStore((s) => s.zoom)
@@ -78,7 +80,15 @@ export default function Minimap(): JSX.Element | null {
     const vpBottom = vpTop + rootH / zoom
 
     const allSessions = Array.from(sessionStore.getState().sessions.values())
+    const allRegions = Array.from(regionStore.getState().regions.values())
     const bounds = computeBounds(allSessions, vpLeft, vpTop, vpRight, vpBottom)
+    // Expand bounds to include regions
+    for (const r of allRegions) {
+      bounds.minX = Math.min(bounds.minX, r.position.x - PADDING)
+      bounds.minY = Math.min(bounds.minY, r.position.y - PADDING)
+      bounds.maxX = Math.max(bounds.maxX, r.position.x + r.size.width + PADDING)
+      bounds.maxY = Math.max(bounds.maxY, r.position.y + r.size.height + PADDING)
+    }
     boundsRef.current = bounds
 
     const worldW = bounds.maxX - bounds.minX
@@ -91,6 +101,17 @@ export default function Minimap(): JSX.Element | null {
 
     // Clear
     ctx.clearRect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT)
+
+    // Draw regions (behind elements)
+    for (const r of allRegions) {
+      const rx = (r.position.x - bounds.minX) * scale + offsetX
+      const ry = (r.position.y - bounds.minY) * scale + offsetY
+      const rw = Math.max(r.size.width * scale, 4)
+      const rh = Math.max(r.size.height * scale, 4)
+      ctx.strokeStyle = getRegionBorderColor(r)
+      ctx.lineWidth = 1
+      ctx.strokeRect(rx, ry, rw, rh)
+    }
 
     // Draw elements
     const currentActiveIds = activityStore.getState().activeIds
@@ -127,7 +148,7 @@ export default function Minimap(): JSX.Element | null {
     ctx.strokeRect(vx, vy, vw, vh)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
     ctx.fillRect(vx, vy, vw, vh)
-  }, [panX, panY, zoom, sessions, activeIds])
+  }, [panX, panY, zoom, sessions, regions, activeIds])
 
   // Animate minimap when there are active (pulsing) indicators
   useEffect(() => {
