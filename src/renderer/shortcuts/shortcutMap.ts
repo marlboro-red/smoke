@@ -31,6 +31,8 @@ export type ShortcutAction =
   | 'saveBookmark'
   | 'showDepGraph'
   | 'openTerminalHere'
+  | 'addBookmark'
+  | 'startPresentation'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -74,6 +76,8 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   saveBookmark: 'Save Bookmark',
   showDepGraph: 'Show Import Dependency Graph',
   openTerminalHere: 'Open Terminal Here',
+  addBookmark: 'Add Bookmark',
+  startPresentation: 'Start Presentation',
   escape: 'Unfocus Session',
 }
 
@@ -107,6 +111,8 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   saveBookmark: { key: 'd', mod: true, shift: false },
   showDepGraph: { key: 'd', mod: true, shift: true },
   openTerminalHere: { key: 't', mod: true, shift: true },
+  addBookmark: { key: 'b', mod: true, shift: false },
+  startPresentation: { key: 'F5', mod: false, shift: false },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -130,7 +136,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng', 'showDepGraph'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation'],
   },
   {
     title: 'Groups',

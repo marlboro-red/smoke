@@ -13,6 +13,7 @@ import { shortcutsOverlayStore } from './shortcutsOverlayStore'
 import { commandPaletteStore } from '../palette/commandPaletteStore'
 import { canvasSearchStore } from '../search/searchStore'
 import { performAutoLayout } from '../layout/autoLayout'
+import { presentationStore } from '../presentation/presentationStore'
 import { exportCanvasPng } from '../canvas/exportCanvas'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
 import type { FileViewerSession } from '../stores/sessionStore'
@@ -167,6 +168,23 @@ function executeShortcut(action: ShortcutAction): void {
       }
       break
     }
+
+    case 'addBookmark': {
+      const pan = getCurrentPan()
+      const zoom = getCurrentZoom()
+      const count = presentationStore.getState().bookmarks.length
+      presentationStore.getState().addBookmark({
+        name: `Slide ${count + 1}`,
+        panX: pan.x,
+        panY: pan.y,
+        zoom,
+      })
+      break
+    }
+
+    case 'startPresentation':
+      presentationStore.getState().startPresentation()
+      break
 
     case 'escape':
       sessionStore.getState().focusSession(null)
