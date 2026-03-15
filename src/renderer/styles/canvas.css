@@ -1,10 +1,26 @@
-.app-layout {
+.app-shell {
   display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100vh;
   background: var(--bg-base);
   overflow: hidden;
+}
+
+.app-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   font-family: var(--font-sans);
+}
+
+.canvas-with-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
 }
 
 .canvas-root {

@@ -1,10 +1,7 @@
 import { Terminal } from '@xterm/xterm'
 import { WebglAddon } from '@xterm/addon-webgl'
-<<<<<<< HEAD
 import { activityStore } from '../stores/activityStore'
-=======
 import { disposeSearchAddon } from './terminalSearchStore'
->>>>>>> smoke-bri
 
 interface TerminalEntry {
   terminal: Terminal

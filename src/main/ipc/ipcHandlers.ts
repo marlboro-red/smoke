@@ -53,6 +53,8 @@ import {
   PROJECT_INDEX_LOOKUP,
   PROJECT_INDEX_STATS,
   CANVAS_EXPORT_PNG,
+  TAB_GET_STATE,
+  TAB_SAVE_STATE,
   APP_GET_LAUNCH_CWD,
   CODEGRAPH_BUILD,
   CODEGRAPH_EXPAND,
@@ -110,6 +112,7 @@ import {
   CodeGraphBuildResponse,
   CodeGraphExpandRequest,
   CodeGraphIndexStats,
+  TabStateData,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -573,6 +576,18 @@ export function registerIpcHandlers(
 
     await fs.writeFile(result.filePath, image.toPNG())
     return { filePath: result.filePath }
+  })
+
+  // Tab state handlers
+  ipcMain.handle(TAB_GET_STATE, (): TabStateData => {
+    const tabs = configStore.get('tabs', [{ id: 'default', name: 'Canvas 1' }])
+    const activeTabId = configStore.get('activeTabId', 'default')
+    return { tabs, activeTabId }
+  })
+
+  ipcMain.handle(TAB_SAVE_STATE, (_event, state: TabStateData): void => {
+    configStore.set('tabs', state.tabs)
+    configStore.set('activeTabId', state.activeTabId)
   })
 
   // App info handlers

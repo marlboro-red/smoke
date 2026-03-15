@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import Canvas from './canvas/Canvas'
 import Sidebar from './sidebar/Sidebar'
+import TabBar from './tabs/TabBar'
 import AiChatPanel from './ai/AiChatPanel'
 import { useLayoutAutoSave, useLayoutRestore } from './layout/useLayoutPersistence'
 import { preferencesStore, usePreference } from './stores/preferencesStore'
@@ -87,7 +88,10 @@ function App(): JSX.Element {
     <div className="app-shell">
       <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
         {!isReplaying && <Sidebar />}
-        <Canvas readOnly={isReplaying} />
+        <div className="canvas-with-tabs">
+          {!isReplaying && <TabBar />}
+          <Canvas readOnly={isReplaying} />
+        </div>
         {aiPanelOpen && !isReplaying && <AiChatPanel />}
         <SettingsModal />
         <ShortcutsOverlay />
