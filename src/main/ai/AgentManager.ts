@@ -14,7 +14,7 @@ import type { BrowserWindow } from 'electron'
 import { AiService } from './AiService'
 import type { PtyManager } from '../pty/PtyManager'
 import { registerTools } from './tools'
-import type { AgentScopeProvider } from './tools'
+import type { AgentScopeProvider, CodegraphDeps } from './tools'
 
 export const AGENT_COLORS = [
   '#61afef', '#e06c75', '#98c379', '#e5c07b', '#c678dd', '#56b6c2',
@@ -42,6 +42,7 @@ export class AgentManager {
   private agentColorIndex = 0
   private getMainWindow: () => BrowserWindow | null
   private ptyManager: PtyManager | null = null
+  private codegraphDeps: CodegraphDeps | undefined
 
   constructor(getMainWindow: () => BrowserWindow | null) {
     this.getMainWindow = getMainWindow
@@ -50,6 +51,11 @@ export class AgentManager {
   /** Set the PtyManager so new agents get tools registered. */
   setPtyManager(ptyManager: PtyManager): void {
     this.ptyManager = ptyManager
+  }
+
+  /** Set codegraph dependencies so assemble_workspace is available to agents. */
+  setCodegraphDeps(deps: CodegraphDeps): void {
+    this.codegraphDeps = deps
   }
 
   /** Create a new agent with the given name. Returns the agent ID. */
@@ -79,7 +85,7 @@ export class AgentManager {
         },
         getColor: () => this.agentMeta.get(agent.agentId)?.color ?? color,
       }
-      registerTools(agent, this.ptyManager, this.getMainWindow, scopeProvider)
+      registerTools(agent, this.ptyManager, this.getMainWindow, scopeProvider, this.codegraphDeps)
     }
     this.agents.set(agent.agentId, agent)
     return agent.agentId

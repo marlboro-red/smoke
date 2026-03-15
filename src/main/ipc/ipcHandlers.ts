@@ -444,6 +444,9 @@ export function registerIpcHandlers(
   // Structure analyzer handlers
   const structureAnalyzer = new StructureAnalyzer()
 
+  // Wire codegraph deps to the agent manager so assemble_workspace is available
+  agentManager.setCodegraphDeps({ searchIndex, structureAnalyzer })
+
   ipcMain.handle(STRUCTURE_ANALYZE, async (_event, request: StructureAnalyzeRequest): Promise<StructureAnalyzeResponse> => {
     return structureAnalyzer.analyze(request.rootPath)
   })

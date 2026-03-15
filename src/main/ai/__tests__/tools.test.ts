@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
 import { AiService } from '../AiService'
-import { registerTools } from '../tools'
+import { registerTools, type CodegraphDeps } from '../tools'
 import { terminalOutputBuffer } from '../TerminalOutputBuffer'
 import { PtyManager } from '../../pty/PtyManager'
 import { AI_CANVAS_ACTION, PTY_DATA_FROM_PTY, PTY_EXIT } from '../../ipc/channels'
@@ -37,7 +37,7 @@ vi.mock('uuid', () => ({
   v4: vi.fn().mockReturnValue('mock-session-id'),
 }))
 
-// Mock codegraph buildCodeGraph
+// Mock codegraph buildCodeGraph, collectContext, computeWorkspaceLayout
 vi.mock('../../codegraph', () => ({
   buildCodeGraph: vi.fn().mockResolvedValue({
     graph: {
@@ -52,6 +52,28 @@ vi.mock('../../codegraph', () => ({
     rootPath: '/project/src/index.ts',
     fileCount: 2,
     edgeCount: 1,
+  }),
+  collectContext: vi.fn().mockResolvedValue({
+    files: [
+      { filePath: '/project/src/index.ts', relevance: 1.0, imports: ['/project/src/utils.ts'], importedBy: [], source: 'search', moduleId: 'src' },
+      { filePath: '/project/src/utils.ts', relevance: 0.6, imports: [], importedBy: ['/project/src/index.ts'], source: 'import-graph', moduleId: 'src' },
+    ],
+    parsedTask: { intent: 'fix', keywords: ['terminal', 'resize'], filePatterns: [], includeFileTypes: ['source'], usedAi: false },
+    structureMap: null,
+    timing: { parse: 5, search: 10, structure: 3, graph: 20, scoring: 8, total: 46 },
+  }),
+  computeWorkspaceLayout: vi.fn().mockReturnValue({
+    positions: [
+      { filePath: '/project/src/index.ts', x: 0, y: 0, depth: 0 },
+      { filePath: '/project/src/utils.ts', x: -720, y: 0, depth: -1 },
+    ],
+    arrows: [
+      { from: '/project/src/index.ts', to: '/project/src/utils.ts', type: 'import' },
+    ],
+    regions: [
+      { name: 'src', position: { x: -760, y: -40 }, size: { width: 1440, height: 560 } },
+    ],
+    bounds: { minX: -720, minY: 0, maxX: 640, maxY: 480 },
   }),
 }))
 
@@ -142,7 +164,7 @@ describe('AI Tools', () => {
   }
 
   describe('registerTools', () => {
-    it('registers all 18 tools', () => {
+    it('registers all 19 tools', () => {
       const toolNames = (service as unknown as { tools: Array<{ name: string }> }).tools.map(t => t.name)
       expect(toolNames).toEqual([
         'get_canvas_state',
@@ -163,6 +185,7 @@ describe('AI Tools', () => {
         'add_to_group',
         'broadcast_to_group',
         'explore_imports',
+        'assemble_workspace',
       ])
     })
   })
@@ -614,6 +637,224 @@ describe('AI Tools', () => {
       expect(buildCodeGraph).toHaveBeenCalledWith(
         expect.objectContaining({ maxDepth: 2 })
       )
+    })
+  })
+
+  describe('assemble_workspace', () => {
+    function createMockCodegraphDeps(): CodegraphDeps {
+      return {
+        searchIndex: {} as CodegraphDeps['searchIndex'],
+        structureAnalyzer: {} as CodegraphDeps['structureAnalyzer'],
+      }
+    }
+
+    function registerToolsWithDeps() {
+      const svc = new AiService(() => mockWindow)
+      const deps = createMockCodegraphDeps()
+      registerTools(svc, ptyManager, () => mockWindow, undefined, deps)
+      return (svc as unknown as { toolExecutors: Map<string, (input: Record<string, unknown>) => Promise<string>> }).toolExecutors.get('assemble_workspace')!
+    }
+
+    it('throws when codegraph deps are not configured', async () => {
+      // Default registration (no codegraph deps)
+      const executor = getExecutor('assemble_workspace')!
+      await expect(
+        executor({ task_description: 'fix terminal resize bug' })
+      ).rejects.toThrow('codegraph dependencies not configured')
+    })
+
+    it('chains the full pipeline and returns a summary', async () => {
+      const executor = registerToolsWithDeps()
+      const result = JSON.parse(await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      }))
+
+      expect(result.success).toBe(true)
+      expect(result.task).toBe('fix terminal resize bug')
+      expect(result.parsedTask.intent).toBe('fix')
+      expect(result.parsedTask.keywords).toEqual(['terminal', 'resize'])
+      expect(result.filesOpened).toBe(2)
+      expect(result.arrows).toBe(1)
+      expect(result.fileList).toHaveLength(2)
+      expect(result.timing).toBeDefined()
+    })
+
+    it('calls collectContext with proper params', async () => {
+      const executor = registerToolsWithDeps()
+      await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+        max_files: 10,
+      })
+
+      const { collectContext } = await import('../../codegraph')
+      expect(collectContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskDescription: 'fix terminal resize bug',
+          projectRoot: '/project',
+          maxFiles: 10,
+          useAi: true,
+          graphDepth: 2,
+        }),
+        expect.anything(),
+        expect.anything(),
+      )
+    })
+
+    it('calls computeWorkspaceLayout with collected files', async () => {
+      const executor = registerToolsWithDeps()
+      await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      })
+
+      const { computeWorkspaceLayout } = await import('../../codegraph')
+      expect(computeWorkspaceLayout).toHaveBeenCalledWith([
+        { filePath: '/project/src/index.ts', relevance: 1.0, imports: ['/project/src/utils.ts'], importedBy: [] },
+        { filePath: '/project/src/utils.ts', relevance: 0.6, imports: [], importedBy: ['/project/src/index.ts'] },
+      ])
+    })
+
+    it('emits file_edited actions for each file in layout', async () => {
+      const executor = registerToolsWithDeps()
+      await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      })
+
+      const fileEdits = sendCalls
+        .filter(([ch]) => ch === AI_CANVAS_ACTION)
+        .filter(([, data]) => (data as { action: string }).action === 'file_edited')
+      expect(fileEdits).toHaveLength(2)
+
+      const firstEdit = fileEdits[0][1] as { payload: Record<string, unknown> }
+      expect(firstEdit.payload.filePath).toBe('/project/src/index.ts')
+      expect(firstEdit.payload.content).toBe('file content here')
+      expect(firstEdit.payload.language).toBe('typescript')
+      expect(firstEdit.payload.position).toEqual({ x: 0, y: 0 })
+    })
+
+    it('emits connector_created actions for import arrows', async () => {
+      const executor = registerToolsWithDeps()
+      await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      })
+
+      const connectors = sendCalls
+        .filter(([ch]) => ch === AI_CANVAS_ACTION)
+        .filter(([, data]) => (data as { action: string }).action === 'connector_created')
+      expect(connectors).toHaveLength(1)
+
+      const connector = connectors[0][1] as { payload: Record<string, unknown> }
+      expect(connector.payload.label).toBe('import')
+    })
+
+    it('emits group_created actions for module regions', async () => {
+      const executor = registerToolsWithDeps()
+      await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      })
+
+      const groups = sendCalls
+        .filter(([ch]) => ch === AI_CANVAS_ACTION)
+        .filter(([, data]) => (data as { action: string }).action === 'group_created')
+      expect(groups).toHaveLength(1)
+      expect((groups[0][1] as { payload: Record<string, unknown> }).payload.name).toBe('src')
+    })
+
+    it('spawns terminals cd\'d to relevant directories', async () => {
+      const executor = registerToolsWithDeps()
+      const result = JSON.parse(await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      }))
+
+      expect(result.terminals.length).toBeGreaterThan(0)
+      expect(ptyManager.spawn).toHaveBeenCalled()
+
+      // Check session_created actions for terminals
+      const sessions = sendCalls
+        .filter(([ch]) => ch === AI_CANVAS_ACTION)
+        .filter(([, data]) => (data as { action: string }).action === 'session_created')
+      expect(sessions.length).toBeGreaterThan(0)
+    })
+
+    it('does not spawn terminals when spawn_terminals is false', async () => {
+      const executor = registerToolsWithDeps()
+      vi.clearAllMocks()
+      // Re-setup send tracking after clearAllMocks
+      sendCalls = []
+      const send = mockWindow.webContents.send as ReturnType<typeof vi.fn>
+      send.mockImplementation((channel: string, data: unknown) => {
+        sendCalls.push([channel, data])
+      })
+
+      const result = JSON.parse(await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+        spawn_terminals: false,
+      }))
+
+      expect(result.terminals).toHaveLength(0)
+      const sessions = sendCalls
+        .filter(([ch]) => ch === AI_CANVAS_ACTION)
+        .filter(([, data]) => (data as { action: string }).action === 'session_created')
+      expect(sessions).toHaveLength(0)
+    })
+
+    it('pans canvas to center the workspace', async () => {
+      const executor = registerToolsWithDeps()
+      await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      })
+
+      const pans = sendCalls
+        .filter(([ch]) => ch === AI_CANVAS_ACTION)
+        .filter(([, data]) => (data as { action: string }).action === 'viewport_panned')
+      expect(pans).toHaveLength(1)
+
+      // Center of bounds: minX=-720, maxX=640 → centerX = -(-720+640)/2 = 40
+      // Center of bounds: minY=0, maxY=480 → centerY = -(0+480)/2 = -240
+      const payload = (pans[0][1] as { payload: Record<string, unknown> }).payload
+      expect(payload.panX).toBe(40)
+      expect(payload.panY).toBe(-240)
+    })
+
+    it('returns failure when no files are found', async () => {
+      const { collectContext } = await import('../../codegraph')
+      ;(collectContext as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        files: [],
+        parsedTask: { intent: 'fix', keywords: ['nonexistent'], filePatterns: [], includeFileTypes: [], usedAi: false },
+        structureMap: null,
+        timing: { parse: 5, search: 10, structure: 3, graph: 0, scoring: 0, total: 18 },
+      })
+
+      const executor = registerToolsWithDeps()
+      const result = JSON.parse(await executor({
+        task_description: 'fix nonexistent feature',
+        project_root: '/project',
+      }))
+
+      expect(result.success).toBe(false)
+      expect(result.message).toContain('No relevant files')
+    })
+
+    it('includes file list with relative paths and relevance', async () => {
+      const executor = registerToolsWithDeps()
+      const result = JSON.parse(await executor({
+        task_description: 'fix terminal resize bug',
+        project_root: '/project',
+      }))
+
+      expect(result.fileList[0].file).toBe('src/index.ts')
+      expect(result.fileList[0].relevance).toBe(1)
+      expect(result.fileList[0].source).toBe('search')
+      expect(result.fileList[1].file).toBe('src/utils.ts')
+      expect(result.fileList[1].relevance).toBe(0.6)
     })
   })
 

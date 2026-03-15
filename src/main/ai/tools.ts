@@ -24,7 +24,9 @@ import type { PtyManager } from '../pty/PtyManager'
 import { AI_CANVAS_ACTION, PTY_DATA_FROM_PTY, PTY_EXIT } from '../ipc/channels'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { AiStreamCanvasAction } from '../../preload/types'
-import { buildCodeGraph } from '../codegraph'
+import { buildCodeGraph, collectContext, computeWorkspaceLayout } from '../codegraph'
+import type { SearchIndex } from '../codegraph/SearchIndex'
+import type { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
 
 /** Context for scope-aware tool execution. */
 export interface AgentScopeProvider {
@@ -471,6 +473,40 @@ const tools: Array<{ definition: ToolDefinition; executor: string }> = [
     },
     executor: 'explore_imports',
   },
+  {
+    definition: {
+      name: 'assemble_workspace',
+      description:
+        'Assemble a complete workspace on the canvas from a natural language task description. Chains the full pipeline: task parser → context collector → workspace layout planner → canvas renderer. Opens relevant source files as file viewers arranged by data flow, draws import arrows between them, groups files by module, and spawns terminals cd\'d to the most relevant directories. This is the primary entry point for AI-driven workspace assembly. Returns a summary of what was assembled.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          task_description: {
+            type: 'string',
+            description:
+              'Natural language description of the task. E.g. "fix the terminal resize bug" or "add dark mode support to the config panel".',
+          },
+          project_root: {
+            type: 'string',
+            description:
+              'Root directory of the project. Defaults to the configured default working directory.',
+          },
+          max_files: {
+            type: 'number',
+            description:
+              'Maximum number of files to include in the workspace. Defaults to 15.',
+          },
+          spawn_terminals: {
+            type: 'boolean',
+            description:
+              'Whether to spawn terminals cd\'d to relevant directories. Defaults to true.',
+          },
+        },
+        required: ['task_description'],
+      },
+    },
+    executor: 'assemble_workspace',
+  },
 ]
 
 // ── Executor implementations ────────────────────────────────────────
@@ -479,10 +515,17 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const CHAR_WIDTH = 8
 const CHAR_HEIGHT = 18
 
+/** Optional codegraph dependencies for assemble_workspace. */
+export interface CodegraphDeps {
+  searchIndex: SearchIndex
+  structureAnalyzer: StructureAnalyzer
+}
+
 function createExecutors(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
-  scope?: AgentScopeProvider
+  scope?: AgentScopeProvider,
+  codegraphDeps?: CodegraphDeps
 ): Map<string, ToolExecutor> {
   /** Send a canvas action event to the renderer. */
   function emitCanvasAction(
@@ -913,6 +956,230 @@ function createExecutors(
     return `Broadcast ${command.length} characters to group ${groupId}.`
   })
 
+  // ── assemble_workspace ──────────────────────────────────────
+
+  executors.set('assemble_workspace', async (input) => {
+    if (!codegraphDeps) {
+      throw new Error('Workspace assembly is not available: codegraph dependencies not configured.')
+    }
+
+    const taskDescription = input.task_description as string
+    const prefs = configStore.get('preferences', defaultPreferences) as Record<string, unknown>
+    const projectRoot = (input.project_root as string) || (prefs.defaultCwd as string) || process.cwd()
+    const maxFiles = (input.max_files as number) ?? 15
+    const spawnTerminals = (input.spawn_terminals as boolean) ?? true
+
+    // Step 1: Collect relevant files via the full pipeline
+    const contextResult = await collectContext(
+      { taskDescription, projectRoot, maxFiles, useAi: true, graphDepth: 2 },
+      codegraphDeps.searchIndex,
+      codegraphDeps.structureAnalyzer,
+    )
+
+    if (contextResult.files.length === 0) {
+      return JSON.stringify({
+        success: false,
+        message: 'No relevant files found for this task. Try a more specific description or ensure the project is indexed.',
+        parsedTask: contextResult.parsedTask,
+      })
+    }
+
+    // Step 2: Compute spatial layout
+    const workspaceFiles = contextResult.files.map(f => ({
+      filePath: f.filePath,
+      relevance: f.relevance,
+      imports: f.imports,
+      importedBy: f.importedBy,
+    }))
+
+    const layout = computeWorkspaceLayout(workspaceFiles)
+
+    // Step 3: Read file contents and create file viewers on the canvas
+    const fileSessionMap = new Map<string, string>() // filePath → sessionId
+    const fileErrors: string[] = []
+
+    // Language detection helper
+    const langMap: Record<string, string> = {
+      ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
+      py: 'python', rs: 'rust', go: 'go', rb: 'ruby', java: 'java',
+      c: 'c', h: 'c', cpp: 'cpp', hpp: 'cpp', cs: 'csharp',
+      css: 'css', html: 'html', htm: 'html', json: 'json',
+      yaml: 'yaml', yml: 'yaml', toml: 'toml', xml: 'xml',
+      md: 'markdown', sh: 'bash', bash: 'bash', zsh: 'bash',
+      sql: 'sql', swift: 'swift', kt: 'kotlin', vue: 'vue',
+      svelte: 'svelte', php: 'php', lua: 'lua', zig: 'zig',
+    }
+
+    for (const pos of layout.positions) {
+      try {
+        const stat = await fs.stat(pos.filePath)
+        if (stat.size > MAX_FILE_SIZE) {
+          fileErrors.push(`${pos.filePath}: too large (${stat.size} bytes)`)
+          continue
+        }
+
+        const content = await fs.readFile(pos.filePath, 'utf-8')
+        const ext = pos.filePath.split('.').pop()?.toLowerCase() || ''
+        const language = langMap[ext] || 'text'
+        const sessionId = uuid()
+
+        fileSessionMap.set(pos.filePath, sessionId)
+
+        emitCanvasAction('file_edited', {
+          filePath: pos.filePath,
+          content,
+          language,
+          position: { x: pos.x, y: pos.y },
+          sessionId,
+        })
+      } catch {
+        fileErrors.push(`${pos.filePath}: could not read`)
+      }
+    }
+
+    // Step 4: Create arrows for import relationships
+    const arrowsSummary: string[] = []
+    for (const arrow of layout.arrows) {
+      const sourceId = fileSessionMap.get(arrow.from)
+      const targetId = fileSessionMap.get(arrow.to)
+      if (!sourceId || !targetId) continue
+
+      const connectorId = uuid()
+      emitCanvasAction('connector_created', {
+        connectorId,
+        sourceId,
+        targetId,
+        label: arrow.type,
+      })
+      arrowsSummary.push(`${path.basename(arrow.from)} → ${path.basename(arrow.to)}`)
+    }
+
+    // Step 5: Create groups for module regions
+    const groupsSummary: string[] = []
+    for (const region of layout.regions) {
+      const groupId = uuid()
+      emitCanvasAction('group_created', {
+        groupId,
+        name: region.name,
+      })
+      groupsSummary.push(region.name)
+
+      // Add files in this region to the group
+      for (const pos of layout.positions) {
+        const sessionId = fileSessionMap.get(pos.filePath)
+        if (!sessionId) continue
+
+        // Check if file is within this region's directory
+        const fileDir = path.dirname(pos.filePath)
+        const dirName = fileDir.split('/').pop() || ''
+        if (dirName === region.name || fileDir.endsWith(`/${region.name}`)) {
+          emitCanvasAction('group_member_added', { groupId, elementId: sessionId })
+        }
+      }
+    }
+
+    // Step 6: Spawn terminals cd'd to relevant directories
+    const terminalsSummary: string[] = []
+    if (spawnTerminals) {
+      // Collect unique module directories from the files
+      const moduleDirs = new Set<string>()
+      for (const file of contextResult.files) {
+        const dir = path.dirname(file.filePath)
+        // Only add directories that are within the project root
+        if (dir.startsWith(projectRoot)) {
+          // Use the most specific module directory (2 levels max from project root)
+          const rel = path.relative(projectRoot, dir)
+          const parts = rel.split(path.sep)
+          // Take up to 2 levels deep for meaningful directory grouping
+          const moduleDir = path.join(projectRoot, ...parts.slice(0, Math.min(parts.length, 2)))
+          moduleDirs.add(moduleDir)
+        }
+      }
+
+      // Limit to 3 terminals to avoid clutter
+      const terminalDirs = Array.from(moduleDirs).slice(0, 3)
+
+      // Place terminals below the workspace layout
+      const terminalY = layout.bounds.maxY + 100
+      let terminalX = layout.bounds.minX
+
+      for (const dir of terminalDirs) {
+        const sessionId = uuid()
+        const cols = 80
+        const rows = 24
+        const shell = (prefs.defaultShell as string) || undefined
+
+        const pty = ptyManager.spawn({ id: sessionId, cwd: dir, shell, cols, rows })
+
+        pty.on('data', (data: string) => {
+          terminalOutputBuffer.append(pty.id, data)
+          const win = getMainWindow()
+          if (win && !win.isDestroyed()) {
+            win.webContents.send(PTY_DATA_FROM_PTY, { id: pty.id, data })
+          }
+        })
+
+        pty.on('exit', (exitCode: number, signal?: number) => {
+          terminalOutputBuffer.delete(pty.id)
+          const win = getMainWindow()
+          if (win && !win.isDestroyed()) {
+            win.webContents.send(PTY_EXIT, { id: pty.id, exitCode, signal })
+          }
+        })
+
+        const width = cols * CHAR_WIDTH
+        const height = rows * CHAR_HEIGHT
+
+        if (scope) {
+          scope.addSessionToScope(sessionId)
+        }
+        const groupId = scope?.getAssignedGroupId() ?? null
+        const agentId = scope?.agentId ?? null
+
+        emitCanvasAction('session_created', {
+          sessionId,
+          cwd: dir,
+          position: { x: terminalX, y: terminalY },
+          size: { cols, rows, width, height },
+          agentId,
+          groupId,
+        })
+
+        const relDir = path.relative(projectRoot, dir) || '.'
+        terminalsSummary.push(`${relDir} (${sessionId})`)
+        terminalX += width + 40
+      }
+    }
+
+    // Step 7: Pan canvas to center the workspace
+    const centerX = -(layout.bounds.minX + layout.bounds.maxX) / 2
+    const centerY = -(layout.bounds.minY + layout.bounds.maxY) / 2
+    emitCanvasAction('viewport_panned', { panX: centerX, panY: centerY })
+
+    // Build summary
+    const summary = {
+      success: true,
+      task: taskDescription,
+      parsedTask: {
+        intent: contextResult.parsedTask.intent,
+        keywords: contextResult.parsedTask.keywords,
+      },
+      filesOpened: layout.positions.length,
+      arrows: arrowsSummary.length,
+      groups: groupsSummary,
+      terminals: terminalsSummary,
+      timing: contextResult.timing,
+      fileList: contextResult.files.map(f => ({
+        file: path.relative(projectRoot, f.filePath),
+        relevance: Math.round(f.relevance * 100) / 100,
+        source: f.source,
+      })),
+      errors: fileErrors.length > 0 ? fileErrors : undefined,
+    }
+
+    return JSON.stringify(summary)
+  })
+
   // ── explore_imports ──────────────────────────────────────────
 
   executors.set('explore_imports', async (input) => {
@@ -955,17 +1222,19 @@ function createExecutors(
 // ── Registration ────────────────────────────────────────────────────
 
 /**
- * Register all v1 AI tools with the AiService.
- * Called from ipcHandlers after AiService is instantiated.
+ * Register all AI tools with the AiService.
+ * Called from AgentManager when a new agent is created.
  * When scopeProvider is given, tools are scoped to the agent's assigned group.
+ * When codegraphDeps is given, the assemble_workspace tool is enabled.
  */
 export function registerTools(
   aiService: AiService,
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
-  scopeProvider?: AgentScopeProvider
+  scopeProvider?: AgentScopeProvider,
+  codegraphDeps?: CodegraphDeps
 ): void {
-  const executors = createExecutors(ptyManager, getMainWindow, scopeProvider)
+  const executors = createExecutors(ptyManager, getMainWindow, scopeProvider, codegraphDeps)
 
   for (const tool of tools) {
     const executor = executors.get(tool.executor)
