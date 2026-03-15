@@ -64,6 +64,9 @@ export interface Preferences {
   aiApiKey: string
   aiModel: string
   terminalOpacity: number
+  fontFamily: string
+  fontSize: number
+  lineHeight: number
 }
 
 export interface FsReaddirEntry {

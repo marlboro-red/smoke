@@ -189,6 +189,7 @@ export function registerIpcHandlers(
       'defaultShell', 'autoLaunchClaude', 'claudeCommand',
       'gridSize', 'sidebarPosition', 'sidebarWidth', 'sidebarSectionSizes',
       'theme', 'defaultCwd', 'aiApiKey', 'aiModel',
+      'terminalOpacity', 'fontFamily', 'fontSize', 'lineHeight',
     ]
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig

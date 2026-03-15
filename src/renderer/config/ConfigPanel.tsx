@@ -3,7 +3,7 @@ import type { Preferences } from '../../preload/types'
 import { preferencesStore, usePreferences } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
-import { applyTerminalOpacity } from '../themes/applyTheme'
+import { applyTerminalOpacity, applyFontSettings } from '../themes/applyTheme'
 import '../styles/config.css'
 
 export default function ConfigPanel(): JSX.Element {
@@ -33,6 +33,12 @@ export default function ConfigPanel(): JSX.Element {
       // Apply terminal opacity change immediately
       if (key === 'terminalOpacity') {
         applyTerminalOpacity(value as number)
+      }
+
+      // Apply font changes immediately
+      if (key === 'fontFamily' || key === 'fontSize' || key === 'lineHeight') {
+        const p = preferencesStore.getState().preferences
+        applyFontSettings(p.fontFamily, p.fontSize, p.lineHeight)
       }
     },
     []
@@ -104,6 +110,46 @@ export default function ConfigPanel(): JSX.Element {
               max={100}
               value={Math.round((prefs.terminalOpacity ?? 1) * 100)}
               onChange={(e) => updatePref('terminalOpacity', Number(e.target.value) / 100)}
+            />
+          </div>
+
+          <div className="config-group">
+            <label className="config-label">Font Family</label>
+            <input
+              className="config-input"
+              type="text"
+              placeholder='"Berkeley Mono", Menlo, monospace'
+              value={prefs.fontFamily}
+              onChange={(e) => updatePref('fontFamily', e.target.value)}
+            />
+          </div>
+
+          <div className="config-group">
+            <label className="config-label">
+              Font Size: {prefs.fontSize}px
+            </label>
+            <input
+              className="config-slider"
+              type="range"
+              min={8}
+              max={24}
+              value={prefs.fontSize}
+              onChange={(e) => updatePref('fontSize', Number(e.target.value))}
+            />
+          </div>
+
+          <div className="config-group">
+            <label className="config-label">
+              Line Height: {prefs.lineHeight}
+            </label>
+            <input
+              className="config-slider"
+              type="range"
+              min={1.0}
+              max={2.0}
+              step={0.1}
+              value={prefs.lineHeight}
+              onChange={(e) => updatePref('lineHeight', Number(e.target.value))}
             />
           </div>
 

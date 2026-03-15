@@ -13,12 +13,17 @@ import { sessionStore } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { getCurrentTheme } from '../themes/applyTheme'
 
-const TERMINAL_OPTIONS = {
-  cursorBlink: true,
-  fontFamily: '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace',
-  fontSize: 13,
-  lineHeight: 1.2,
-  scrollback: 10000,
+const DEFAULT_FONT_FAMILY = '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace'
+
+function getTerminalOptions() {
+  const prefs = preferencesStore.getState().preferences
+  return {
+    cursorBlink: true,
+    fontFamily: prefs.fontFamily || DEFAULT_FONT_FAMILY,
+    fontSize: prefs.fontSize || 13,
+    lineHeight: prefs.lineHeight || 1.2,
+    scrollback: 10000,
+  }
 }
 
 /** Total horizontal + vertical padding inside the .xterm element (4px each side) */
@@ -101,8 +106,9 @@ export function useTerminal(
       const opacity = preferencesStore.getState().preferences.terminalOpacity
       const transparent = opacity < 1
       const theme = getCurrentTheme()
+      const terminalOptions = getTerminalOptions()
       const terminal = new Terminal({
-        ...TERMINAL_OPTIONS,
+        ...terminalOptions,
         allowTransparency: transparent,
         theme: {
           ...theme.xtermTheme,
@@ -134,11 +140,11 @@ export function useTerminal(
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
         if (ctx) {
-          ctx.font = `${TERMINAL_OPTIONS.fontSize}px ${TERMINAL_OPTIONS.fontFamily}`
+          ctx.font = `${terminalOptions.fontSize}px ${terminalOptions.fontFamily}`
           const metrics = ctx.measureText('W')
           charDims.current = {
             width: metrics.width,
-            height: TERMINAL_OPTIONS.fontSize * TERMINAL_OPTIONS.lineHeight,
+            height: terminalOptions.fontSize * terminalOptions.lineHeight,
           }
         }
       }

@@ -64,7 +64,7 @@ export default function FileEditorWidget({
           },
           '.cm-scroller': {
             fontFamily: 'var(--font-mono)',
-            lineHeight: '1.5',
+            lineHeight: 'var(--line-height-code)',
           },
           '.cm-content': {
             caretColor: 'var(--text-primary)',

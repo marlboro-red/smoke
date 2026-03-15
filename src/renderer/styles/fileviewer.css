@@ -23,7 +23,7 @@
   padding: var(--space-md) var(--space-lg);
   font-family: var(--font-mono);
   font-size: var(--font-size-lg);
-  line-height: 1.5;
+  line-height: var(--line-height-code);
   overflow: visible;
 }
 
@@ -57,7 +57,7 @@
   padding: var(--space-md) var(--space-lg);
   font-family: var(--font-mono);
   font-size: var(--font-size-lg);
-  line-height: 1.5;
+  line-height: var(--line-height-code);
   color: var(--text-primary);
   white-space: pre;
   overflow: auto;
