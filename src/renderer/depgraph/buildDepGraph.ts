@@ -14,6 +14,7 @@ import { connectorStore } from '../stores/connectorStore'
 import { gridStore } from '../stores/gridStore'
 import { parseImports } from './importParser'
 import { resolveAllImports } from './importResolver'
+import { setCachedImports, registerGraphNode, clearActiveGraph, clearImportCache } from './GraphCache'
 
 const MAX_DEPTH = 3
 const HORIZONTAL_SPACING = 720   // px between columns
@@ -78,6 +79,10 @@ async function ensureFileSession(
  * Build the dependency graph starting from a root file viewer session.
  */
 export async function buildDepGraph(rootSession: FileViewerSession): Promise<void> {
+  // Reset graph cache for fresh build
+  clearActiveGraph()
+  clearImportCache()
+
   const visited = new Map<string, GraphNode>()
   const rootX = rootSession.position.x
   const rootY = rootSession.position.y
@@ -147,6 +152,14 @@ export async function buildDepGraph(rootSession: FileViewerSession): Promise<voi
         // Can't read — stop traversal for this node
       }
     }
+  }
+
+  // Populate graph cache with resolved imports and active node mappings
+  for (const [filePath, node] of visited) {
+    registerGraphNode(filePath, node.sessionId)
+    setCachedImports(filePath, node.children)
+    // Start watching all graph files for incremental invalidation
+    window.smokeAPI?.fs.watch(filePath)
   }
 
   // Create connectors for all edges

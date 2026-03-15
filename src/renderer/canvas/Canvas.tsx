@@ -31,6 +31,7 @@ import SnapPreview from './SnapPreview'
 import Minimap from './Minimap'
 import AlignmentToolbar from './AlignmentToolbar'
 import { useFileWatchManager } from '../fileviewer/useFileWatcher'
+import { useGraphInvalidation } from '../depgraph/useGraphInvalidation'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -57,6 +58,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
   )
 
   useFileWatchManager(visibleIds)
+  useGraphInvalidation(visibleIds)
 
   // Build set of session IDs hidden by collapsed groups
   const collapsedMemberIds = useMemo(() => {
