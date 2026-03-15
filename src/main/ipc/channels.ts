@@ -25,6 +25,14 @@ export const FS_READFILE = 'fs:readfile' as const
 export const TERMINAL_BUFFER_READ = 'terminal-buffer:read' as const
 export const TERMINAL_BUFFER_READ_LINES = 'terminal-buffer:read-lines' as const
 
+// AI channels
+export const AI_SEND = 'ai:send' as const
+export const AI_ABORT = 'ai:abort' as const
+export const AI_CLEAR = 'ai:clear' as const
+export const AI_STREAM = 'ai:stream' as const
+export const AI_CONFIG = 'ai:config' as const
+export const AI_CANVAS_ACTION = 'ai:canvas-action' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -121,3 +129,45 @@ export interface TerminalBufferReadLinesRequest {
   sessionId: string
   lineCount: number
 }
+
+// AI message types
+
+export interface AiSendRequest {
+  message: string
+  conversationId?: string
+}
+
+export interface AiSendResponse {
+  conversationId: string
+}
+
+export interface AiAbortRequest {
+  conversationId?: string
+}
+
+export interface AiClearRequest {
+  conversationId?: string
+}
+
+export interface AiConfigGetResponse {
+  model: string
+  apiKey: string
+  maxTokens: number
+}
+
+export interface AiConfigSetRequest {
+  key: string
+  value: unknown
+}
+
+// AI stream event types — defined in preload/types.ts for cross-process sharing
+export type {
+  AiStreamEvent,
+  AiStreamTextDelta,
+  AiStreamToolUse,
+  AiStreamToolResult,
+  AiStreamCanvasAction,
+  AiStreamMessageComplete,
+  AiStreamError,
+  CanvasActionType,
+} from '../../preload/types'

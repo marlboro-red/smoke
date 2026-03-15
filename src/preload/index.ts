@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -51,6 +51,42 @@ const smokeAPI: SmokeAPI = {
 
   app: {
     getLaunchCwd: () => ipcRenderer.invoke('app:get-launch-cwd'),
+  },
+
+  ai: {
+    send: (message, conversationId?) =>
+      ipcRenderer.invoke('ai:send', { message, conversationId }),
+
+    abort: (conversationId?) =>
+      ipcRenderer.invoke('ai:abort', { conversationId }),
+
+    clear: (conversationId?) =>
+      ipcRenderer.invoke('ai:clear', { conversationId }),
+
+    getConfig: () => ipcRenderer.invoke('ai:config'),
+
+    setConfig: (key, value) =>
+      ipcRenderer.invoke('ai:config', { key, value }),
+
+    onStream: (callback: (event: AiStreamEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: AiStreamEvent): void => {
+        callback(data)
+      }
+      ipcRenderer.on('ai:stream', listener)
+      return () => {
+        ipcRenderer.removeListener('ai:stream', listener)
+      }
+    },
+
+    onCanvasAction: (callback: (event: AiStreamCanvasAction) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: AiStreamCanvasAction): void => {
+        callback(data)
+      }
+      ipcRenderer.on('ai:canvas-action', listener)
+      return () => {
+        ipcRenderer.removeListener('ai:canvas-action', listener)
+      }
+    },
   }
 }
 
