@@ -10,6 +10,7 @@ import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from './useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
+import { buildDepGraph } from '../depgraph/buildDepGraph'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import FileViewerWidget from './FileViewerWidget'
@@ -83,6 +84,10 @@ export default function FileViewerWindow({
     setEditing((prev) => !prev)
   }, [])
 
+  const handleShowDepGraph = useCallback(() => {
+    buildDepGraph(session)
+  }, [session])
+
   const handleSave = useCallback(
     async (content: string) => {
       await window.smokeAPI.fs.writefile(session.filePath, content)
@@ -136,6 +141,14 @@ export default function FileViewerWindow({
         onClose={handleClose}
         onDragStart={onDragStart}
       >
+        <button
+          className="file-viewer-edit-toggle"
+          onClick={handleShowDepGraph}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="Show import dependency graph"
+        >
+          Deps
+        </button>
         <button
           className={`file-viewer-edit-toggle ${editing ? 'active' : ''}`}
           onClick={handleToggleEdit}

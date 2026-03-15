@@ -14,6 +14,8 @@ import { commandPaletteStore } from '../palette/commandPaletteStore'
 import { canvasSearchStore } from '../search/searchStore'
 import { performAutoLayout } from '../layout/autoLayout'
 import { exportCanvasPng } from '../canvas/exportCanvas'
+import { buildDepGraph } from '../depgraph/buildDepGraph'
+import type { FileViewerSession } from '../stores/sessionStore'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -145,6 +147,16 @@ function executeShortcut(action: ShortcutAction): void {
     case 'exportCanvasPng':
       exportCanvasPng()
       break
+
+    case 'showDepGraph': {
+      if (state.focusedId) {
+        const session = state.sessions.get(state.focusedId)
+        if (session?.type === 'file') {
+          buildDepGraph(session as FileViewerSession)
+        }
+      }
+      break
+    }
 
     case 'escape':
       sessionStore.getState().focusSession(null)

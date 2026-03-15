@@ -29,6 +29,7 @@ export type ShortcutAction =
   | 'commandPalette'
   | 'exportCanvasPng'
   | 'saveBookmark'
+  | 'showDepGraph'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -70,6 +71,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   commandPalette: 'Command Palette',
   exportCanvasPng: 'Export Canvas as PNG',
   saveBookmark: 'Save Bookmark',
+  showDepGraph: 'Show Import Dependency Graph',
   escape: 'Unfocus Session',
 }
 
@@ -101,6 +103,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   commandPalette: { key: 'p', mod: true, shift: false },
   exportCanvasPng: { key: 'e', mod: true, shift: true },
   saveBookmark: { key: 'd', mod: true, shift: false },
+  showDepGraph: { key: 'd', mod: true, shift: true },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -124,7 +127,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'exportCanvasPng', 'showDepGraph'],
   },
   {
     title: 'Groups',
