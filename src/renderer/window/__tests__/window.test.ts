@@ -26,6 +26,27 @@ describe('useSnapping', () => {
       expect(snap(-107, 20)).toBe(-100)
       expect(snap(-113, 20)).toBe(-120)
     })
+
+    it('always snaps at exact midpoint between grid lines', () => {
+      // Midpoint should always snap to a grid line, never stay in place
+      expect(snap(10, 20)).toBe(20) // midpoint between 0 and 20
+      expect(snap(30, 20)).toBe(40) // midpoint between 20 and 40
+      expect(snap(50, 20)).toBe(60) // midpoint between 40 and 60
+      // Negative midpoints: JS Math.round rounds toward +infinity
+      expect(snap(-10, 20) === 0).toBe(true) // midpoint between -20 and 0
+      expect(snap(-30, 20)).toBe(-20) // midpoint between -40 and -20
+
+      // With different grid sizes
+      expect(snap(5, 10)).toBe(10) // midpoint between 0 and 10
+      expect(snap(25, 50)).toBe(50) // midpoint between 0 and 50
+
+      // Result must always be a multiple of gridSize
+      for (const gs of [10, 15, 20, 25, 30, 50]) {
+        const midpoint = gs / 2
+        const result = snap(midpoint, gs)
+        expect(result % gs).toBe(0)
+      }
+    })
   })
 
   describe('snapPosition', () => {
@@ -37,6 +58,16 @@ describe('useSnapping', () => {
     it('preserves already-snapped positions', () => {
       const result = snapPosition({ x: 100, y: 200 }, 20)
       expect(result).toEqual({ x: 100, y: 200 })
+    })
+
+    it('snaps at exact center between four grid dots', () => {
+      // Center of four grid dots (equidistant from all surrounding grid points)
+      const result = snapPosition({ x: 10, y: 10 }, 20)
+      expect(result.x % 20).toBe(0)
+      expect(result.y % 20).toBe(0)
+      // Must not stay at the midpoint
+      expect(result.x).not.toBe(10)
+      expect(result.y).not.toBe(10)
     })
   })
 
@@ -78,10 +109,24 @@ describe('useSnapping', () => {
       expect(result.after - result.before).toBe(20)
     })
 
-    it('returns same value for both when on grid line', () => {
+    it('returns bracketing grid lines when on grid line', () => {
       const result = nearestGridLines(100, 20)
       expect(result.before).toBe(100)
       expect(result.after).toBe(120)
+    })
+
+    it('returns bracketing grid lines at exact midpoint', () => {
+      // At the exact midpoint between two grid lines, the brackets
+      // should be the two surrounding grid lines
+      const result = nearestGridLines(10, 20)
+      expect(result.before).toBe(0)
+      expect(result.after).toBe(20)
+    })
+
+    it('handles negative values at midpoint', () => {
+      const result = nearestGridLines(-10, 20)
+      expect(result.before).toBe(-20)
+      expect(result.after).toBe(0)
     })
   })
 
