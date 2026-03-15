@@ -37,3 +37,11 @@ export {
 } from './RelevanceScorer'
 export { SearchIndex, type SearchResult, type SearchResponse, type SearchIndexStats } from './SearchIndex'
 export { StructureAnalyzer, type ModuleInfo, type ModuleType, type StructureMap } from './StructureAnalyzer'
+export {
+  computeWorkspaceLayout,
+  type WorkspaceFile,
+  type WorkspaceLayoutOptions,
+  type WorkspaceLayoutResult,
+  type WorkspaceArrow,
+  type WorkspaceRegion,
+} from './WorkspaceLayoutPlanner'

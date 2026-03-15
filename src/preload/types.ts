@@ -385,6 +385,33 @@ export interface RelevanceScoringResult {
   keywords: string[]
 }
 
+// Workspace layout planner types
+export interface WorkspaceFileInput {
+  filePath: string
+  relevance: number
+  imports: string[]
+  importedBy: string[]
+}
+
+export interface WorkspaceArrow {
+  from: string
+  to: string
+  type: 'import' | 'require' | 'use'
+}
+
+export interface WorkspaceRegion {
+  name: string
+  position: { x: number; y: number }
+  size: { width: number; height: number }
+}
+
+export interface WorkspaceLayoutResult {
+  positions: CodeGraphPosition[]
+  arrows: WorkspaceArrow[]
+  regions: WorkspaceRegion[]
+  bounds: CodeGraphBounds
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -476,6 +503,7 @@ export interface SmokeAPI {
     resolveImport: (specifier: string, importerPath: string, projectRoot: string) => Promise<string | null>
     indexStats: () => Promise<CodeGraphIndexStats | null>
     invalidateIndex: () => Promise<void>
+    planWorkspace: (files: WorkspaceFileInput[]) => Promise<WorkspaceLayoutResult>
   }
   tab: {
     getState: () => Promise<TabState>
