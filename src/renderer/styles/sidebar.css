@@ -84,12 +84,12 @@
 .sidebar-section-divider::after {
   content: '';
   position: absolute;
-  left: 20%;
-  right: 20%;
+  left: 10%;
+  right: 10%;
   top: 50%;
-  height: 2px;
+  height: 1px;
   border-radius: 1px;
-  background: transparent;
+  background: var(--border-subtle);
   transition: background var(--duration-fast);
 }
 
