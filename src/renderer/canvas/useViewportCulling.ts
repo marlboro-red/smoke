@@ -53,7 +53,7 @@ export function useViewportCulling(
     const newVisible = new Set<string>()
 
     for (const [id, session] of sessions) {
-      if (isVisible(session, pan, zoom, canvasRect)) {
+      if (session.isPinned || isVisible(session, pan, zoom, canvasRect)) {
         newVisible.add(id)
       }
     }

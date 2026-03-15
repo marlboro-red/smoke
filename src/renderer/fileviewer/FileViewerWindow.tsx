@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
   useFocusedId,
@@ -166,6 +167,19 @@ export default function FileViewerWindow({
     sessionStore.getState().toggleLock(session.id)
   }, [session.id])
 
+  const handleTogglePin = useCallback(() => {
+    if (!session.isPinned) {
+      const pan = getCurrentPan()
+      const z = getCurrentZoom()
+      sessionStore.getState().togglePin(session.id, {
+        x: session.position.x * z + pan.x,
+        y: session.position.y * z + pan.y,
+      })
+    } else {
+      sessionStore.getState().togglePin(session.id)
+    }
+  }, [session.id, session.isPinned, session.position.x, session.position.y])
+
   const handleToggleEdit = useCallback(() => {
     sessionStore.getState().updateSession(session.id, { editing: !editing })
   }, [session.id, editing])
@@ -213,6 +227,7 @@ export default function FileViewerWindow({
     isSelected && 'multi-selected',
     isDimmedByFocusMode && 'focus-mode-dimmed',
     session.locked && 'locked',
+    session.isPinned && 'pinned',
     extraClassName,
   ]
     .filter(Boolean)
@@ -237,10 +252,12 @@ export default function FileViewerWindow({
         status="running"
         isDirty={session.isDirty}
         isLocked={session.locked}
+        isPinned={session.isPinned}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
         onToggleLock={handleToggleLock}
+        onTogglePin={handleTogglePin}
       >
         <button
           className="file-viewer-terminal-btn"

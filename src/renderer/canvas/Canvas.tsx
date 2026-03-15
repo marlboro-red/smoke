@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useMemo } from 'react'
-import { useCanvasControls } from './useCanvasControls'
+import { useCanvasControls, getCurrentPan, getCurrentZoom } from './useCanvasControls'
 import { useRubberBandSelect } from './useRubberBandSelect'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
@@ -37,6 +37,23 @@ import '../styles/canvas.css'
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
   const textSnapshot = useSnapshot(session.id)
   return <TerminalThumbnail session={session} textSnapshot={textSnapshot} />
+}
+
+/**
+ * Compute the viewport (screen) position for a pinned element.
+ * If the session has a saved pinnedViewportPos, use that;
+ * otherwise derive it from the current canvas→screen transform.
+ */
+function getPinnedScreenPos(session: Session): { x: number; y: number } {
+  if (session.pinnedViewportPos) {
+    return session.pinnedViewportPos
+  }
+  const pan = getCurrentPan()
+  const zoom = getCurrentZoom()
+  return {
+    x: session.position.x * zoom + pan.x,
+    y: session.position.y * zoom + pan.y,
+  }
 }
 
 export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JSX.Element {
@@ -111,6 +128,111 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
     [readOnly]
   )
 
+  const renderSessionElement = useCallback(
+    (session: Session, isVisible: boolean) => {
+      switch (session.type) {
+        case 'terminal':
+          if (isThumbnailMode && !session.isPinned) {
+            return isVisible ? <ThumbnailRenderer key={session.id} session={session} /> : null
+          }
+          return (
+            <TerminalWindow
+              key={session.id}
+              session={session}
+              zoom={getZoom}
+              gridSize={gridSize}
+              hidden={!isVisible}
+            />
+          )
+        case 'file':
+          if (!isVisible) return null
+          return (
+            <React.Fragment key={session.id}>
+              <FileViewerThumbnail
+                session={session}
+                className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-active' : 'file-crossfade file-crossfade-inactive'}
+              />
+              <FileViewerWindow
+                session={session}
+                zoom={getZoom}
+                gridSize={gridSize}
+                className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-inactive' : 'file-crossfade file-crossfade-active'}
+              />
+            </React.Fragment>
+          )
+        case 'note':
+          if (!isVisible) return null
+          if (isThumbnailMode && !session.isPinned) {
+            return <NoteThumbnail key={session.id} session={session} />
+          }
+          return (
+            <NoteWindow
+              key={session.id}
+              session={session}
+              zoom={getZoom}
+              gridSize={gridSize}
+            />
+          )
+        case 'webview':
+          if (!isVisible) return null
+          if (isThumbnailMode && !session.isPinned) {
+            return <WebviewThumbnail key={session.id} session={session} />
+          }
+          return (
+            <WebviewWindow
+              key={session.id}
+              session={session}
+              zoom={getZoom}
+              gridSize={gridSize}
+            />
+          )
+        case 'image':
+          if (!isVisible) return null
+          if (isThumbnailMode && !session.isPinned) {
+            return <ImageThumbnail key={session.id} session={session} />
+          }
+          return (
+            <ImageWindow
+              key={session.id}
+              session={session}
+              zoom={getZoom}
+              gridSize={gridSize}
+            />
+          )
+        case 'snippet':
+          if (!isVisible) return null
+          if (isThumbnailMode && !session.isPinned) {
+            return <SnippetThumbnail key={session.id} session={session} />
+          }
+          return (
+            <SnippetWindow
+              key={session.id}
+              session={session}
+              zoom={getZoom}
+              gridSize={gridSize}
+            />
+          )
+        default:
+          return null
+      }
+    },
+    [isThumbnailMode, getZoom, gridSize]
+  )
+
+  // Separate pinned and unpinned sessions
+  const { pinnedSessions, unpinnedSessions } = useMemo(() => {
+    const pinned: Session[] = []
+    const unpinned: Session[] = []
+    for (const session of sessions) {
+      if (session.isPinned) {
+        pinned.push(session)
+      } else {
+        unpinned.push(session)
+      }
+    }
+    return { pinnedSessions: pinned, unpinnedSessions: unpinned }
+  }, [sessions])
+
   return (
     <div
       className="canvas-root"
@@ -129,99 +251,39 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
         {groups.map((group) => (
           <GroupContainer key={group.id} group={group} />
         ))}
-        {sessions.map((session) => {
+        {unpinnedSessions.map((session) => {
           if (collapsedMemberIds.has(session.id)) return null
-          const isVisible = visibleIds.has(session.id)
-          switch (session.type) {
-            case 'terminal':
-              if (isThumbnailMode) {
-                return isVisible ? <ThumbnailRenderer key={session.id} session={session} /> : null
-              }
-              return (
-                <TerminalWindow
-                  key={session.id}
-                  session={session}
-                  zoom={getZoom}
-                  gridSize={gridSize}
-                  hidden={!isVisible}
-                />
-              )
-            case 'file':
-              if (!isVisible) return null
-              return (
-                <React.Fragment key={session.id}>
-                  <FileViewerThumbnail
-                    session={session}
-                    className={isThumbnailMode ? 'file-crossfade file-crossfade-active' : 'file-crossfade file-crossfade-inactive'}
-                  />
-                  <FileViewerWindow
-                    session={session}
-                    zoom={getZoom}
-                    gridSize={gridSize}
-                    className={isThumbnailMode ? 'file-crossfade file-crossfade-inactive' : 'file-crossfade file-crossfade-active'}
-                  />
-                </React.Fragment>
-              )
-            case 'note':
-              if (!isVisible) return null
-              if (isThumbnailMode) {
-                return <NoteThumbnail key={session.id} session={session} />
-              }
-              return (
-                <NoteWindow
-                  key={session.id}
-                  session={session}
-                  zoom={getZoom}
-                  gridSize={gridSize}
-                />
-              )
-            case 'webview':
-              if (!isVisible) return null
-              if (isThumbnailMode) {
-                return <WebviewThumbnail key={session.id} session={session} />
-              }
-              return (
-                <WebviewWindow
-                  key={session.id}
-                  session={session}
-                  zoom={getZoom}
-                  gridSize={gridSize}
-                />
-              )
-            case 'image':
-              if (!isVisible) return null
-              if (isThumbnailMode) {
-                return <ImageThumbnail key={session.id} session={session} />
-              }
-              return (
-                <ImageWindow
-                  key={session.id}
-                  session={session}
-                  zoom={getZoom}
-                  gridSize={gridSize}
-                />
-              )
-            case 'snippet':
-              if (!isVisible) return null
-              if (isThumbnailMode) {
-                return <SnippetThumbnail key={session.id} session={session} />
-              }
-              return (
-                <SnippetWindow
-                  key={session.id}
-                  session={session}
-                  zoom={getZoom}
-                  gridSize={gridSize}
-                />
-              )
-            default:
-              return null
-          }
+          const isVis = visibleIds.has(session.id)
+          return renderSessionElement(session, isVis)
         })}
         {collapsedGroups.map((group) => (
           <GroupCollapsedCard key={group.id} group={group} />
         ))}
       </div>
+      {/* Pinned elements layer — rendered outside the canvas viewport transform */}
+      {pinnedSessions.length > 0 && (
+        <div className="pinned-layer">
+          {pinnedSessions.map((session) => {
+            const screenPos = getPinnedScreenPos(session)
+            return (
+              <div
+                key={session.id}
+                className="pinned-element-wrapper"
+                style={{
+                  position: 'absolute',
+                  left: screenPos.x,
+                  top: screenPos.y,
+                  width: session.size.width,
+                  height: session.size.height,
+                  zIndex: session.zIndex,
+                }}
+              >
+                {renderSessionElement(session, true)}
+              </div>
+            )
+          })}
+        </div>
+      )}
       <Minimap />
     </div>
   )

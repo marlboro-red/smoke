@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
   useFocusedId,
@@ -87,6 +88,19 @@ export default function WebviewWindow({
   const handleToggleLock = useCallback(() => {
     sessionStore.getState().toggleLock(session.id)
   }, [session.id])
+
+  const handleTogglePin = useCallback(() => {
+    if (!session.isPinned) {
+      const pan = getCurrentPan()
+      const z = getCurrentZoom()
+      sessionStore.getState().togglePin(session.id, {
+        x: session.position.x * z + pan.x,
+        y: session.position.y * z + pan.y,
+      })
+    } else {
+      sessionStore.getState().togglePin(session.id)
+    }
+  }, [session.id, session.isPinned, session.position.x, session.position.y])
 
   const navigateTo = useCallback(
     (rawUrl: string) => {
@@ -205,6 +219,7 @@ export default function WebviewWindow({
     isDimmedByFocusMode && 'focus-mode-dimmed',
     isSelected && 'multi-selected',
     session.locked && 'locked',
+    session.isPinned && 'pinned',
   ]
     .filter(Boolean)
     .join(' ')
@@ -229,10 +244,12 @@ export default function WebviewWindow({
         title={session.title}
         status="running"
         isLocked={session.locked}
+        isPinned={session.isPinned}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
         onToggleLock={handleToggleLock}
+        onTogglePin={handleTogglePin}
       />
       <div className="webview-nav-bar" style={{ height: NAV_BAR_HEIGHT }}>
         <button

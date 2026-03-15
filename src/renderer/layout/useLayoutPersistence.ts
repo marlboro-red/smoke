@@ -28,6 +28,12 @@ function serializeCurrentLayout(name: string): Layout {
         },
       }
       if (s.locked) base.locked = true
+      if (s.isPinned) {
+        base.isPinned = true
+        if (s.pinnedViewportPos) {
+          base.pinnedViewportPos = s.pinnedViewportPos
+        }
+      }
       if (s.type === 'file') {
         return { ...base, filePath: s.filePath, language: s.language }
       }
@@ -262,6 +268,7 @@ export function useLayoutRestore(): {
             title: saved.title,
             size: saved.size,
             ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
+            ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
           // Spawn PTY — gracefully fall back if cwd doesn't exist
           window.smokeAPI?.pty.spawn({
@@ -288,6 +295,7 @@ export function useLayoutRestore(): {
                 sessionStore.getState().updateSession(session.id, {
                   title: saved.title,
                   size: saved.size,
+                  ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
                 })
               }
             } catch {
@@ -306,6 +314,7 @@ export function useLayoutRestore(): {
             title: saved.title,
             content: saved.content ?? '',
             size: saved.size,
+            ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
           break
         }
@@ -318,6 +327,7 @@ export function useLayoutRestore(): {
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             size: saved.size,
+            ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
           break
         }
@@ -343,6 +353,7 @@ export function useLayoutRestore(): {
                 sessionStore.getState().updateSession(session.id, {
                   title: saved.title,
                   size: saved.size,
+                  ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
                 })
               }
             } catch {
@@ -361,6 +372,7 @@ export function useLayoutRestore(): {
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             size: saved.size,
+            ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
           break
         }
