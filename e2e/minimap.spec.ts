@@ -19,8 +19,21 @@ test.describe('Canvas Minimap Interactions', () => {
   test('minimap is hidden when no sessions exist', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
+    const terminalWindow = mainWindow.locator('.terminal-window')
+
+    // Close all existing sessions (app may auto-launch with a default session)
+    let count = await terminalWindow.count()
+    while (count > 0) {
+      // Click the terminal to ensure it's focused before closing
+      await terminalWindow.first().click({ force: true })
+      await mainWindow.waitForTimeout(200)
+      await pressShortcut(mainWindow, 'w')
+      await mainWindow.waitForTimeout(500)
+      count = await terminalWindow.count()
+    }
+
     const minimap = mainWindow.locator('.minimap-container')
-    await expect(minimap).toHaveCount(0)
+    await expect(minimap).toHaveCount(0, { timeout: 5000 })
   })
 
   test('minimap appears when a session is created', async ({ mainWindow }) => {
@@ -271,7 +284,7 @@ test.describe('Canvas Minimap Interactions', () => {
   test('minimap disappears when all sessions are closed', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    // Create a session
+    // Ensure at least one session exists
     await pressShortcut(mainWindow, 'n')
     const terminalWindow = mainWindow.locator('.terminal-window')
     await expect(terminalWindow.first()).toBeVisible({ timeout: 5000 })
@@ -279,9 +292,15 @@ test.describe('Canvas Minimap Interactions', () => {
     const minimap = mainWindow.locator('.minimap-container')
     await expect(minimap).toBeVisible({ timeout: 5000 })
 
-    // Close the session
-    await pressShortcut(mainWindow, 'w')
-    await expect(terminalWindow).toHaveCount(0, { timeout: 5000 })
+    // Close ALL sessions (app may have auto-launched with a default session)
+    let count = await terminalWindow.count()
+    while (count > 0) {
+      await terminalWindow.first().click({ force: true })
+      await mainWindow.waitForTimeout(200)
+      await pressShortcut(mainWindow, 'w')
+      await mainWindow.waitForTimeout(500)
+      count = await terminalWindow.count()
+    }
 
     // Minimap should disappear (component returns null when sessions.length === 0)
     await expect(minimap).toHaveCount(0, { timeout: 5000 })
