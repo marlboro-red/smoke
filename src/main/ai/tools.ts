@@ -24,6 +24,7 @@ import type { PtyManager } from '../pty/PtyManager'
 import { AI_CANVAS_ACTION, PTY_DATA_FROM_PTY, PTY_EXIT } from '../ipc/channels'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { AiStreamCanvasAction } from '../../preload/types'
+import { buildCodeGraph } from '../codegraph'
 
 /** Context for scope-aware tool execution. */
 export interface AgentScopeProvider {
@@ -445,6 +446,30 @@ const tools: Array<{ definition: ToolDefinition; executor: string }> = [
       },
     },
     executor: 'broadcast_to_group',
+  },
+  {
+    definition: {
+      name: 'explore_imports',
+      description:
+        'Explore the import graph starting from a file. Returns all files reachable via import/require statements up to the specified depth, along with the edges between them. Use this to understand architecture, trace data flow, or find related files before making changes.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          file_path: {
+            type: 'string',
+            description:
+              'Absolute or relative path to the starting file.',
+          },
+          depth: {
+            type: 'number',
+            description:
+              'How many levels of imports to follow. Defaults to 2.',
+          },
+        },
+        required: ['file_path'],
+      },
+    },
+    executor: 'explore_imports',
   },
 ]
 
@@ -886,6 +911,42 @@ function createExecutors(
     emitCanvasAction('group_broadcast', { groupId, command })
 
     return `Broadcast ${command.length} characters to group ${groupId}.`
+  })
+
+  // ── explore_imports ──────────────────────────────────────────
+
+  executors.set('explore_imports', async (input) => {
+    const filePath = path.resolve(input.file_path as string)
+    const depth = (input.depth as number) ?? 2
+
+    // Determine project root from config or cwd
+    const prefs = configStore.get('preferences', defaultPreferences) as Record<
+      string,
+      unknown
+    >
+    const projectRoot = (prefs.defaultCwd as string) || process.cwd()
+
+    const result = await buildCodeGraph({
+      filePath,
+      projectRoot,
+      maxDepth: depth,
+    })
+
+    // Return a concise summary for the AI
+    const nodes = result.graph.nodes.map((n) => ({
+      file: n.filePath,
+      imports: n.imports,
+      importedBy: n.importedBy,
+      depth: n.depth,
+    }))
+
+    return JSON.stringify({
+      root: result.rootPath,
+      fileCount: result.fileCount,
+      edgeCount: result.edgeCount,
+      nodes,
+      edges: result.graph.edges,
+    })
   })
 
   return executors
