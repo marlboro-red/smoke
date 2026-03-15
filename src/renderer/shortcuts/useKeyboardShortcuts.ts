@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { resolveShortcut, getSortedSessionIds, type ShortcutAction } from './shortcutMap'
 import { sessionStore } from '../stores/sessionStore'
 import { aiStore } from '../stores/aiStore'
+import { findGroupByElementId, groupStore } from '../stores/groupStore'
 import { createNewSession } from '../session/useSessionCreation'
 import { closeSession } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
@@ -83,6 +84,16 @@ function executeShortcut(action: ShortcutAction): void {
     case 'toggleAiPanel':
       aiStore.getState().togglePanel()
       break
+
+    case 'toggleGroupCollapse': {
+      if (state.focusedId) {
+        const group = findGroupByElementId(state.focusedId)
+        if (group) {
+          groupStore.getState().toggleCollapsed(group.id)
+        }
+      }
+      break
+    }
 
     case 'escape':
       sessionStore.getState().focusSession(null)

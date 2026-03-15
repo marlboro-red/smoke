@@ -105,6 +105,8 @@ export const groupStore = createStore<GroupStore>((set, get) => ({
   },
 
   toggleCollapsed: (id: string) => {
+    // Recompute bounding box before collapsing so the card is positioned correctly
+    get().recomputeBoundingBox(id)
     set((state) => {
       const group = state.groups.get(id)
       if (!group) return state
