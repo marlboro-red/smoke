@@ -45,6 +45,9 @@ export const RECORDING_IMPORT = 'recording:import' as const
 export const AGENT_CREATE = 'agent:create' as const
 export const AGENT_REMOVE = 'agent:remove' as const
 export const AGENT_LIST = 'agent:list' as const
+export const AGENT_ASSIGN_GROUP = 'agent:assign-group' as const
+export const AGENT_SET_ROLE = 'agent:set-role' as const
+export const AGENT_UPDATE_SCOPE = 'agent:update-scope' as const
 
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
@@ -182,15 +185,35 @@ export interface AgentCreateRequest {
 
 export interface AgentCreateResponse {
   agentId: string
+  color: string
 }
 
 export interface AgentRemoveRequest {
   agentId: string
 }
 
+export interface AgentAssignGroupRequest {
+  agentId: string
+  groupId: string | null
+  memberSessionIds?: string[]
+}
+
+export interface AgentSetRoleRequest {
+  agentId: string
+  role: string | null
+}
+
+export interface AgentUpdateScopeRequest {
+  agentId: string
+  sessionIds: string[]
+}
+
 export interface AgentInfo {
   id: string
   name: string
+  groupId: string | null
+  role: string | null
+  color: string
 }
 
 export interface AiConfigGetResponse {

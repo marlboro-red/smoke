@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { agentStore } from '../agentStore'
+import { agentStore, findAgentByGroupId, findAgentBySessionGroupId, AGENT_COLORS } from '../agentStore'
 
 vi.mock('uuid', () => ({
   v4: (() => {
@@ -46,6 +46,33 @@ describe('agentStore', () => {
       agentStore.getState().removeAgent('a1')
       expect(agentStore.getState().activeAgentId).toBeNull()
     })
+
+    it('assigns a color from the palette', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      const agent = agentStore.getState().agents.get('a1')!
+      expect(AGENT_COLORS).toContain(agent.color)
+    })
+
+    it('uses provided color when specified', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1', '#ff0000')
+      expect(agentStore.getState().agents.get('a1')!.color).toBe('#ff0000')
+    })
+
+    it('assigns different colors to consecutive agents', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().addAgent('a2', 'Agent 2')
+      const c1 = agentStore.getState().agents.get('a1')!.color
+      const c2 = agentStore.getState().agents.get('a2')!.color
+      expect(c1).not.toBe(c2)
+    })
+
+    it('initializes new fields to null/defaults', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      const agent = agentStore.getState().agents.get('a1')!
+      expect(agent.assignedGroupId).toBeNull()
+      expect(agent.role).toBeNull()
+      expect(agent.color).toBeTruthy()
+    })
   })
 
   describe('setActiveAgent', () => {
@@ -54,6 +81,69 @@ describe('agentStore', () => {
       agentStore.getState().addAgent('a2', 'Agent 2')
       agentStore.getState().setActiveAgent('a2')
       expect(agentStore.getState().activeAgentId).toBe('a2')
+    })
+  })
+
+  describe('assignGroup', () => {
+    it('assigns a group to an agent', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().assignGroup('a1', 'g1')
+      expect(agentStore.getState().agents.get('a1')!.assignedGroupId).toBe('g1')
+    })
+
+    it('clears group assignment with null', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().assignGroup('a1', 'g1')
+      agentStore.getState().assignGroup('a1', null)
+      expect(agentStore.getState().agents.get('a1')!.assignedGroupId).toBeNull()
+    })
+
+    it('does not affect other agents', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().addAgent('a2', 'Agent 2')
+      agentStore.getState().assignGroup('a1', 'g1')
+      expect(agentStore.getState().agents.get('a2')!.assignedGroupId).toBeNull()
+    })
+  })
+
+  describe('setRole', () => {
+    it('sets a role on an agent', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().setRole('a1', 'frontend')
+      expect(agentStore.getState().agents.get('a1')!.role).toBe('frontend')
+    })
+
+    it('clears role with null', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().setRole('a1', 'backend')
+      agentStore.getState().setRole('a1', null)
+      expect(agentStore.getState().agents.get('a1')!.role).toBeNull()
+    })
+  })
+
+  describe('findAgentByGroupId', () => {
+    it('finds agent assigned to a group', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().assignGroup('a1', 'g1')
+      const agent = findAgentByGroupId('g1')
+      expect(agent?.id).toBe('a1')
+    })
+
+    it('returns undefined for unassigned group', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      expect(findAgentByGroupId('g1')).toBeUndefined()
+    })
+  })
+
+  describe('findAgentBySessionGroupId', () => {
+    it('returns undefined for undefined groupId', () => {
+      expect(findAgentBySessionGroupId(undefined)).toBeUndefined()
+    })
+
+    it('finds agent for session group', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().assignGroup('a1', 'g1')
+      expect(findAgentBySessionGroupId('g1')?.id).toBe('a1')
     })
   })
 

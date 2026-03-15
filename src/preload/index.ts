@@ -102,6 +102,12 @@ const smokeAPI: SmokeAPI = {
     create: (name) => ipcRenderer.invoke('agent:create', { name }),
     remove: (agentId) => ipcRenderer.invoke('agent:remove', { agentId }),
     list: () => ipcRenderer.invoke('agent:list'),
+    assignGroup: (agentId, groupId, memberSessionIds?) =>
+      ipcRenderer.invoke('agent:assign-group', { agentId, groupId, memberSessionIds }),
+    setRole: (agentId, role) =>
+      ipcRenderer.invoke('agent:set-role', { agentId, role }),
+    updateScope: (agentId, sessionIds) =>
+      ipcRenderer.invoke('agent:update-scope', { agentId, sessionIds }),
   }
 }
 

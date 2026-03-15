@@ -13,6 +13,8 @@ interface SessionCreatedPayload {
   cwd: string
   position: { x: number; y: number }
   size?: { cols: number; rows: number; width: number; height: number }
+  agentId?: string
+  groupId?: string
 }
 
 interface SessionMovedPayload {
@@ -75,7 +77,7 @@ interface GroupBroadcastPayload {
 export function handleCanvasAction(event: AiStreamCanvasAction): void {
   switch (event.action) {
     case 'session_created': {
-      const { sessionId, cwd, position, size } = event.payload as unknown as SessionCreatedPayload
+      const { sessionId, cwd, position, size, groupId } = event.payload as unknown as SessionCreatedPayload
       // The main process has already spawned the PTY — we just register it in the store
       const session: TerminalSession = {
         id: sessionId,
@@ -87,6 +89,7 @@ export function handleCanvasAction(event: AiStreamCanvasAction): void {
         zIndex: 0, // bringToFront will set the correct value
         status: 'running',
         createdAt: Date.now(),
+        groupId: groupId ?? undefined,
       }
       sessionStore.setState((state) => {
         const sessions = new Map(state.sessions)
@@ -95,6 +98,14 @@ export function handleCanvasAction(event: AiStreamCanvasAction): void {
       })
       sessionStore.getState().focusSession(sessionId)
       sessionStore.getState().bringToFront(sessionId)
+
+      // Auto-add to the agent's assigned group
+      if (groupId) {
+        const group = groupStore.getState().groups.get(groupId)
+        if (group) {
+          groupStore.getState().addMember(groupId, sessionId)
+        }
+      }
       break
     }
 

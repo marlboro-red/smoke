@@ -159,6 +159,9 @@ export interface EventLogData {
 export interface AgentInfo {
   id: string
   name: string
+  groupId: string | null
+  role: string | null
+  color: string
 }
 
 export interface RecordingListEntry {
@@ -212,9 +215,12 @@ export interface SmokeAPI {
     onCanvasAction: (callback: (event: AiStreamCanvasAction) => void) => () => void
   }
   agent: {
-    create: (name: string) => Promise<{ agentId: string }>
+    create: (name: string) => Promise<{ agentId: string; color: string }>
     remove: (agentId: string) => Promise<void>
     list: () => Promise<AgentInfo[]>
+    assignGroup: (agentId: string, groupId: string | null, memberSessionIds?: string[]) => Promise<void>
+    setRole: (agentId: string, role: string | null) => Promise<void>
+    updateScope: (agentId: string, sessionIds: string[]) => Promise<void>
   }
 }
 

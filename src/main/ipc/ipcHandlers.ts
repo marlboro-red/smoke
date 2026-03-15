@@ -37,6 +37,9 @@ import {
   AGENT_CREATE,
   AGENT_REMOVE,
   AGENT_LIST,
+  AGENT_ASSIGN_GROUP,
+  AGENT_SET_ROLE,
+  AGENT_UPDATE_SCOPE,
   APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
   PtySpawnResponse,
@@ -70,6 +73,9 @@ import {
   AgentCreateRequest,
   AgentCreateResponse,
   AgentRemoveRequest,
+  AgentAssignGroupRequest,
+  AgentSetRoleRequest,
+  AgentUpdateScopeRequest,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -424,7 +430,8 @@ export function registerIpcHandlers(
     AGENT_CREATE,
     (_event, request: AgentCreateRequest): AgentCreateResponse => {
       const agentId = agentManager.createAgent(request.name)
-      return { agentId }
+      const color = agentManager.getAgentColor(agentId)
+      return { agentId, color }
     }
   )
 
@@ -434,6 +441,18 @@ export function registerIpcHandlers(
 
   ipcMain.handle(AGENT_LIST, (): AgentInfo[] => {
     return agentManager.listAgents()
+  })
+
+  ipcMain.handle(AGENT_ASSIGN_GROUP, (_event, request: AgentAssignGroupRequest): void => {
+    agentManager.assignGroup(request.agentId, request.groupId, request.memberSessionIds)
+  })
+
+  ipcMain.handle(AGENT_SET_ROLE, (_event, request: AgentSetRoleRequest): void => {
+    agentManager.setAgentRole(request.agentId, request.role)
+  })
+
+  ipcMain.handle(AGENT_UPDATE_SCOPE, (_event, request: AgentUpdateScopeRequest): void => {
+    agentManager.updateScope(request.agentId, request.sessionIds)
   })
 
   // AI handlers — route to the correct agent via agentId
