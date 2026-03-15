@@ -117,3 +117,113 @@
   text-overflow: ellipsis;
   margin-top: 1px;
 }
+
+/* File Tree Panel */
+
+.ft-panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ft-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.ft-panel-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ft-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ft-root-name {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
+.ft-tree {
+  overflow-y: auto;
+  max-height: 300px;
+  padding-bottom: 4px;
+}
+
+.ft-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  cursor: default;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ft-node.ft-expandable {
+  cursor: pointer;
+}
+
+.ft-node:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ft-arrow {
+  display: inline-block;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  transition: transform 0.12s;
+  width: 10px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.ft-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.ft-icon {
+  font-size: 11px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ft-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* File type colors */
+.ft-dir .ft-name { color: rgba(255, 255, 255, 0.9); }
+.ft-script .ft-icon { color: #4fc1ff; }
+.ft-markup .ft-icon { color: #e06c75; }
+.ft-config .ft-icon { color: #e5c07b; }
+.ft-doc .ft-icon { color: #98c379; }
+.ft-symlink .ft-name { color: rgba(255, 255, 255, 0.5); font-style: italic; }
+
+.ft-error {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: #e06c75;
+}
+
+.ft-empty {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
