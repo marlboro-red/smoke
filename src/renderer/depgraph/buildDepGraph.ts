@@ -22,6 +22,7 @@ import {
   clearImportCache,
   getActiveGraphEntries,
   getGraphSessionId,
+  markNodeExpanded,
 } from './GraphCache'
 import type { CodeGraphResult, CodeGraphPosition, CodeGraphNode, CodeGraphEdge } from '../../preload/types'
 
@@ -119,6 +120,7 @@ export async function buildDepGraph(rootSession: FileViewerSession): Promise<voi
     projectRoot,
   )
 
+  markNodeExpanded(rootSession.filePath)
   await materializeGraph(result, rootSession)
 }
 
@@ -142,6 +144,7 @@ export async function expandDepGraph(expandPath: string): Promise<void> {
     projectRoot,
   )
 
+  markNodeExpanded(expandPath)
   await materializeIncrementalGraph(result, existingPositions)
 }
 

@@ -15,7 +15,7 @@ import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
 import { addToast } from '../stores/toastStore'
 import { buildDepGraph, expandDepGraph } from '../depgraph/buildDepGraph'
-import { isInActiveGraph } from '../depgraph/GraphCache'
+import { isInActiveGraph, isNodeExpanded } from '../depgraph/GraphCache'
 import { createTerminalAtFileDir } from '../session/useSessionCreation'
 import { goToLineStore, useGoToLineSessionId } from './goToLineStore'
 import WindowChrome from '../window/WindowChrome'
@@ -185,11 +185,19 @@ export default function FileViewerWindow({
     sessionStore.getState().updateSession(session.id, { editing: !editing })
   }, [session.id, editing])
 
-  const handleShowDepGraph = useCallback(() => {
-    if (isInActiveGraph(session.filePath)) {
-      expandDepGraph(session.filePath)
-    } else {
-      buildDepGraph(session)
+  const [importsLoading, setImportsLoading] = useState(false)
+  const importsExpanded = isNodeExpanded(session.filePath)
+
+  const handleShowImports = useCallback(async () => {
+    setImportsLoading(true)
+    try {
+      if (isInActiveGraph(session.filePath)) {
+        await expandDepGraph(session.filePath)
+      } else {
+        await buildDepGraph(session)
+      }
+    } finally {
+      setImportsLoading(false)
     }
   }, [session])
 
@@ -273,12 +281,13 @@ export default function FileViewerWindow({
           &gt;_
         </button>
         <button
-          className="file-viewer-edit-toggle"
-          onClick={handleShowDepGraph}
+          className={`file-viewer-imports-btn${importsExpanded ? ' expanded' : ''}${importsLoading ? ' loading' : ''}`}
+          onClick={handleShowImports}
           onPointerDown={(e) => e.stopPropagation()}
-          title="Show import dependency graph"
+          disabled={importsLoading}
+          title={importsExpanded ? 'Imports already shown — click to expand deeper' : 'Show imports on canvas'}
         >
-          Deps
+          {importsLoading ? 'Loading…' : 'Imports'}
         </button>
         <button
           className={`file-viewer-edit-toggle ${editing ? 'active' : ''}`}
