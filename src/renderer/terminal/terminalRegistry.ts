@@ -129,9 +129,8 @@ export function reattachTerminal(
   const entry = registry.get(sessionId)
   if (!entry) return null
 
-  // Always dispose existing WebGL addon before re-opening —
-  // terminal.open() creates new DOM/canvas elements, making
-  // the old WebGL context stale.
+  // Always dispose existing WebGL addon before moving —
+  // WebGL contexts can't survive DOM reparenting.
   if (entry.webglAddon) {
     try {
       entry.webglAddon.dispose()
@@ -141,10 +140,17 @@ export function reattachTerminal(
     entry.webglAddon = null
   }
 
-  // Re-open terminal into new container
-  entry.terminal.open(container)
+  // Move the terminal element to the new container.
+  // xterm.js 5.x's open() early-returns when the terminal was already
+  // opened (even if the element is detached from the DOM), so calling
+  // open() again would leave the new container empty.
+  if (entry.terminal.element) {
+    container.appendChild(entry.terminal.element)
+  } else {
+    entry.terminal.open(container)
+  }
 
-  // Re-create WebGL addon (requires canvas context from open())
+  // Re-create WebGL addon
   try {
     const webglAddon = new WebglAddon()
     webglAddon.onContextLoss(() => {
