@@ -154,6 +154,8 @@ src/renderer/shortcuts/__tests__/shortcuts.test.ts
 
 See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for the full architecture guide, including:
 - Three-process architecture details
-- IPC channel reference
-- State management patterns
-- Performance strategies
+- IPC channel reference (30+ request/response channels, 8 fire-and-forget channels)
+- State management patterns (16 Zustand stores)
+- Performance strategies (viewport culling, thumbnail mode, background indexing)
+- Canvas element types (terminal, file, snippet, note, webview, image)
+- Code intelligence system (dependency graphs, reverse index, search, structure analysis)
