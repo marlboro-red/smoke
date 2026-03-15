@@ -21,6 +21,10 @@ export const CONFIG_SET = 'config:set' as const
 export const FS_READDIR = 'fs:readdir' as const
 export const FS_READFILE = 'fs:readfile' as const
 
+// Terminal output buffer channels (AI orchestrator)
+export const TERMINAL_BUFFER_READ = 'terminal-buffer:read' as const
+export const TERMINAL_BUFFER_READ_LINES = 'terminal-buffer:read-lines' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 
@@ -106,4 +110,14 @@ export interface FsReadfileRequest {
 export interface FsReadfileResponse {
   content: string
   size: number
+}
+
+// Terminal output buffer message types
+export interface TerminalBufferReadRequest {
+  sessionId: string
+}
+
+export interface TerminalBufferReadLinesRequest {
+  sessionId: string
+  lineCount: number
 }

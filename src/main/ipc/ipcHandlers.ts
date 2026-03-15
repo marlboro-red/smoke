@@ -4,6 +4,7 @@ import * as path from 'path'
 import { PtyManager } from '../pty/PtyManager'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Preferences, SmokeConfig } from '../config/ConfigStore'
+import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -19,6 +20,8 @@ import {
   CONFIG_SET,
   FS_READDIR,
   FS_READFILE,
+  TERMINAL_BUFFER_READ,
+  TERMINAL_BUFFER_READ_LINES,
   APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
   PtySpawnResponse,
@@ -33,6 +36,8 @@ import {
   FsReaddirEntry,
   FsReadfileRequest,
   FsReadfileResponse,
+  TerminalBufferReadRequest,
+  TerminalBufferReadLinesRequest,
 } from './channels'
 
 export function registerIpcHandlers(
@@ -57,6 +62,7 @@ export function registerIpcHandlers(
     })
 
     pty.on('data', (data: string) => {
+      terminalOutputBuffer.append(pty.id, data)
       const win = getMainWindow()
       if (win && !win.isDestroyed()) {
         win.webContents.send(PTY_DATA_FROM_PTY, { id: pty.id, data })
@@ -64,6 +70,7 @@ export function registerIpcHandlers(
     })
 
     pty.on('exit', (exitCode: number, signal?: number) => {
+      terminalOutputBuffer.delete(pty.id)
       const win = getMainWindow()
       if (win && !win.isDestroyed()) {
         win.webContents.send(PTY_EXIT, { id: pty.id, exitCode, signal })
@@ -181,6 +188,15 @@ export function registerIpcHandlers(
 
     const content = await fs.readFile(filePath, 'utf-8')
     return { content, size: stat.size }
+  })
+
+  // Terminal output buffer handlers (AI orchestrator)
+  ipcMain.handle(TERMINAL_BUFFER_READ, (_event, request: TerminalBufferReadRequest): string => {
+    return terminalOutputBuffer.read(request.sessionId)
+  })
+
+  ipcMain.handle(TERMINAL_BUFFER_READ_LINES, (_event, request: TerminalBufferReadLinesRequest): string => {
+    return terminalOutputBuffer.readLines(request.sessionId, request.lineCount)
   })
 
   // App info handlers
