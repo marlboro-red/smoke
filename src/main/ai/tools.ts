@@ -333,6 +333,74 @@ const tools: Array<{ definition: ToolDefinition; executor: string }> = [
     },
     executor: 'create_arrow',
   },
+  {
+    definition: {
+      name: 'create_group',
+      description:
+        'Create a new group on the canvas. Groups visually cluster elements together and enable broadcast commands.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Display name for the group.',
+          },
+          color: {
+            type: 'string',
+            description:
+              'Hex color for the group. If omitted, auto-assigned from a palette.',
+          },
+        },
+        required: ['name'],
+      },
+    },
+    executor: 'create_group',
+  },
+  {
+    definition: {
+      name: 'add_to_group',
+      description:
+        'Add an existing canvas element (terminal session or note) to a group.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          element_id: {
+            type: 'string',
+            description: 'The ID of the element to add to the group.',
+          },
+          group_id: {
+            type: 'string',
+            description: 'The ID of the group to add the element to.',
+          },
+        },
+        required: ['element_id', 'group_id'],
+      },
+    },
+    executor: 'add_to_group',
+  },
+  {
+    definition: {
+      name: 'broadcast_to_group',
+      description:
+        'Send a command to all terminal sessions in a group. The command text is written to every terminal PTY in the group. Append "\\n" to execute.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          group_id: {
+            type: 'string',
+            description: 'The ID of the group to broadcast to.',
+          },
+          command: {
+            type: 'string',
+            description:
+              'The command text to send. Include "\\n" for Enter key.',
+          },
+        },
+        required: ['group_id', 'command'],
+      },
+    },
+    executor: 'broadcast_to_group',
+  },
 ]
 
 // ── Executor implementations ────────────────────────────────────────
@@ -638,6 +706,40 @@ function createExecutors(
     })
 
     return JSON.stringify({ connectorId, sourceId: fromId, targetId: toId, label })
+  })
+
+  // ── create_group ────────────────────────────────────────────────
+
+  executors.set('create_group', async (input) => {
+    const name = input.name as string
+    const color = input.color as string | undefined
+    const groupId = uuid()
+
+    emitCanvasAction('group_created', { groupId, name, color })
+
+    return JSON.stringify({ groupId, name, color })
+  })
+
+  // ── add_to_group ────────────────────────────────────────────────
+
+  executors.set('add_to_group', async (input) => {
+    const elementId = input.element_id as string
+    const groupId = input.group_id as string
+
+    emitCanvasAction('group_member_added', { groupId, elementId })
+
+    return `Added element ${elementId} to group ${groupId}.`
+  })
+
+  // ── broadcast_to_group ──────────────────────────────────────────
+
+  executors.set('broadcast_to_group', async (input) => {
+    const groupId = input.group_id as string
+    const command = input.command as string
+
+    emitCanvasAction('group_broadcast', { groupId, command })
+
+    return `Broadcast ${command.length} characters to group ${groupId}.`
   })
 
   return executors
