@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from 'react'
-import { useSessionList, useFocusedId, useHighlightedId } from '../stores/sessionStore'
+import { useSessionList, useFocusedId, useHighlightedId, findFileSessionByPath } from '../stores/sessionStore'
 import { createNewSession } from '../session/useSessionCreation'
+import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import SessionListItem from './SessionListItem'
-import { usePanToSession } from './useSidebarSync'
+import { usePanToSession, panToSession as panToSessionStandalone } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
 import ConfigPanel from '../config/ConfigPanel'
 import FileTree from './FileTree'
@@ -21,6 +22,15 @@ export default function Sidebar(): JSX.Element {
 
   const handleNewSession = useCallback(() => {
     createNewSession()
+  }, [])
+
+  const handleFileOpen = useCallback((filePath: string) => {
+    const existing = findFileSessionByPath(filePath)
+    if (existing) {
+      panToSessionStandalone(existing.id)
+    } else {
+      createFileViewerSession(filePath)
+    }
   }, [])
 
   return (
@@ -42,7 +52,7 @@ export default function Sidebar(): JSX.Element {
           />
         ))}
       </div>
-      <FileTree />
+      <FileTree onFileOpen={handleFileOpen} />
       <LayoutPanel />
       <ConfigPanel />
     </div>

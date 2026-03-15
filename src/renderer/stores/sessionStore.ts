@@ -153,3 +153,12 @@ export const useHighlightedId = (): string | null =>
 
 export const useSessionStore = <T>(selector: (state: SessionStore) => T): T =>
   useStore(sessionStore, selector)
+
+export function findFileSessionByPath(filePath: string): FileViewerSession | undefined {
+  for (const session of sessionStore.getState().sessions.values()) {
+    if (session.type === 'file' && session.filePath === filePath) {
+      return session
+    }
+  }
+  return undefined
+}

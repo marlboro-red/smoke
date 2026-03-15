@@ -80,10 +80,12 @@ function FileTreeNode({
   node,
   depth,
   onToggle,
+  onFileOpen,
 }: {
   node: TreeNode
   depth: number
   onToggle: (node: TreeNode) => void
+  onFileOpen: (filePath: string) => void
 }) {
   const isDir = node.type === 'directory'
   const icon = getFileIcon(node, node.expanded)
@@ -95,6 +97,7 @@ function FileTreeNode({
         className={`ft-node ${typeClass}${isDir ? ' ft-expandable' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => isDir && onToggle(node)}
+        onDoubleClick={() => !isDir && onFileOpen(node.path)}
       >
         {isDir && (
           <span className={`ft-arrow${node.expanded ? ' expanded' : ''}`}>▶</span>
@@ -109,6 +112,7 @@ function FileTreeNode({
             node={child}
             depth={depth + 1}
             onToggle={onToggle}
+            onFileOpen={onFileOpen}
           />
         ))
       )}
@@ -116,7 +120,7 @@ function FileTreeNode({
   )
 }
 
-export default function FileTree(): JSX.Element {
+export default function FileTree({ onFileOpen }: { onFileOpen: (filePath: string) => void }): JSX.Element {
   const launchCwd = usePreferencesStore((s) => s.launchCwd)
   const defaultCwd = usePreferencesStore((s) => s.preferences.defaultCwd)
   const rootPath = defaultCwd || launchCwd
@@ -201,6 +205,7 @@ export default function FileTree(): JSX.Element {
               node={node}
               depth={0}
               onToggle={handleToggle}
+              onFileOpen={onFileOpen}
             />
           ))}
         </div>
