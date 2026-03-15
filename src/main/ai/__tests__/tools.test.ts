@@ -123,7 +123,7 @@ describe('AI Tools', () => {
   }
 
   describe('registerTools', () => {
-    it('registers all 11 v1 tools', () => {
+    it('registers all 13 tools', () => {
       const toolNames = (service as unknown as { tools: Array<{ name: string }> }).tools.map(t => t.name)
       expect(toolNames).toEqual([
         'get_canvas_state',
@@ -137,6 +137,8 @@ describe('AI Tools', () => {
         'read_file',
         'list_directory',
         'pan_canvas',
+        'create_note',
+        'create_arrow',
       ])
     })
   })
@@ -348,6 +350,73 @@ describe('AI Tools', () => {
       const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
       expect(action.action).toBe('viewport_panned')
       expect(action.payload).toEqual({ panX: -200, panY: -300 })
+    })
+  })
+
+  describe('create_note', () => {
+    it('emits note_created canvas action with text and position', async () => {
+      const executor = getExecutor('create_note')!
+      const result = JSON.parse(await executor({
+        text: 'Hello world',
+        position: { x: 200, y: 300 },
+        color: 'blue',
+      }))
+
+      expect(result.noteId).toBe('mock-session-id')
+      expect(result.text).toBe('Hello world')
+      expect(result.color).toBe('blue')
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      expect(canvasActions).toHaveLength(1)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.action).toBe('note_created')
+      expect(action.payload.noteId).toBe('mock-session-id')
+      expect(action.payload.text).toBe('Hello world')
+      expect(action.payload.position).toEqual({ x: 200, y: 300 })
+      expect(action.payload.color).toBe('blue')
+    })
+
+    it('uses defaults when position and color are omitted', async () => {
+      const executor = getExecutor('create_note')!
+      const result = JSON.parse(await executor({ text: 'A note' }))
+
+      expect(result.position).toEqual({ x: 100, y: 100 })
+      expect(result.color).toBe('yellow')
+    })
+  })
+
+  describe('create_arrow', () => {
+    it('emits connector_created canvas action', async () => {
+      const executor = getExecutor('create_arrow')!
+      const result = JSON.parse(await executor({
+        from_id: 'session-a',
+        to_id: 'session-b',
+        label: 'data flow',
+      }))
+
+      expect(result.connectorId).toBe('mock-session-id')
+      expect(result.sourceId).toBe('session-a')
+      expect(result.targetId).toBe('session-b')
+      expect(result.label).toBe('data flow')
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      expect(canvasActions).toHaveLength(1)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.action).toBe('connector_created')
+      expect(action.payload.sourceId).toBe('session-a')
+      expect(action.payload.targetId).toBe('session-b')
+      expect(action.payload.label).toBe('data flow')
+    })
+
+    it('works without optional label and color', async () => {
+      const executor = getExecutor('create_arrow')!
+      const result = JSON.parse(await executor({
+        from_id: 'a',
+        to_id: 'b',
+      }))
+
+      expect(result.connectorId).toBe('mock-session-id')
+      expect(result.label).toBeUndefined()
     })
   })
 

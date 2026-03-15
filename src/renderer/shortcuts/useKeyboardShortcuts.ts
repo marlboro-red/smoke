@@ -95,6 +95,16 @@ function executeShortcut(action: ShortcutAction): void {
       break
     }
 
+    case 'toggleBroadcast': {
+      if (state.focusedId) {
+        const group = findGroupByElementId(state.focusedId)
+        if (group) {
+          sessionStore.getState().toggleBroadcast(group.id)
+        }
+      }
+      break
+    }
+
     case 'escape':
       sessionStore.getState().focusSession(null)
       break

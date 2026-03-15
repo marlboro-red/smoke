@@ -87,6 +87,8 @@ export type CanvasActionType =
   | 'session_resized'
   | 'session_closed'
   | 'viewport_panned'
+  | 'note_created'
+  | 'connector_created'
 
 export interface AiStreamTextDelta {
   type: 'text_delta'

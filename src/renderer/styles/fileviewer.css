@@ -53,6 +53,21 @@
   font-family: inherit;
 }
 
+/* ─── File Viewer Crossfade ─── */
+
+.file-crossfade {
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.file-crossfade-active {
+  opacity: 1;
+}
+
+.file-crossfade-inactive {
+  opacity: 0;
+  pointer-events: none !important;
+}
+
 /* Thumbnail status dot for file type */
 .thumbnail-status.file {
   background: var(--color-info);

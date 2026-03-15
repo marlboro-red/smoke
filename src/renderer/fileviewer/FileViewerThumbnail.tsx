@@ -5,6 +5,7 @@ import '../styles/thumbnail.css'
 
 interface FileViewerThumbnailProps {
   session: FileViewerSession
+  className?: string
 }
 
 /** Map common extensions to color classes for the badge */
@@ -65,6 +66,7 @@ function buildMinimapData(
 
 export default function FileViewerThumbnail({
   session,
+  className,
 }: FileViewerThumbnailProps): JSX.Element {
   const lines = session.content.split('\n')
   const lineCount = lines.length
@@ -81,7 +83,7 @@ export default function FileViewerThumbnail({
 
   return (
     <div
-      className="terminal-thumbnail file-viewer-thumbnail"
+      className={`terminal-thumbnail file-viewer-thumbnail${className ? ` ${className}` : ''}`}
       style={{
         position: 'absolute',
         left: session.position.x,

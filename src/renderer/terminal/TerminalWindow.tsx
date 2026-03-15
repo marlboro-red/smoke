@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react'
-import { sessionStore, useFocusedId, useHighlightedId, type TerminalSession } from '../stores/sessionStore'
+import { sessionStore, useFocusedId, useHighlightedId, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
 import { snapshotStore } from '../stores/snapshotStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
@@ -25,11 +25,13 @@ export default function TerminalWindow({
 }: TerminalWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
+  const broadcastGroupId = useBroadcastGroupId()
   const charDimsRef = useRef({ width: 8, height: 16 })
   const getSnapshotRef = useRef<(() => string[]) | null>(null)
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
+  const isBroadcasting = !!(session.groupId && broadcastGroupId === session.groupId)
 
   const getCharDims = useCallback(() => charDimsRef.current, [])
 
@@ -99,6 +101,7 @@ export default function TerminalWindow({
     'terminal-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    isBroadcasting && 'broadcasting',
   ]
     .filter(Boolean)
     .join(' ')
@@ -119,6 +122,7 @@ export default function TerminalWindow({
       <WindowChrome
         title={session.title}
         status={session.status}
+        isBroadcasting={isBroadcasting}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}

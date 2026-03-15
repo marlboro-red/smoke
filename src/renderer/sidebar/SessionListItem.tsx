@@ -6,6 +6,7 @@ interface SessionListItemProps {
   session: Session
   isFocused: boolean
   isHighlighted: boolean
+  isInBroadcastGroup?: boolean
   onPanTo: (sessionId: string) => void
 }
 
@@ -16,7 +17,7 @@ function shortenPath(path: string): string {
   return parts[0] + '/.../' + parts[parts.length - 1]
 }
 
-function SessionListItem({ session, isFocused, isHighlighted, onPanTo }: SessionListItemProps): JSX.Element {
+function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup, onPanTo }: SessionListItemProps): JSX.Element {
   const isExited = session.type === 'terminal' && session.status === 'exited'
 
   const handleMouseEnter = useCallback(() => {
@@ -35,6 +36,7 @@ function SessionListItem({ session, isFocused, isHighlighted, onPanTo }: Session
   if (isFocused) className += ' focused'
   if (isHighlighted) className += ' highlighted'
   if (isExited) className += ' exited'
+  if (isInBroadcastGroup) className += ' broadcasting'
 
   return (
     <div

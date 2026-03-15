@@ -18,12 +18,14 @@ interface FileViewerWindowProps {
   session: FileViewerSession
   zoom: () => number
   gridSize: number
+  className?: string
 }
 
 export default function FileViewerWindow({
   session,
   zoom,
   gridSize,
+  className: extraClassName,
 }: FileViewerWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
@@ -64,6 +66,7 @@ export default function FileViewerWindow({
     'file-viewer-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    extraClassName,
   ]
     .filter(Boolean)
     .join(' ')
