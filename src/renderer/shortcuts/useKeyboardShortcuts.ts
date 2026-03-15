@@ -4,7 +4,7 @@ import { sessionStore } from '../stores/sessionStore'
 import { splitPaneStore } from '../stores/splitPaneStore'
 import { aiStore } from '../stores/aiStore'
 import { findGroupByElementId, groupStore } from '../stores/groupStore'
-import { createNewSession, createTerminalAtFileDir } from '../session/useSessionCreation'
+import { createNewSession, createTerminalAtFileDir, duplicateSession } from '../session/useSessionCreation'
 import { closeSession, closeSplitPane } from '../session/useSessionClose'
 import { panToSession } from '../sidebar/useSidebarSync'
 import { setZoomTo, zoomIn, zoomOut, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
@@ -206,6 +206,13 @@ function executeShortcut(action: ShortcutAction): void {
     case 'startPresentation':
       presentationStore.getState().startPresentation()
       break
+
+    case 'duplicateElement': {
+      if (state.focusedId) {
+        duplicateSession(state.focusedId)
+      }
+      break
+    }
 
     case 'splitHorizontal':
     case 'splitVertical': {

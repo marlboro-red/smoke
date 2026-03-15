@@ -35,6 +35,7 @@ export type ShortcutAction =
   | 'startPresentation'
   | 'toggleFileViewerEdit'
   | 'newSnippet'
+  | 'duplicateElement'
   | 'splitHorizontal'
   | 'splitVertical'
   | 'navigatePaneLeft'
@@ -90,6 +91,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   startPresentation: 'Start Presentation',
   toggleFileViewerEdit: 'Toggle File Viewer Edit Mode',
   newSnippet: 'New Snippet',
+  duplicateElement: 'Duplicate Element',
   splitHorizontal: 'Split Pane Horizontal',
   splitVertical: 'Split Pane Vertical',
   navigatePaneLeft: 'Navigate Pane Left',
@@ -134,8 +136,9 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   startPresentation: { key: 'F5', mod: false, shift: false, alt: false },
   toggleFileViewerEdit: { key: 'e', mod: true, shift: false, alt: false },
   newSnippet: { key: 'k', mod: true, shift: true, alt: false },
-  splitHorizontal: { key: 'd', mod: true, shift: false, alt: false },
-  splitVertical: { key: 'd', mod: true, shift: true, alt: false },
+  duplicateElement: { key: 'd', mod: true, shift: false, alt: false },
+  splitHorizontal: { key: '\\', mod: true, shift: false, alt: false },
+  splitVertical: { key: '\\', mod: true, shift: true, alt: false },
   navigatePaneLeft: { key: 'ArrowLeft', mod: true, shift: false, alt: true },
   navigatePaneRight: { key: 'ArrowRight', mod: true, shift: false, alt: true },
   navigatePaneUp: { key: 'ArrowUp', mod: true, shift: false, alt: true },
@@ -152,7 +155,7 @@ export interface ShortcutGroupDef {
 export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   {
     title: 'Session Management',
-    actions: ['newSession', 'newSnippet', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
+    actions: ['newSession', 'newSnippet', 'duplicateElement', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
   },
   {
     title: 'Session Focus',
