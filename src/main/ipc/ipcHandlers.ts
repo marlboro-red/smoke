@@ -9,7 +9,7 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
-import { buildCodeGraph, expandCodeGraph, buildDependentsGraph, getDependents, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask } from '../codegraph'
+import { buildCodeGraph, expandCodeGraph, buildDependentsGraph, getDependents, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask, collectContext } from '../codegraph'
 import { SearchIndex } from '../codegraph/SearchIndex'
 import { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
 import {
@@ -75,6 +75,7 @@ import {
   TASK_PARSE,
   RELEVANCE_SCORE,
   CODEGRAPH_PLAN_WORKSPACE,
+  CONTEXT_COLLECT,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
@@ -148,6 +149,8 @@ import {
   TaskParseResponse,
   RelevanceScoringRequest,
   RelevanceScoringResponse,
+  ContextCollectRequest,
+  ContextCollectResponse,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -843,6 +846,14 @@ export function registerIpcHandlers(
     CODEGRAPH_PLAN_WORKSPACE,
     (_event, request: { files: Array<{ filePath: string; relevance: number; imports: string[]; importedBy: string[] }> }) => {
       return computeWorkspaceLayout(request.files)
+    }
+  )
+
+  // Context collector handler
+  ipcMain.handle(
+    CONTEXT_COLLECT,
+    async (_event, request: ContextCollectRequest): Promise<ContextCollectResponse> => {
+      return collectContext(request, searchIndex, structureAnalyzer)
     }
   )
 }

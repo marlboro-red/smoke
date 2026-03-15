@@ -102,6 +102,9 @@ export const TASK_PARSE = 'task:parse' as const
 // Relevance scoring channels
 export const RELEVANCE_SCORE = 'relevance:score' as const
 
+// Context collector channels
+export const CONTEXT_COLLECT = 'context:collect' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -587,6 +590,38 @@ export interface StructureAnalyzeResponse {
 
 export interface StructureGetModuleRequest {
   moduleId: string
+}
+
+// Context collector message types
+export interface ContextCollectRequest {
+  taskDescription: string
+  projectRoot: string
+  maxFiles?: number
+  useAi?: boolean
+  graphDepth?: number
+}
+
+export interface ContextFileResponse {
+  filePath: string
+  relevance: number
+  imports: string[]
+  importedBy: string[]
+  source: 'search' | 'import-graph' | 'structure' | 'file-pattern'
+  moduleId?: string
+}
+
+export interface ContextCollectResponse {
+  files: ContextFileResponse[]
+  parsedTask: TaskParseResponse
+  structureMap: StructureAnalyzeResponse | null
+  timing: {
+    parse: number
+    search: number
+    structure: number
+    graph: number
+    scoring: number
+    total: number
+  }
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

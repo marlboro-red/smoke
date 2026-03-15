@@ -56,3 +56,9 @@ export {
   type WorkspaceArrow,
   type WorkspaceRegion,
 } from './WorkspaceLayoutPlanner'
+export {
+  collectContext,
+  type ContextCollectRequest,
+  type ContextFile,
+  type ContextCollectResult,
+} from './ContextCollector'
