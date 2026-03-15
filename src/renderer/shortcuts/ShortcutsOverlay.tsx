@@ -10,6 +10,8 @@ import {
 } from './shortcutMap'
 import '../styles/shortcuts-overlay.css'
 
+const MOD = isMac ? '\u2318' : 'Ctrl+'
+
 function KeyBadge({ label }: { label: string }): JSX.Element {
   return <kbd className="shortcut-key">{label}</kbd>
 }
