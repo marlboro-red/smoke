@@ -19,6 +19,7 @@ import NoteWindow from '../note/NoteWindow'
 import NoteThumbnail from '../note/NoteThumbnail'
 import GroupCollapsedCard from './GroupCollapsedCard'
 import SnapPreview from './SnapPreview'
+import Minimap from './Minimap'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -158,6 +159,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
           <GroupCollapsedCard key={group.id} group={group} />
         ))}
       </div>
+      <Minimap />
     </div>
   )
 }
