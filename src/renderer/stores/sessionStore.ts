@@ -13,6 +13,7 @@ export interface BaseSession {
   size: { cols: number; rows: number; width: number; height: number }
   zIndex: number
   createdAt: number
+  groupId?: string
 }
 
 export interface TerminalSession extends BaseSession {
