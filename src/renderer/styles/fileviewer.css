@@ -1,6 +1,7 @@
 /* File Viewer Window */
 .file-viewer-window .window-chrome-status {
-  background: #60a5fa;
+  background: var(--color-info);
+  box-shadow: 0 0 5px var(--color-info-glow);
 }
 
 .file-viewer-body {
@@ -19,9 +20,9 @@
 
 .file-viewer-highlighted pre {
   margin: 0;
-  padding: 8px 12px;
-  font-family: Menlo, Monaco, 'Courier New', monospace;
-  font-size: 13px;
+  padding: var(--space-md) var(--space-lg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
   line-height: 1.5;
   overflow: visible;
 }
@@ -37,11 +38,11 @@
 
 .file-viewer-plaintext {
   margin: 0;
-  padding: 8px 12px;
-  font-family: Menlo, Monaco, 'Courier New', monospace;
-  font-size: 13px;
+  padding: var(--space-md) var(--space-lg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
   line-height: 1.5;
-  color: #e0e0e0;
+  color: var(--text-primary);
   white-space: pre;
   overflow: auto;
   height: 100%;
@@ -54,5 +55,5 @@
 
 /* Thumbnail status dot for file type */
 .thumbnail-status.file {
-  background: #60a5fa;
+  background: var(--color-info);
 }

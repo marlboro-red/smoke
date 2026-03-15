@@ -1,0 +1,126 @@
+/* ─── Design Tokens ─── */
+
+:root {
+  /* ── Surfaces ── */
+  --bg-base: #0d0d1a;
+  --bg-sidebar: #0a0a14;
+  --bg-window: rgba(22, 22, 40, 0.96);
+  --bg-chrome: rgba(255, 255, 255, 0.03);
+  --bg-thumbnail: rgba(22, 22, 40, 0.92);
+  --bg-elevated: rgba(255, 255, 255, 0.05);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.07);
+
+  /* ── Accent ── */
+  --accent: #7c8cf5;
+  --accent-hover: #8d9bf7;
+  --accent-dim: rgba(124, 140, 245, 0.15);
+  --accent-muted: rgba(124, 140, 245, 0.25);
+  --accent-strong: rgba(124, 140, 245, 0.5);
+  --accent-text: rgba(124, 140, 245, 0.9);
+
+  /* ── Semantic ── */
+  --color-success: #4ade80;
+  --color-success-glow: rgba(74, 222, 128, 0.35);
+  --color-error: #f87171;
+  --color-error-dim: rgba(248, 113, 113, 0.12);
+  --color-error-muted: rgba(248, 113, 113, 0.25);
+  --color-error-text: rgba(248, 113, 113, 0.85);
+  --color-info: #60a5fa;
+  --color-info-glow: rgba(96, 165, 250, 0.35);
+  --color-warning: #fbbf24;
+  --color-neutral: #6b7280;
+
+  /* ── Text ── */
+  --text-primary: rgba(255, 255, 255, 0.88);
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-tertiary: rgba(255, 255, 255, 0.45);
+  --text-muted: rgba(255, 255, 255, 0.3);
+  --text-placeholder: rgba(255, 255, 255, 0.22);
+
+  /* ── Borders ── */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  /* ── Radius ── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* ── Shadows ── */
+  --shadow-window: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-window-focus: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent-strong);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  /* ── Transitions ── */
+  --duration-fast: 0.12s;
+  --duration-normal: 0.18s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Spacing ── */
+  --space-xs: 4px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+
+  /* ── Typography ── */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+  --font-mono: 'SF Mono', Menlo, Monaco, 'Cascadia Code', 'Courier New', monospace;
+  --font-size-xs: 10px;
+  --font-size-sm: 11px;
+  --font-size-md: 12px;
+  --font-size-lg: 13px;
+}
+
+/* ─── Global Reset ─── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar Theme ─── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ─── Selection ─── */
+
+::selection {
+  background: var(--accent-muted);
+  color: #fff;
+}

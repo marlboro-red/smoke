@@ -34,8 +34,8 @@ const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
           <circle
             cx={gridSize}
             cy={gridSize}
-            r="1"
-            fill="rgba(255,255,255,0.15)"
+            r="0.8"
+            fill="rgba(255,255,255,0.12)"
           />
         </pattern>
       </defs>
