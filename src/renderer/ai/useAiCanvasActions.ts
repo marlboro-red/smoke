@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { AiStreamCanvasAction } from '../../preload/types'
-import type { NoteSession, TerminalSession } from '../stores/sessionStore'
-import { sessionStore } from '../stores/sessionStore'
+import type { FileViewerSession, NoteSession, TerminalSession } from '../stores/sessionStore'
+import { findFileSessionByPath, sessionStore } from '../stores/sessionStore'
 import { connectorStore } from '../stores/connectorStore'
 import { setPanTo } from '../canvas/useCanvasControls'
 import { closeSession } from '../session/useSessionClose'
@@ -37,6 +37,13 @@ interface NoteCreatedPayload {
   text: string
   position: { x: number; y: number }
   color: string
+}
+
+interface FileEditedPayload {
+  filePath: string
+  content: string
+  language: string
+  position: { x: number; y: number }
 }
 
 interface ConnectorCreatedPayload {
@@ -135,6 +142,31 @@ export function handleCanvasAction(event: AiStreamCanvasAction): void {
         connectors.set(connectorId, connector)
         return { connectors }
       })
+      break
+    }
+
+    case 'file_edited': {
+      const { filePath, content, language, position } =
+        event.payload as unknown as FileEditedPayload
+
+      // Check if a file viewer for this path is already open
+      const existing = findFileSessionByPath(filePath)
+      if (existing) {
+        // Update content in the existing viewer
+        sessionStore.getState().updateSession(existing.id, { content })
+        sessionStore.getState().focusSession(existing.id)
+        sessionStore.getState().bringToFront(existing.id)
+      } else {
+        // Create a new file viewer session
+        const session = sessionStore.getState().createFileSession(
+          filePath,
+          content,
+          language,
+          position
+        )
+        sessionStore.getState().focusSession(session.id)
+        sessionStore.getState().bringToFront(session.id)
+      }
       break
     }
   }

@@ -89,6 +89,7 @@ export type CanvasActionType =
   | 'viewport_panned'
   | 'note_created'
   | 'connector_created'
+  | 'file_edited'
 
 export interface AiStreamTextDelta {
   type: 'text_delta'
