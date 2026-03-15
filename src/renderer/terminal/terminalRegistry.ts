@@ -1,5 +1,6 @@
 import { Terminal } from '@xterm/xterm'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { disposeSearchAddon } from './terminalSearchStore'
 
 interface TerminalEntry {
   terminal: Terminal
@@ -33,6 +34,7 @@ export function registerTerminal(
 export function unregisterTerminal(sessionId: string): void {
   const entry = registry.get(sessionId)
   if (entry) {
+    disposeSearchAddon(sessionId)
     if (entry.webglAddon) {
       try {
         entry.webglAddon.dispose()

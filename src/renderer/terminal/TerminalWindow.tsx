@@ -11,6 +11,7 @@ import { closeSession } from '../session/useSessionClose'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import TerminalWidget from './TerminalWidget'
+import TerminalSearchBar from './TerminalSearchBar'
 import SplitPaneContainer from './SplitPaneContainer'
 import '../styles/window.css'
 
@@ -173,8 +174,9 @@ export default function TerminalWindow({
       />
       <div
         className="terminal-body"
-        style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}
+        style={{ height: `calc(100% - ${CHROME_HEIGHT}px)`, position: 'relative' }}
       >
+        <TerminalSearchBar sessionId={session.id} />
         {splitTree ? (
           <SplitPaneContainer
             sessionId={session.id}

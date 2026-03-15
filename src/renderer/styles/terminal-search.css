@@ -1,0 +1,98 @@
+.terminal-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 10;
+  padding: 4px 6px;
+  background: var(--bg-window);
+  border: 1px solid var(--border-strong);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  animation: tsb-slide-in var(--duration-fast) ease-out;
+}
+
+@keyframes tsb-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.terminal-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.terminal-search-input {
+  width: 180px;
+  height: 24px;
+  padding: 0 6px;
+  padding-right: 70px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.terminal-search-input:focus {
+  border-color: var(--accent);
+}
+
+.terminal-search-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.terminal-search-count {
+  position: absolute;
+  right: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.terminal-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.terminal-search-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.terminal-search-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.terminal-search-btn.toggle.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent-muted);
+}
