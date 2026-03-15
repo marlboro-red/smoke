@@ -1,0 +1,1 @@
+{"session_id":"sess-20260315-011514","started_at":"2026-03-15T01:15:14Z","ended_at":"2026-03-15T22:49:40Z","total_completed":128,"total_failed":3,"total_cost_usd":33.9951195,"agents":[{"task_id":"smoke-phq","runtime":"CLAUDE","model":"claude-opus-4-6","elapsed_secs":11076,"status":"Completed","input_tokens":17218261,"output_tokens":39737,"estimated_cost_usd":33.9951195}]}
