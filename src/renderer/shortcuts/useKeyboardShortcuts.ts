@@ -362,6 +362,15 @@ export function useKeyboardShortcuts(): void {
       const action = resolveShortcut(e)
       if (!action) return
 
+      // Let Cmd+S fall through to CodeMirror when editing a file
+      if (action === 'saveLayout') {
+        const state = sessionStore.getState()
+        const focused = state.focusedId ? state.sessions.get(state.focusedId) : null
+        if (focused?.type === 'file' && (focused as any).editing) {
+          return // CodeMirror's Mod-s keymap handles file save
+        }
+      }
+
       e.preventDefault()
       executeShortcut(action)
     }
