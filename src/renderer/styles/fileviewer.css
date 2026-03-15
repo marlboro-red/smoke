@@ -30,10 +30,26 @@
 .file-viewer-highlighted code {
   font-family: inherit;
   counter-reset: line;
+  background-color: inherit;
 }
 
 .file-viewer-highlighted .line {
-  display: inline;
+  display: block;
+  counter-increment: line;
+  background-color: inherit;
+}
+
+.file-viewer-highlighted .line::before {
+  content: counter(line);
+  display: inline-block;
+  width: 3.5em;
+  padding-right: 1em;
+  text-align: right;
+  color: var(--text-muted, rgba(255, 255, 255, 0.3));
+  user-select: none;
+  position: sticky;
+  left: 0;
+  background-color: inherit;
 }
 
 .file-viewer-plaintext {
@@ -51,6 +67,25 @@
 
 .file-viewer-plaintext code {
   font-family: inherit;
+  counter-reset: line;
+}
+
+.file-viewer-plaintext .line {
+  display: block;
+  counter-increment: line;
+}
+
+.file-viewer-plaintext .line::before {
+  content: counter(line);
+  display: inline-block;
+  width: 3.5em;
+  padding-right: 1em;
+  text-align: right;
+  color: var(--text-muted, rgba(255, 255, 255, 0.3));
+  user-select: none;
+  position: sticky;
+  left: 0;
+  background-color: var(--bg-primary);
 }
 
 /* ─── File Viewer Crossfade ─── */
