@@ -124,7 +124,7 @@ export function useCanvasControls(
       // wheel events when they can still scroll in the wheel direction.
       const target = e.target as HTMLElement
       const scrollable = (
-        target.closest('.file-viewer-body, .file-editor-container') ??
+        target.closest('.file-viewer-highlighted, .file-viewer-markdown, .file-viewer-plaintext, .cm-scroller') ??
         target.closest('.note-textarea')
       ) as HTMLElement | null
       if (scrollable && !e.ctrlKey && !e.metaKey) {
