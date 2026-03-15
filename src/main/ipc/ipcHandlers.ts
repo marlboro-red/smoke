@@ -6,6 +6,7 @@ import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Preferences, SmokeConfig } from '../config/ConfigStore'
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AiService } from '../ai/AiService'
+import { registerTools } from '../ai/tools'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -63,9 +64,10 @@ export function registerIpcHandlers(
   getMainWindow: () => BrowserWindow | null,
   launchCwd: string
 ): void {
-  // Instantiate the AI service
+  // Instantiate the AI service and register tools
   const aiService = new AiService(getMainWindow)
   aiServiceInstance = aiService
+  registerTools(aiService, ptyManager, getMainWindow)
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
     const preferences = configStore.get('preferences', defaultPreferences)
 
