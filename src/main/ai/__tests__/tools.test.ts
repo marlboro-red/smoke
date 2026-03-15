@@ -37,6 +37,24 @@ vi.mock('uuid', () => ({
   v4: vi.fn().mockReturnValue('mock-session-id'),
 }))
 
+// Mock codegraph buildCodeGraph
+vi.mock('../../codegraph', () => ({
+  buildCodeGraph: vi.fn().mockResolvedValue({
+    graph: {
+      nodes: [
+        { filePath: '/project/src/index.ts', imports: ['/project/src/utils.ts'], importedBy: [], depth: 0 },
+        { filePath: '/project/src/utils.ts', imports: [], importedBy: ['/project/src/index.ts'], depth: 1 },
+      ],
+      edges: [
+        { from: '/project/src/index.ts', to: '/project/src/utils.ts', type: 'import' },
+      ],
+    },
+    rootPath: '/project/src/index.ts',
+    fileCount: 2,
+    edgeCount: 1,
+  }),
+}))
+
 // Mock fs/promises
 vi.mock('fs/promises', () => ({
   stat: vi.fn().mockResolvedValue({ size: 100 }),
@@ -124,7 +142,7 @@ describe('AI Tools', () => {
   }
 
   describe('registerTools', () => {
-    it('registers all 17 tools', () => {
+    it('registers all 18 tools', () => {
       const toolNames = (service as unknown as { tools: Array<{ name: string }> }).tools.map(t => t.name)
       expect(toolNames).toEqual([
         'get_canvas_state',
@@ -144,6 +162,7 @@ describe('AI Tools', () => {
         'create_group',
         'add_to_group',
         'broadcast_to_group',
+        'explore_imports',
       ])
     })
   })
@@ -558,6 +577,43 @@ describe('AI Tools', () => {
       expect(action.action).toBe('group_broadcast')
       expect(action.payload.groupId).toBe('group-1')
       expect(action.payload.command).toBe('npm test\n')
+    })
+  })
+
+  describe('explore_imports', () => {
+    it('returns import graph structure for a file', async () => {
+      const executor = getExecutor('explore_imports')!
+      const result = JSON.parse(await executor({ file_path: '/project/src/index.ts' }))
+
+      expect(result.root).toBe('/project/src/index.ts')
+      expect(result.fileCount).toBe(2)
+      expect(result.edgeCount).toBe(1)
+      expect(result.nodes).toHaveLength(2)
+      expect(result.nodes[0].file).toBe('/project/src/index.ts')
+      expect(result.nodes[0].imports).toEqual(['/project/src/utils.ts'])
+      expect(result.edges).toHaveLength(1)
+      expect(result.edges[0].from).toBe('/project/src/index.ts')
+      expect(result.edges[0].to).toBe('/project/src/utils.ts')
+    })
+
+    it('passes depth parameter to buildCodeGraph', async () => {
+      const { buildCodeGraph } = await import('../../codegraph')
+      const executor = getExecutor('explore_imports')!
+      await executor({ file_path: '/project/src/index.ts', depth: 5 })
+
+      expect(buildCodeGraph).toHaveBeenCalledWith(
+        expect.objectContaining({ maxDepth: 5 })
+      )
+    })
+
+    it('defaults depth to 2', async () => {
+      const { buildCodeGraph } = await import('../../codegraph')
+      const executor = getExecutor('explore_imports')!
+      await executor({ file_path: '/project/src/index.ts' })
+
+      expect(buildCodeGraph).toHaveBeenCalledWith(
+        expect.objectContaining({ maxDepth: 2 })
+      )
     })
   })
 
