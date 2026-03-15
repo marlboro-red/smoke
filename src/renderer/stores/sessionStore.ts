@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { connectorStore } from './connectorStore'
 import { preferencesStore } from './preferencesStore'
 
-export type ElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image'
+export type ElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
 
 export interface BaseSession {
   id: string
@@ -55,7 +55,13 @@ export interface ImageSession extends BaseSession {
   aspectRatio: number
 }
 
-export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession | ImageSession
+export interface SnippetSession extends BaseSession {
+  type: 'snippet'
+  content: string
+  language: string
+}
+
+export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession | ImageSession | SnippetSession
 
 interface SessionStore {
   sessions: Map<string, Session>
@@ -70,6 +76,7 @@ interface SessionStore {
   createImageSession: (filePath: string, dataUrl: string, naturalWidth: number, naturalHeight: number, position?: { x: number; y: number }) => ImageSession
   createNoteSession: (position?: { x: number; y: number }, color?: string) => NoteSession
   createWebviewSession: (url?: string, position?: { x: number; y: number }) => WebviewSession
+  createSnippetSession: (language?: string, content?: string, position?: { x: number; y: number }) => SnippetSession
   removeSession: (id: string) => void
   updateSession: (id: string, patch: Partial<Session>) => void
   focusSession: (id: string | null) => void
@@ -213,6 +220,28 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       canGoForward: false,
       position: position ?? { x: 0, y: 0 },
       size: { cols: 0, rows: 0, width: 800, height: 600 },
+      zIndex: nextZIndex,
+      createdAt: Date.now(),
+    }
+    set((state) => {
+      const sessions = new Map(state.sessions)
+      sessions.set(session.id, session)
+      return { sessions, nextZIndex: nextZIndex + 1 }
+    })
+    return session
+  },
+
+  createSnippetSession: (language?: string, content?: string, position?: { x: number; y: number }): SnippetSession => {
+    const { nextZIndex } = get()
+    const lang = language || 'javascript'
+    const session: SnippetSession = {
+      id: uuidv4(),
+      type: 'snippet',
+      title: 'Snippet',
+      content: content ?? '',
+      language: lang,
+      position: position ?? { x: 0, y: 0 },
+      size: { cols: 0, rows: 0, width: 480, height: 360 },
       zIndex: nextZIndex,
       createdAt: Date.now(),
     }

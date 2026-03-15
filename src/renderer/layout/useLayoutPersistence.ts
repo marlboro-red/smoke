@@ -36,6 +36,9 @@ function serializeCurrentLayout(name: string): Layout {
       if (s.type === 'image') {
         return { ...base, filePath: s.filePath, aspectRatio: s.aspectRatio }
       }
+      if (s.type === 'snippet') {
+        return { ...base, content: s.content, language: s.language }
+      }
       return base
     }),
     viewport: { panX, panY, zoom },
@@ -185,6 +188,18 @@ export function useLayoutRestore(): {
               // Image file may no longer exist — skip silently
             }
           }
+          break
+        }
+        case 'snippet': {
+          const session = sessionStore.getState().createSnippetSession(
+            saved.language || 'javascript',
+            saved.content ?? '',
+            saved.position
+          )
+          sessionStore.getState().updateSession(session.id, {
+            title: saved.title,
+            size: saved.size,
+          })
           break
         }
       }

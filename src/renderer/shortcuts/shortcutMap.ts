@@ -31,6 +31,7 @@ export type ShortcutAction =
   | 'saveBookmark'
   | 'showDepGraph'
   | 'openTerminalHere'
+  | 'newSnippet'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -74,6 +75,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   saveBookmark: 'Save Bookmark',
   showDepGraph: 'Show Import Dependency Graph',
   openTerminalHere: 'Open Terminal Here',
+  newSnippet: 'New Snippet',
   escape: 'Unfocus Session',
 }
 
@@ -107,6 +109,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   saveBookmark: { key: 'd', mod: true, shift: false },
   showDepGraph: { key: 'd', mod: true, shift: true },
   openTerminalHere: { key: 't', mod: true, shift: true },
+  newSnippet: { key: 'k', mod: true, shift: true },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -118,7 +121,7 @@ export interface ShortcutGroupDef {
 export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   {
     title: 'Session Management',
-    actions: ['newSession', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
+    actions: ['newSession', 'newSnippet', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
   },
   {
     title: 'Session Focus',

@@ -24,7 +24,7 @@ export interface PtyExitEvent {
   signal?: number
 }
 
-export type LayoutElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image'
+export type LayoutElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
 
 export interface LayoutSession {
   type?: LayoutElementType

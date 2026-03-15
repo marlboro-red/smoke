@@ -25,6 +25,12 @@ function executeShortcut(action: ShortcutAction): void {
       createNewSession()
       break
 
+    case 'newSnippet': {
+      const session = sessionStore.getState().createSnippetSession()
+      sessionStore.getState().focusSession(session.id)
+      break
+    }
+
     case 'closeSession': {
       if (state.focusedId) {
         closeSession(state.focusedId)
