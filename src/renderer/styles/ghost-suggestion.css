@@ -1,0 +1,152 @@
+/* ─── Ghost Suggestion ─── */
+
+.ghost-suggestion {
+  width: 220px;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-window);
+  border: 1px dashed var(--accent-strong);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  opacity: 0;
+  animation: ghost-fade-in 0.4s var(--ease-out) forwards;
+  transition:
+    opacity var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+  pointer-events: auto;
+  z-index: 0;
+}
+
+.ghost-suggestion:hover {
+  opacity: 1 !important;
+  border-color: var(--accent);
+  box-shadow: 0 0 16px var(--accent-dim), var(--shadow-window);
+  transform: scale(1.02);
+}
+
+.ghost-suggestion.materializing {
+  animation: ghost-materialize 0.3s var(--ease-out) forwards;
+  pointer-events: none;
+}
+
+/* ─── Header ─── */
+
+.ghost-suggestion-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.ghost-suggestion-icon {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ghost-suggestion-filename {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.ghost-suggestion-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+  flex-shrink: 0;
+}
+
+.ghost-suggestion:hover .ghost-suggestion-dismiss {
+  opacity: 1;
+}
+
+.ghost-suggestion-dismiss:hover {
+  color: var(--text-primary);
+}
+
+/* ─── Path ─── */
+
+.ghost-suggestion-path {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Footer ─── */
+
+.ghost-suggestion-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.ghost-suggestion-reason {
+  font-size: var(--font-size-xs);
+  color: var(--accent-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ghost-suggestion-relevance-bar {
+  flex: 1;
+  height: 2px;
+  background: var(--border-subtle);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.ghost-suggestion-relevance-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: width 0.3s var(--ease-out);
+}
+
+/* ─── Animations ─── */
+
+@keyframes ghost-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 0.55;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ghost-materialize {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+    border-style: solid;
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-dim);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
