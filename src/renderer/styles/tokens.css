@@ -106,12 +106,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-thumb, rgba(255, 255, 255, 0.1));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--scrollbar-thumb-hover, rgba(255, 255, 255, 0.18));
 }
 
 ::-webkit-scrollbar-corner {
@@ -122,5 +122,5 @@ body {
 
 ::selection {
   background: var(--accent-muted);
-  color: #fff;
+  color: var(--selection-text, #fff);
 }

@@ -15,7 +15,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--border-strong);
   cursor: pointer;
   padding: 0;
   transition: transform var(--duration-fast), border-color var(--duration-fast);
@@ -23,7 +23,7 @@
 
 .note-color-btn:hover {
   transform: scale(1.2);
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: var(--text-tertiary);
 }
 
 .note-body {

@@ -170,3 +170,7 @@ export function flushHiddenBuffer(sessionId: string, terminal: Terminal): void {
 export function getRegistrySize(): number {
   return registry.size
 }
+
+export function getAllTerminals(): TerminalEntry[] {
+  return Array.from(registry.values())
+}

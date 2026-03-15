@@ -4,6 +4,7 @@ import { preferencesStore, usePreferences } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
 import { settingsModalStore, useSettingsModalOpen } from './settingsStore'
+import { themes, THEME_IDS } from '../themes/themes'
 import '../styles/settings-modal.css'
 
 export default function SettingsModal(): JSX.Element | null {
@@ -71,6 +72,31 @@ export default function SettingsModal(): JSX.Element | null {
         </div>
 
         <div className="settings-body">
+          {/* ── Appearance ── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Appearance</h3>
+
+            <div className="settings-row">
+              <div className="settings-row-info">
+                <label className="settings-label">Theme</label>
+                <p className="settings-help">
+                  Choose a color theme for the entire application, including terminals and code editors.
+                </p>
+              </div>
+              <select
+                className="settings-input settings-select"
+                value={prefs.theme || 'dark'}
+                onChange={(e) => updatePref('theme', e.target.value)}
+              >
+                {THEME_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {themes[id].label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </section>
+
           {/* ── General ── */}
           <section className="settings-section">
             <h3 className="settings-section-title">General</h3>

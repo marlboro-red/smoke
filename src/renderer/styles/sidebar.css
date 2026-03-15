@@ -38,9 +38,9 @@
 }
 
 .sidebar-new-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-active);
   border-color: var(--border-strong);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .session-list {
@@ -69,7 +69,7 @@
 }
 
 .session-list-item.focused .session-title {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -177,7 +177,7 @@
 }
 
 .broadcast-toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-active);
   color: var(--text-secondary);
   border-color: var(--border-strong);
 }

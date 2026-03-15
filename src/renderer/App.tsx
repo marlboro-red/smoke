@@ -14,6 +14,7 @@ import { useEventRecording } from './recording/useEventRecording'
 import { useIsReplaying } from './replay/replayStore'
 import ReplayControls from './replay/ReplayControls'
 import SettingsModal from './config/SettingsModal'
+import { applyTheme } from './themes/applyTheme'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -52,6 +53,7 @@ function App(): JSX.Element {
         preferencesStore.getState().setPreferences(prefs)
         gridStore.getState().setGridSize(prefs.gridSize)
         canvasStore.getState().setGridSize(prefs.gridSize)
+        applyTheme(prefs.theme || 'dark')
       }
     })
     window.smokeAPI?.app.getLaunchCwd().then((cwd) => {
@@ -60,6 +62,12 @@ function App(): JSX.Element {
       }
     })
   }, [])
+
+  // Watch for theme changes and apply them
+  const theme = usePreference('theme')
+  useEffect(() => {
+    applyTheme(theme || 'dark')
+  }, [theme])
 
   return (
     <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
