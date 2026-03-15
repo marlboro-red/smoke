@@ -9,16 +9,20 @@ interface FileEditorWidgetProps {
   content: string
   language: string
   onSave: (content: string) => void
+  onChange?: (content: string) => void
 }
 
 export default function FileEditorWidget({
   content,
   language,
   onSave,
+  onChange,
 }: FileEditorWidgetProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const onSaveRef = useRef(onSave)
   onSaveRef.current = onSave
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -33,6 +37,12 @@ export default function FileEditorWidget({
       },
     ])
 
+    const changeListener = EditorView.updateListener.of((update) => {
+      if (update.docChanged) {
+        onChangeRef.current?.(update.state.doc.toString())
+      }
+    })
+
     const state = EditorState.create({
       doc: content,
       extensions: [
@@ -40,6 +50,7 @@ export default function FileEditorWidget({
         basicSetup,
         oneDark,
         ...getLanguageExtension(language),
+        changeListener,
         EditorView.theme({
           '&': {
             height: '100%',

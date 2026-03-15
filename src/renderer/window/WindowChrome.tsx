@@ -5,6 +5,7 @@ interface WindowChromeProps {
   title: string
   status: 'running' | 'exited'
   isBroadcasting?: boolean
+  isDirty?: boolean
   onTitleChange: (title: string) => void
   onClose: () => void
   onDragStart: (e: React.PointerEvent) => void
@@ -15,6 +16,7 @@ export default function WindowChrome({
   title,
   status,
   isBroadcasting,
+  isDirty,
   onTitleChange,
   onClose,
   onDragStart,
@@ -87,7 +89,7 @@ export default function WindowChrome({
           className="window-chrome-title"
           onDoubleClick={handleDoubleClick}
         >
-          {title}
+          {isDirty ? `${title} \u2022 Modified` : title}
         </span>
       )}
       {isBroadcasting && (

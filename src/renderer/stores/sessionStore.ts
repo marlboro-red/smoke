@@ -29,6 +29,7 @@ export interface FileViewerSession extends BaseSession {
   filePath: string
   content: string
   language: string
+  isDirty?: boolean
 }
 
 export interface NoteSession extends BaseSession {

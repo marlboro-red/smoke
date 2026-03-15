@@ -100,6 +100,12 @@
   box-shadow: 0 0 5px var(--color-warning-glow, rgba(229, 192, 123, 0.5));
 }
 
+/* Dirty (unsaved changes) status dot — overrides editing */
+.file-viewer-dirty .window-chrome-status {
+  background: var(--color-error, #e06c75);
+  box-shadow: 0 0 5px var(--color-error-glow, rgba(224, 108, 117, 0.5));
+}
+
 /* CodeMirror editor container */
 .file-editor-container {
   height: 100%;
