@@ -159,10 +159,9 @@ export default function NoteWindow({
         onDragStart={onDragStart}
         onToggleLock={handleToggleLock}
         onTogglePin={handleTogglePin}
-      />
-      <div className="note-chrome-extras">
+      >
         <NoteColorPicker color={session.color} onChange={handleColorChange} />
-      </div>
+      </WindowChrome>
       <div
         className="note-body"
         style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}

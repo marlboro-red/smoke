@@ -4,11 +4,9 @@
   box-shadow: 0 0 5px rgba(251, 191, 36, 0.35);
 }
 
-.note-chrome-extras {
-  position: absolute;
-  top: 6px;
-  right: 32px;
-  z-index: 2;
+.note-color-picker-wrapper {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .note-color-btn {
@@ -24,10 +22,6 @@
 .note-color-btn:hover {
   transform: scale(1.2);
   border-color: var(--text-tertiary);
-}
-
-.note-color-picker-wrapper {
-  position: relative;
 }
 
 .note-color-popover {
