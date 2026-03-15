@@ -19,6 +19,7 @@ import CommandPalette from './palette/CommandPalette'
 import SearchModal from './search/SearchModal'
 import PresentationMode from './presentation/PresentationMode'
 import ToastContainer from './toast/ToastContainer'
+import StatusBar from './statusbar/StatusBar'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 
 function App(): JSX.Element {
@@ -83,24 +84,27 @@ function App(): JSX.Element {
   }, [theme])
 
   return (
-    <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
-      {!isReplaying && <Sidebar />}
-      <Canvas readOnly={isReplaying} />
-      {aiPanelOpen && !isReplaying && <AiChatPanel />}
-      <SettingsModal />
-      <ShortcutsOverlay />
-      <CommandPalette />
-      <SearchModal />
-      <PresentationMode />
-      <ToastContainer />
-      {isReplaying && (
-        <>
-          <div className="replay-read-only-overlay">
-            <div className="replay-read-only-badge">READ-ONLY</div>
-          </div>
-          <ReplayControls />
-        </>
-      )}
+    <div className="app-shell">
+      <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
+        {!isReplaying && <Sidebar />}
+        <Canvas readOnly={isReplaying} />
+        {aiPanelOpen && !isReplaying && <AiChatPanel />}
+        <SettingsModal />
+        <ShortcutsOverlay />
+        <CommandPalette />
+        <SearchModal />
+        <PresentationMode />
+        <ToastContainer />
+        {isReplaying && (
+          <>
+            <div className="replay-read-only-overlay">
+              <div className="replay-read-only-badge">READ-ONLY</div>
+            </div>
+            <ReplayControls />
+          </>
+        )}
+      </div>
+      <StatusBar />
     </div>
   )
 }
