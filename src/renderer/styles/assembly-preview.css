@@ -1,0 +1,414 @@
+/* ─── Assembly Preview Modal ─── */
+
+.assembly-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: assembly-fade-in 0.15s ease-out;
+}
+
+@keyframes assembly-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes assembly-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.assembly-modal {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown), 0 0 0 1px var(--border-subtle);
+  width: 580px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  animation: assembly-slide-up 0.18s var(--ease-out);
+}
+
+/* ── Header ── */
+
+.assembly-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.assembly-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.assembly-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.assembly-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast), background var(--duration-fast);
+}
+
+.assembly-close-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.assembly-task-desc {
+  margin: 8px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.assembly-task-intent {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-text);
+  background: var(--accent-dim);
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin-right: 6px;
+}
+
+/* ── Toolbar ── */
+
+.assembly-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.assembly-toolbar-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast), background var(--duration-fast);
+}
+
+.assembly-toolbar-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.assembly-count {
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+/* ── Body (file list) ── */
+
+.assembly-body {
+  padding: 4px 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 120px;
+  max-height: 400px;
+}
+
+.assembly-group {
+  padding: 4px 0;
+}
+
+.assembly-group + .assembly-group {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.assembly-group-header {
+  padding: 6px 20px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.assembly-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 20px;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.assembly-file-row:hover {
+  background: var(--bg-hover);
+}
+
+.assembly-file-row.deselected {
+  opacity: 0.45;
+}
+
+.assembly-file-checkbox {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.assembly-file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.assembly-file-name {
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assembly-file-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assembly-file-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.assembly-relevance {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  min-width: 32px;
+  text-align: right;
+}
+
+.assembly-relevance.high {
+  color: var(--accent-text);
+}
+
+.assembly-relevance.medium {
+  color: var(--text-secondary);
+}
+
+.assembly-source-tag {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  padding: 0 5px;
+  line-height: 18px;
+}
+
+.assembly-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity var(--duration-fast), color var(--duration-fast);
+}
+
+.assembly-file-row:hover .assembly-remove-btn {
+  opacity: 1;
+}
+
+.assembly-remove-btn:hover {
+  color: var(--text-primary);
+}
+
+/* ── Add Files Section ── */
+
+.assembly-add-section {
+  padding: 8px 20px;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.assembly-add-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.assembly-add-icon {
+  position: absolute;
+  left: 8px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.assembly-add-input {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  padding: 6px 10px 6px 28px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.assembly-add-input:focus {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.assembly-add-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.assembly-add-results {
+  margin-top: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.assembly-add-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background var(--duration-fast);
+}
+
+.assembly-add-result-row:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.assembly-add-result-row .add-plus {
+  color: var(--accent);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.assembly-add-result-path {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Footer ── */
+
+.assembly-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.assembly-footer-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.assembly-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.assembly-cancel-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.assembly-cancel-btn:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.assembly-confirm-btn {
+  background: var(--accent);
+  border: 1px solid var(--accent-strong);
+  border-radius: var(--radius-sm);
+  color: var(--bg-base);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  padding: 6px 20px;
+  cursor: pointer;
+  transition: opacity var(--duration-fast);
+}
+
+.assembly-confirm-btn:hover {
+  opacity: 0.9;
+}
+
+.assembly-confirm-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Empty state ── */
+
+.assembly-empty {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}

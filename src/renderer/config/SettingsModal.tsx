@@ -318,6 +318,28 @@ export default function SettingsModal(): JSX.Element | null {
             </div>
           </section>
 
+          {/* ── Context Assembly ── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Context Assembly</h3>
+
+            <div className="settings-row">
+              <div className="settings-row-info">
+                <label className="settings-label">Skip Assembly Preview</label>
+                <p className="settings-help">
+                  Skip the file preview step and immediately populate the canvas when assembling a workspace. You can still review files after they appear.
+                </p>
+              </div>
+              <label className="settings-switch">
+                <input
+                  type="checkbox"
+                  checked={prefs.skipAssemblyPreview}
+                  onChange={(e) => updatePref('skipAssemblyPreview', e.target.checked)}
+                />
+                <span className="settings-switch-track" />
+              </label>
+            </div>
+          </section>
+
           {/* ── Keyboard Shortcuts ── */}
           <section className="settings-section">
             <h3 className="settings-section-title">Keyboard Shortcuts</h3>
