@@ -26,6 +26,8 @@ import {
   TERMINAL_BUFFER_READ,
   TERMINAL_BUFFER_READ_LINES,
   RECORDING_FLUSH,
+  RECORDING_LIST,
+  RECORDING_LOAD,
   AI_SEND,
   AI_ABORT,
   AI_CLEAR,
@@ -49,6 +51,8 @@ import {
   TerminalBufferReadRequest,
   TerminalBufferReadLinesRequest,
   RecordingFlushRequest,
+  RecordingListEntry,
+  RecordingLoadRequest,
   AiSendRequest,
   AiSendResponse,
   AiAbortRequest,
@@ -266,6 +270,50 @@ export function registerIpcHandlers(
     const filePath = path.join(recordingsDir, filename)
     await fs.writeFile(filePath, JSON.stringify(request, null, 2), 'utf-8')
     return filePath
+  })
+
+  // Recording handler — list saved recordings
+  ipcMain.handle(RECORDING_LIST, async (): Promise<RecordingListEntry[]> => {
+    const { app } = await import('electron')
+    const recordingsDir = path.join(app.getPath('userData'), 'recordings')
+    try {
+      const files = await fs.readdir(recordingsDir)
+      const entries: RecordingListEntry[] = []
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue
+        try {
+          const content = await fs.readFile(path.join(recordingsDir, file), 'utf-8')
+          const log = JSON.parse(content) as RecordingFlushRequest
+          const events = log.events || []
+          const duration = events.length > 0
+            ? events[events.length - 1].timestamp - events[0].timestamp
+            : 0
+          entries.push({
+            filename: file,
+            startedAt: log.startedAt,
+            eventCount: events.length,
+            durationMs: duration,
+          })
+        } catch {
+          // Skip malformed files
+        }
+      }
+      return entries.sort((a, b) => b.startedAt - a.startedAt)
+    } catch {
+      return []
+    }
+  })
+
+  // Recording handler — load a specific recording
+  ipcMain.handle(RECORDING_LOAD, async (_event, request: RecordingLoadRequest): Promise<RecordingFlushRequest | null> => {
+    const { app } = await import('electron')
+    const recordingsDir = path.join(app.getPath('userData'), 'recordings')
+    try {
+      const content = await fs.readFile(path.join(recordingsDir, request.filename), 'utf-8')
+      return JSON.parse(content) as RecordingFlushRequest
+    } catch {
+      return null
+    }
   })
 
   // App info handlers

@@ -56,6 +56,8 @@ const smokeAPI: SmokeAPI = {
 
   recording: {
     flush: (log: EventLogData) => ipcRenderer.invoke('recording:flush', log),
+    list: () => ipcRenderer.invoke('recording:list'),
+    load: (filename: string) => ipcRenderer.invoke('recording:load', { filename }),
   },
 
   ai: {

@@ -144,6 +144,13 @@ export interface EventLogData {
   events: Array<{ timestamp: number; type: string; payload: unknown }>
 }
 
+export interface RecordingListEntry {
+  filename: string
+  startedAt: number
+  eventCount: number
+  durationMs: number
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -173,6 +180,8 @@ export interface SmokeAPI {
   }
   recording: {
     flush: (log: EventLogData) => Promise<string>
+    list: () => Promise<RecordingListEntry[]>
+    load: (filename: string) => Promise<EventLogData | null>
   }
   ai: {
     send: (message: string, conversationId?: string) => Promise<{ conversationId: string }>

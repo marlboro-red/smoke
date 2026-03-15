@@ -11,6 +11,8 @@ import { useKeyboardShortcuts } from './shortcuts/useKeyboardShortcuts'
 import { useAiCanvasActions } from './ai/useAiCanvasActions'
 import { useAiStream } from './ai/useAiStream'
 import { useEventRecording } from './recording/useEventRecording'
+import { useIsReplaying } from './replay/replayStore'
+import ReplayControls from './replay/ReplayControls'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -22,6 +24,7 @@ function App(): JSX.Element {
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')
   const aiPanelOpen = useAiPanelOpen()
+  const isReplaying = useIsReplaying()
 
   useEffect(() => {
     if (!restored.current) {
@@ -59,9 +62,17 @@ function App(): JSX.Element {
 
   return (
     <div className="app-layout" style={{ flexDirection: sidebarPosition === 'right' ? 'row-reverse' : 'row' }}>
-      <Sidebar />
-      <Canvas />
-      {aiPanelOpen && <AiChatPanel />}
+      {!isReplaying && <Sidebar />}
+      <Canvas readOnly={isReplaying} />
+      {aiPanelOpen && !isReplaying && <AiChatPanel />}
+      {isReplaying && (
+        <>
+          <div className="replay-read-only-overlay">
+            <div className="replay-read-only-badge">READ-ONLY</div>
+          </div>
+          <ReplayControls />
+        </>
+      )}
     </div>
   )
 }
