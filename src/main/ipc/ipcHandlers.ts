@@ -9,7 +9,11 @@ import { AiService } from '../ai/AiService'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
 import { FilenameIndex } from '../index/FilenameIndex'
+<<<<<<< HEAD
 import { buildCodeGraph, expandCodeGraph, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout } from '../codegraph'
+=======
+import { buildCodeGraph, expandCodeGraph, getIndexStats, invalidateIndex, computeLayout, computeIncrementalLayout, scoreRelevance } from '../codegraph'
+>>>>>>> smoke-phq.3
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -62,6 +66,7 @@ import {
   CODEGRAPH_RESOLVE_IMPORT,
   CODEGRAPH_INDEX_STATS,
   CODEGRAPH_INVALIDATE,
+  RELEVANCE_SCORE,
   PtySpawnRequest,
   PtySpawnResponse,
   PtyDataToPty,
@@ -118,7 +123,12 @@ import {
   CodeGraphResolveImportRequest,
   CodeGraphResolveImportResponse,
   CodeGraphIndexStats,
+<<<<<<< HEAD
   TabStateData,
+=======
+  RelevanceScoringRequest,
+  RelevanceScoringResponse,
+>>>>>>> smoke-phq.3
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -746,4 +756,12 @@ export function registerIpcHandlers(
   ipcMain.handle(CODEGRAPH_INVALIDATE, (): void => {
     invalidateIndex()
   })
+
+  // Relevance scoring handler
+  ipcMain.handle(
+    RELEVANCE_SCORE,
+    async (_event, request: RelevanceScoringRequest): Promise<RelevanceScoringResponse> => {
+      return scoreRelevance(request)
+    }
+  )
 }

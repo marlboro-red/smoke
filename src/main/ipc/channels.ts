@@ -82,6 +82,9 @@ export const CODEGRAPH_RESOLVE_IMPORT = 'codegraph:resolve-import' as const
 export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
 export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
 
+// Relevance scoring channels
+export const RELEVANCE_SCORE = 'relevance:score' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -441,10 +444,37 @@ export interface CodeGraphIndexStats {
   fileCount: number
 }
 
+<<<<<<< HEAD
 // Tab message types
 export interface TabStateData {
   tabs: Array<{ id: string; name: string }>
   activeTabId: string
+=======
+// Relevance scoring message types
+export interface RelevanceScoringRequest {
+  taskDescription: string
+  candidateFiles: string[]
+  projectRoot: string
+  seedFiles?: string[]
+  limit?: number
+}
+
+export interface RelevanceScoredFile {
+  filePath: string
+  score: number
+  signals: {
+    pathKeyword: number
+    contentKeyword: number
+    importProximity: number
+    fileTypeBoost: number
+    recency: number
+  }
+}
+
+export interface RelevanceScoringResponse {
+  rankedFiles: RelevanceScoredFile[]
+  keywords: string[]
+>>>>>>> smoke-phq.3
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing
