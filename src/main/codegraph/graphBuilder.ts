@@ -15,6 +15,7 @@ import { CodeGraph } from './CodeGraph'
 import { parseImports, detectLanguage } from './importParser'
 import { resolveAllImports, loadPathAliases, type PathAliases } from './importResolver'
 import { FilenameIndex } from './FilenameIndex'
+import { ReverseIndex } from './ReverseIndex'
 
 const DEFAULT_MAX_DEPTH = 3
 const FILE_READ_LIMIT = 4096 // Only read first 4KB for import extraction
@@ -23,6 +24,9 @@ const FILE_READ_LIMIT = 4096 // Only read first 4KB for import extraction
 let filenameIndex: FilenameIndex | null = null
 let cachedAliases: PathAliases = {}
 let indexedRoot: string = ''
+
+/** Singleton reverse index — built in background on first ensureIndex call. */
+let reverseIndex: ReverseIndex | null = null
 
 /** Parse cache: filePath → parsed content (avoids re-reading files). */
 const parseCache = new Map<string, string>()
@@ -42,6 +46,10 @@ export async function ensureIndex(projectRoot: string): Promise<FilenameIndex> {
   indexedRoot = projectRoot
   parseCache.clear()
 
+  // Start building reverse index in the background (non-blocking)
+  reverseIndex = new ReverseIndex()
+  reverseIndex.build(filenameIndex, cachedAliases)
+
   return filenameIndex
 }
 
@@ -57,6 +65,10 @@ export function invalidateIndex(): void {
   indexedRoot = ''
   cachedAliases = {}
   parseCache.clear()
+  if (reverseIndex) {
+    reverseIndex.invalidate()
+    reverseIndex = null
+  }
 }
 
 export interface GraphBuildRequest {
@@ -181,6 +193,52 @@ export async function expandCodeGraph(
   return {
     graph: graph.toJSON(),
     rootPath: expandPath,
+    fileCount: graph.nodes.size,
+    edgeCount: graph.edges.length,
+  }
+}
+
+/**
+ * Get files that import the given file (reverse dependencies).
+ * Waits for the reverse index to finish building if needed.
+ */
+export async function getDependents(
+  filePath: string,
+  projectRoot: string,
+): Promise<string[]> {
+  const index = await ensureIndex(projectRoot)
+  if (!reverseIndex) {
+    reverseIndex = new ReverseIndex()
+  }
+  await reverseIndex.build(index, cachedAliases)
+  return reverseIndex.getDependents(filePath)
+}
+
+/**
+ * Build a graph showing files that depend on (import) the given file.
+ * Root node is the target file at depth 0, dependents are at depth 1.
+ * Edges go FROM dependent TO root (inward-pointing arrows).
+ */
+export async function buildDependentsGraph(
+  request: GraphBuildRequest,
+): Promise<GraphBuildResult> {
+  const { filePath, projectRoot } = request
+
+  const dependents = await getDependents(filePath, projectRoot)
+  const graph = new CodeGraph()
+
+  // Root is the target file (the one being imported)
+  graph.addNode(filePath, 0)
+
+  // Add each dependent at depth 1 with edge: dependent → root
+  for (const dep of dependents) {
+    graph.addNode(dep, 1)
+    graph.addEdge(dep, filePath, 'import')
+  }
+
+  return {
+    graph: graph.toJSON(),
+    rootPath: filePath,
     fileCount: graph.nodes.size,
     edgeCount: graph.edges.length,
   }

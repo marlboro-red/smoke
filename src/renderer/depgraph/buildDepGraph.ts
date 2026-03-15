@@ -191,6 +191,27 @@ function createRegionsFromGraph(
 }
 
 /**
+ * Build and materialize a reverse dependency graph (dependents) from a root file viewer.
+ *
+ * Shows all files that import the given file, with inward-pointing arrows.
+ */
+export async function buildDependentsGraph(rootSession: FileViewerSession): Promise<void> {
+  const projectRoot = preferencesStore.getState().launchCwd
+  if (!projectRoot) return
+
+  clearActiveGraph()
+  clearImportCache()
+  clearGraphRegions()
+
+  const result: CodeGraphResult = await window.smokeAPI.codegraph.buildDependents(
+    rootSession.filePath,
+    projectRoot,
+  )
+
+  await materializeGraph(result, rootSession)
+}
+
+/**
  * Build and materialize a full dependency graph from a root file viewer.
  *
  * Calls codegraph:build via IPC to get the graph + layout, then creates

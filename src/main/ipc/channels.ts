@@ -93,6 +93,8 @@ export const CODEGRAPH_RESOLVE_IMPORT = 'codegraph:resolve-import' as const
 export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
 export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
 export const CODEGRAPH_PLAN_WORKSPACE = 'codegraph:plan-workspace' as const
+export const CODEGRAPH_GET_DEPENDENTS = 'codegraph:get-dependents' as const
+export const CODEGRAPH_BUILD_DEPENDENTS = 'codegraph:build-dependents' as const
 
 // Task parsing channels
 export const TASK_PARSE = 'task:parse' as const
@@ -457,6 +459,20 @@ export interface CodeGraphResolveImportResponse {
 export interface CodeGraphIndexStats {
   root: string
   fileCount: number
+}
+
+export interface CodeGraphGetDependentsRequest {
+  filePath: string
+  projectRoot: string
+}
+
+export interface CodeGraphGetDependentsResponse {
+  dependents: string[]
+}
+
+export interface CodeGraphBuildDependentsRequest {
+  filePath: string
+  projectRoot: string
 }
 
 // Tab message types

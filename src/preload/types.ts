@@ -519,6 +519,8 @@ export interface SmokeAPI {
     indexStats: () => Promise<CodeGraphIndexStats | null>
     invalidateIndex: () => Promise<void>
     planWorkspace: (files: WorkspaceFileInput[]) => Promise<WorkspaceLayoutResult>
+    getDependents: (filePath: string, projectRoot: string) => Promise<string[]>
+    buildDependents: (filePath: string, projectRoot: string) => Promise<CodeGraphResult>
   }
   tab: {
     getState: () => Promise<TabState>
