@@ -24,6 +24,7 @@ export type ShortcutAction =
   | 'toggleGroupCollapse'
   | 'toggleBroadcast'
   | 'autoLayout'
+  | 'canvasSearch'
   | 'showShortcutsHelp'
   | 'escape'
 
@@ -61,6 +62,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   toggleGroupCollapse: 'Toggle Group Collapse',
   toggleBroadcast: 'Toggle Broadcast',
   autoLayout: 'Auto Layout',
+  canvasSearch: 'Search All Sessions',
   showShortcutsHelp: 'Keyboard Shortcuts',
   escape: 'Unfocus Session',
 }
@@ -88,6 +90,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   toggleGroupCollapse: { key: 'g', mod: true, shift: true },
   toggleBroadcast: { key: 'b', mod: true, shift: true },
   autoLayout: { key: 'a', mod: true, shift: true },
+  canvasSearch: { key: 'f', mod: true, shift: true },
   showShortcutsHelp: { key: '/', mod: true, shift: false },
   escape: { key: 'Escape', mod: false, shift: false },
 }
@@ -112,7 +115,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch'],
   },
   {
     title: 'Groups',

@@ -10,6 +10,7 @@ import { setZoomTo, zoomIn, zoomOut } from '../canvas/useCanvasControls'
 import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
 import { settingsModalStore } from '../config/settingsStore'
 import { shortcutsOverlayStore } from './shortcutsOverlayStore'
+import { canvasSearchStore } from '../search/searchStore'
 import { performAutoLayout } from '../layout/autoLayout'
 
 function executeShortcut(action: ShortcutAction): void {
@@ -110,6 +111,10 @@ function executeShortcut(action: ShortcutAction): void {
 
     case 'autoLayout':
       performAutoLayout()
+      break
+
+    case 'canvasSearch':
+      canvasSearchStore.getState().toggle()
       break
 
     case 'showShortcutsHelp':
