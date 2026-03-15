@@ -115,13 +115,29 @@ test.describe('Arrow Connectors', () => {
       })
     }, [sessionIds.id1, sessionIds.id2])
 
-    // Verify the SVG connector layer renders with a path
+    // The SVG connector layer renders paths inside a large offset SVG,
+    // so paths are in the DOM but not "visible" per Playwright's viewport check.
+    // Use toBeAttached() to verify the path element exists in the DOM.
     const connectorPath = mainWindow.locator('svg path[stroke="#ff0000"]')
-    await expect(connectorPath).toBeVisible({ timeout: 5000 })
+    await expect(connectorPath).toBeAttached({ timeout: 5000 })
 
-    // Verify the label renders
-    const connectorLabel = mainWindow.locator('svg text', { hasText: 'test arrow' })
-    await expect(connectorLabel).toBeVisible()
+    // Verify the path has a valid 'd' attribute (cubic Bézier curve)
+    const pathData = await connectorPath.getAttribute('d')
+    expect(pathData).toBeTruthy()
+    expect(pathData).toMatch(/^M .+ C .+/)
+
+    // Verify the label renders in the SVG
+    const connectorLabel = mainWindow.locator('svg text')
+    await expect(connectorLabel).toBeAttached({ timeout: 5000 })
+    const labelText = await connectorLabel.textContent()
+    expect(labelText).toBe('test arrow')
+
+    // Also verify connector state in the store
+    const connectorCount = await mainWindow.evaluate(() => {
+      const stores = (window as any).__SMOKE_STORES__
+      return stores.connectorStore.getState().connectors.size
+    })
+    expect(connectorCount).toBe(1)
   })
 
   test('arrow updates when element moves', async ({ mainWindow }) => {
@@ -136,7 +152,6 @@ test.describe('Arrow Connectors', () => {
       return { id1: note1.id, id2: note2.id }
     })
 
-    await mainWindow.locator('.note-window')
     const noteWindows = mainWindow.locator('.note-window')
     await expect(noteWindows).toHaveCount(2, { timeout: 5000 })
 
@@ -147,7 +162,7 @@ test.describe('Arrow Connectors', () => {
     }, [sessionIds.id1, sessionIds.id2])
 
     const connectorPath = mainWindow.locator('svg path[stroke="#00ff00"]')
-    await expect(connectorPath).toBeVisible({ timeout: 5000 })
+    await expect(connectorPath).toBeAttached({ timeout: 5000 })
 
     // Capture the original path data
     const pathBefore = await connectorPath.getAttribute('d')
@@ -163,7 +178,7 @@ test.describe('Arrow Connectors', () => {
     // Wait for re-render
     await mainWindow.waitForTimeout(300)
 
-    // Verify the path data changed
+    // Verify the path data changed (arrow followed the moved element)
     const pathAfter = await connectorPath.getAttribute('d')
     expect(pathAfter).not.toBe(pathBefore)
   })
@@ -184,7 +199,7 @@ test.describe('Arrow Connectors', () => {
     })
 
     const connectorPath = mainWindow.locator('svg path[stroke="#0000ff"]')
-    await expect(connectorPath).toBeVisible({ timeout: 5000 })
+    await expect(connectorPath).toBeAttached({ timeout: 5000 })
 
     // Delete the connector
     await mainWindow.evaluate((connId) => {
@@ -192,8 +207,15 @@ test.describe('Arrow Connectors', () => {
       stores.connectorStore.getState().removeConnector(connId)
     }, ids.connectorId)
 
-    // Verify the path is gone
-    await expect(connectorPath).not.toBeVisible({ timeout: 5000 })
+    // Verify the path is removed from the DOM
+    await expect(connectorPath).not.toBeAttached({ timeout: 5000 })
+
+    // Verify store is empty
+    const count = await mainWindow.evaluate(() => {
+      const stores = (window as any).__SMOKE_STORES__
+      return stores.connectorStore.getState().connectors.size
+    })
+    expect(count).toBe(0)
   })
 
   test('connectors cleaned up when note is deleted', async ({ mainWindow }) => {
@@ -212,15 +234,22 @@ test.describe('Arrow Connectors', () => {
     })
 
     const connectorPath = mainWindow.locator('svg path[stroke="#ff00ff"]')
-    await expect(connectorPath).toBeVisible({ timeout: 5000 })
+    await expect(connectorPath).toBeAttached({ timeout: 5000 })
 
-    // Delete the first note — connector should disappear
+    // Delete the first note — connector should disappear too
     await mainWindow.evaluate((noteId) => {
       const stores = (window as any).__SMOKE_STORES__
       stores.sessionStore.getState().removeSession(noteId)
     }, ids.noteId)
 
-    await expect(connectorPath).not.toBeVisible({ timeout: 5000 })
+    await expect(connectorPath).not.toBeAttached({ timeout: 5000 })
+
+    // Verify connector store was cleaned up
+    const count = await mainWindow.evaluate(() => {
+      const stores = (window as any).__SMOKE_STORES__
+      return stores.connectorStore.getState().connectors.size
+    })
+    expect(count).toBe(0)
   })
 })
 
@@ -242,7 +271,7 @@ test.describe('Notes and Connectors Persistence', () => {
     const noteWindow = mainWindow.locator('.note-window')
     await expect(noteWindow.first()).toBeVisible({ timeout: 5000 })
 
-    // Save layout
+    // Save layout via the layout API
     await mainWindow.evaluate(() => {
       return window.smokeAPI.layout.save('e2e-test-layout', {
         name: 'e2e-test-layout',
@@ -271,12 +300,11 @@ test.describe('Notes and Connectors Persistence', () => {
 
     await expect(noteWindow).toHaveCount(0, { timeout: 5000 })
 
-    // Load the saved layout
+    // Load the saved layout and restore note sessions
     await mainWindow.evaluate(async () => {
       const layout = await window.smokeAPI.layout.load('e2e-test-layout')
       if (!layout) throw new Error('Layout not found')
 
-      // Restore note sessions from the layout
       for (const saved of layout.sessions) {
         if (saved.type === 'note') {
           const stores = (window as any).__SMOKE_STORES__
