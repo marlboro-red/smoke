@@ -64,6 +64,15 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
       <button
         className="context-menu-item"
         onClick={() => {
+          sessionStore.getState().toggleLock(state.sessionId)
+          onClose()
+        }}
+      >
+        {sessionStore.getState().sessions.get(state.sessionId)?.locked ? 'Unlock Position' : 'Lock Position'}
+      </button>
+      <button
+        className="context-menu-item"
+        onClick={() => {
           const session = sessionStore.getState().sessions.get(state.sessionId)
           if (session?.type !== 'terminal') return
           const current = session.startupCommand || ''

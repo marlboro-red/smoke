@@ -65,6 +65,10 @@ export default function WebviewWindow({
     closeSession(session.id)
   }, [session.id])
 
+  const handleToggleLock = useCallback(() => {
+    sessionStore.getState().toggleLock(session.id)
+  }, [session.id])
+
   const navigateTo = useCallback(
     (rawUrl: string) => {
       const url = normalizeUrl(rawUrl)
@@ -179,6 +183,7 @@ export default function WebviewWindow({
     'webview-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    session.locked && 'locked',
   ]
     .filter(Boolean)
     .join(' ')
@@ -201,9 +206,11 @@ export default function WebviewWindow({
       <WindowChrome
         title={session.title}
         status="running"
+        isLocked={session.locked}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
+        onToggleLock={handleToggleLock}
       />
       <div className="webview-nav-bar" style={{ height: NAV_BAR_HEIGHT }}>
         <button

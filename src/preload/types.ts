@@ -38,6 +38,7 @@ export interface LayoutSession {
   url?: string
   aspectRatio?: number
   startupCommand?: string
+  locked?: boolean
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }

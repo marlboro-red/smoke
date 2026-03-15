@@ -92,6 +92,10 @@ export default function SnippetWindow({
     closeSession(session.id)
   }, [session.id])
 
+  const handleToggleLock = useCallback(() => {
+    sessionStore.getState().toggleLock(session.id)
+  }, [session.id])
+
   const handleLanguageChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       sessionStore.getState().updateSession(session.id, { language: e.target.value })
@@ -163,6 +167,7 @@ export default function SnippetWindow({
     'snippet-window',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
+    session.locked && 'locked',
   ]
     .filter(Boolean)
     .join(' ')
@@ -183,9 +188,11 @@ export default function SnippetWindow({
       <WindowChrome
         title={session.title}
         status="running"
+        isLocked={session.locked}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
+        onToggleLock={handleToggleLock}
       >
         <select
           className="snippet-lang-select"

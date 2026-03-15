@@ -70,6 +70,10 @@ export default function NoteWindow({
     closeSession(session.id)
   }, [session.id])
 
+  const handleToggleLock = useCallback(() => {
+    sessionStore.getState().toggleLock(session.id)
+  }, [session.id])
+
   const handleContentChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       sessionStore.getState().updateSession(session.id, { content: e.target.value })
@@ -99,6 +103,7 @@ export default function NoteWindow({
     isFocused && 'focused',
     isHighlighted && 'highlighted',
     isSelected && 'multi-selected',
+    session.locked && 'locked',
   ]
     .filter(Boolean)
     .join(' ')
@@ -121,9 +126,11 @@ export default function NoteWindow({
       <WindowChrome
         title={session.title}
         status="running"
+        isLocked={session.locked}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
+        onToggleLock={handleToggleLock}
       />
       <div className="note-chrome-extras">
         <NoteColorPicker color={session.color} onChange={handleColorChange} />

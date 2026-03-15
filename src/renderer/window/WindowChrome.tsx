@@ -6,11 +6,13 @@ interface WindowChromeProps {
   status: 'running' | 'exited'
   isBroadcasting?: boolean
   isDirty?: boolean
+  isLocked?: boolean
   agentColor?: string | null
   agentRole?: string | null
   onTitleChange: (title: string) => void
   onClose: () => void
   onDragStart: (e: React.PointerEvent) => void
+  onToggleLock?: () => void
   children?: React.ReactNode
 }
 
@@ -19,11 +21,13 @@ export default function WindowChrome({
   status,
   isBroadcasting,
   isDirty,
+  isLocked,
   agentColor,
   agentRole,
   onTitleChange,
   onClose,
   onDragStart,
+  onToggleLock,
   children,
 }: WindowChromeProps): JSX.Element {
   const [editing, setEditing] = useState(false)
@@ -70,9 +74,17 @@ export default function WindowChrome({
     [onClose]
   )
 
+  const handleLockClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onToggleLock?.()
+    },
+    [onToggleLock]
+  )
+
   return (
     <div
-      className="window-chrome"
+      className={`window-chrome${isLocked ? ' locked' : ''}`}
       style={{ height: CHROME_HEIGHT }}
       onPointerDown={onDragStart}
     >
@@ -111,6 +123,16 @@ export default function WindowChrome({
         </span>
       )}
       {children}
+      {onToggleLock && (
+        <button
+          className={`window-chrome-lock${isLocked ? ' active' : ''}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={handleLockClick}
+          title={isLocked ? 'Unlock position' : 'Lock position'}
+        >
+          {isLocked ? '\u{1F512}' : '\u{1F513}'}
+        </button>
+      )}
       <button
         className="window-chrome-close"
         onPointerDown={(e) => e.stopPropagation()}
