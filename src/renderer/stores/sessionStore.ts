@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { connectorStore } from './connectorStore'
 import { preferencesStore } from './preferencesStore'
 
-export type ElementType = 'terminal' | 'file' | 'note'
+export type ElementType = 'terminal' | 'file' | 'note' | 'webview'
 
 export interface BaseSession {
   id: string
@@ -39,7 +39,14 @@ export interface NoteSession extends BaseSession {
   color: string
 }
 
-export type Session = TerminalSession | FileViewerSession | NoteSession
+export interface WebviewSession extends BaseSession {
+  type: 'webview'
+  url: string
+  canGoBack: boolean
+  canGoForward: boolean
+}
+
+export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession
 
 interface SessionStore {
   sessions: Map<string, Session>
@@ -51,6 +58,7 @@ interface SessionStore {
   createSession: (cwd: string, position?: { x: number; y: number }) => Session
   createFileSession: (filePath: string, content: string, language: string, position?: { x: number; y: number }) => FileViewerSession
   createNoteSession: (position?: { x: number; y: number }, color?: string) => NoteSession
+  createWebviewSession: (url?: string, position?: { x: number; y: number }) => WebviewSession
   removeSession: (id: string) => void
   updateSession: (id: string, patch: Partial<Session>) => void
   focusSession: (id: string | null) => void
@@ -126,6 +134,29 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       color: color ?? 'yellow',
       position: position ?? { x: 0, y: 0 },
       size: { cols: 0, rows: 0, width: 240, height: 200 },
+      zIndex: nextZIndex,
+      createdAt: Date.now(),
+    }
+    set((state) => {
+      const sessions = new Map(state.sessions)
+      sessions.set(session.id, session)
+      return { sessions, nextZIndex: nextZIndex + 1 }
+    })
+    return session
+  },
+
+  createWebviewSession: (url?: string, position?: { x: number; y: number }): WebviewSession => {
+    const { nextZIndex } = get()
+    const initialUrl = url || 'http://localhost:3000'
+    const session: WebviewSession = {
+      id: uuidv4(),
+      type: 'webview',
+      title: initialUrl,
+      url: initialUrl,
+      canGoBack: false,
+      canGoForward: false,
+      position: position ?? { x: 0, y: 0 },
+      size: { cols: 0, rows: 0, width: 800, height: 600 },
       zIndex: nextZIndex,
       createdAt: Date.now(),
     }

@@ -1,0 +1,85 @@
+.webview-window {
+  background: var(--color-surface);
+}
+
+.webview-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: var(--color-surface-elevated, #1e1e1e);
+  border-bottom: 1px solid var(--color-border, #333);
+}
+
+.webview-nav-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #888);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.webview-nav-btn:hover:not(:disabled) {
+  color: var(--color-text, #fff);
+  background: var(--color-surface-hover, #333);
+}
+
+.webview-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.webview-url-input {
+  flex: 1;
+  background: var(--color-surface, #111);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 4px;
+  color: var(--color-text, #ccc);
+  font-size: 12px;
+  padding: 3px 8px;
+  outline: none;
+  font-family: inherit;
+}
+
+.webview-url-input:focus {
+  border-color: var(--color-accent, #4a9eff);
+}
+
+.webview-url-input.webview-url-error {
+  border-color: #e55;
+}
+
+.webview-body {
+  overflow: hidden;
+}
+
+.webview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+.webview-thumbnail-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.5;
+}
+
+.webview-thumbnail-url {
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.thumbnail-status.webview {
+  background: #4a9eff;
+}
+
+.status-dot.webview {
+  background: #4a9eff;
+}

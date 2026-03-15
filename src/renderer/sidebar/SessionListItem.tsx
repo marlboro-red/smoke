@@ -87,7 +87,7 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : isExited ? 'exited' : 'running'}`} />
+      <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : session.type === 'webview' ? 'webview' : isExited ? 'exited' : 'running'}`} />
       <div className="session-info">
         {isRenaming ? (
           <input
@@ -109,6 +109,9 @@ function SessionListItem({ session, isFocused, isHighlighted, isInBroadcastGroup
         )}
         {session.type === 'note' && session.content && (
           <span className="session-cwd">{session.content.slice(0, 40)}</span>
+        )}
+        {session.type === 'webview' && (
+          <span className="session-cwd">{session.url}</span>
         )}
       </div>
     </div>

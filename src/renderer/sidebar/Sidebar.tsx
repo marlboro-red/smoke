@@ -127,6 +127,11 @@ export default function Sidebar(): JSX.Element {
     sessionStore.getState().focusSession(session.id)
   }, [])
 
+  const handleNewWebview = useCallback(() => {
+    const session = sessionStore.getState().createWebviewSession()
+    sessionStore.getState().focusSession(session.id)
+  }, [])
+
   const handleFileOpen = useCallback((filePath: string) => {
     const existing = findFileSessionByPath(filePath)
     if (existing) {
@@ -167,6 +172,9 @@ export default function Sidebar(): JSX.Element {
         </button>
         <button className="sidebar-new-btn" onClick={handleNewNote}>
           + Note
+        </button>
+        <button className="sidebar-new-btn" onClick={handleNewWebview}>
+          + Web
         </button>
         <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout (⌘⇧A)">
           Layout

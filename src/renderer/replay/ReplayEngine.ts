@@ -182,6 +182,7 @@ class ReplayEngine {
           createdAt: event.timestamp,
           ...(p.type === 'terminal' ? { cwd: p.cwd || '', status: 'exited' as const } : {}),
           ...(p.type === 'file' ? { filePath: p.filePath || '', content: '', language: '' } : {}),
+          ...(p.type === 'webview' ? { url: p.url || 'http://localhost:3000', canGoBack: false, canGoForward: false } : {}),
         }
         sessionStore.setState((s) => {
           const sessions = new Map(s.sessions)

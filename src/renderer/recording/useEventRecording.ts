@@ -40,6 +40,7 @@ export function useEventRecording(): void {
             title: session.title,
             cwd: session.type === 'terminal' ? session.cwd : undefined,
             filePath: session.type === 'file' ? session.filePath : undefined,
+            url: session.type === 'webview' ? session.url : undefined,
             position: { ...session.position },
             size: { ...session.size },
           })
