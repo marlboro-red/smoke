@@ -115,7 +115,7 @@ describe('shortcutMap', () => {
     })
 
     it('returns null for unrecognized keys', () => {
-      const e = makeKeyEvent({ key: 'a', metaKey: true })
+      const e = makeKeyEvent({ key: 'q', metaKey: true })
       expect(resolveShortcut(e)).toBeNull()
     })
 

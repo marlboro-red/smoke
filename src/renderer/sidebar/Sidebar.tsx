@@ -21,6 +21,7 @@ import FileTree from './FileTree'
 import { usePreference } from '../stores/preferencesStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { useSectionResize } from './useSectionResize'
+import { taskInputStore } from '../assembly/taskInputStore'
 import type { SidebarSectionSizes } from '../../preload/types'
 import '../styles/sidebar.css'
 import '../styles/settings-modal.css'
@@ -193,8 +194,11 @@ export default function Sidebar(): JSX.Element {
         <button className="sidebar-new-btn" onClick={handleNewSnippet}>
           + Snippet
         </button>
-        <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout (⌘⇧A)">
+        <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout">
           Layout
+        </button>
+        <button className="sidebar-new-btn sidebar-assemble-btn" onClick={() => taskInputStore.getState().open()} title="Assemble Workspace (⌘⇧A)">
+          Assemble
         </button>
       </div>
       <div className="session-list">

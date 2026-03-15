@@ -20,6 +20,7 @@ import CommandPalette from './palette/CommandPalette'
 import SearchModal from './search/SearchModal'
 import PresentationMode from './presentation/PresentationMode'
 import AssemblyPreview from './assembly/AssemblyPreview'
+import TaskInput from './assembly/TaskInput'
 import ToastContainer from './toast/ToastContainer'
 import StatusBar from './statusbar/StatusBar'
 import { useIndexingProgress } from './statusbar/useIndexingProgress'
@@ -100,6 +101,7 @@ function App(): JSX.Element {
         <ShortcutsOverlay />
         <CommandPalette />
         <SearchModal />
+        <TaskInput />
         <AssemblyPreview />
         <PresentationMode />
         <ToastContainer />

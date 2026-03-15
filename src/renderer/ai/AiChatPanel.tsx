@@ -10,6 +10,7 @@ import { useAgentScopeSync } from './useAgentScopeSync'
 import MessageList from './MessageList'
 import ChatInput from './ChatInput'
 import StopButton from './StopButton'
+import { taskInputStore } from '../assembly/taskInputStore'
 import '../styles/ai-chat.css'
 
 export default function AiChatPanel(): JSX.Element {
@@ -107,11 +108,20 @@ export default function AiChatPanel(): JSX.Element {
     <div className="ai-chat-panel">
       <div className="ai-chat-header">
         <span className="ai-chat-title">AI Agents</span>
-        {messages.length > 0 && (
-          <button className="ai-chat-clear-btn" onClick={handleClear}>
-            Clear
+        <div className="ai-chat-header-actions">
+          <button
+            className="ai-chat-assemble-btn"
+            onClick={() => taskInputStore.getState().open()}
+            title="Assemble Workspace"
+          >
+            Assemble
           </button>
-        )}
+          {messages.length > 0 && (
+            <button className="ai-chat-clear-btn" onClick={handleClear}>
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Agent tab bar */}

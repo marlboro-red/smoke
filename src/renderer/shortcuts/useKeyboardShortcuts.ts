@@ -22,6 +22,7 @@ import type { FileViewerSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { terminalSearchStore } from '../terminal/terminalSearchStore'
 import { focusModeStore } from '../stores/focusModeStore'
+import { taskInputStore } from '../assembly/taskInputStore'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -326,6 +327,10 @@ function executeShortcut(action: ShortcutAction): void {
       }
       break
     }
+
+    case 'assembleWorkspace':
+      taskInputStore.getState().open()
+      break
 
     case 'selectAll': {
       // Only select all when no terminal is focused (avoid intercepting Cmd+A in terminal)
