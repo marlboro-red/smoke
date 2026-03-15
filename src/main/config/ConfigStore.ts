@@ -64,6 +64,7 @@ export const defaultPreferences: Preferences = {
   customShortcuts: {},
   startupCommand: '',
   skipAssemblyPreview: false,
+  sidebarCollapsed: false,
 }
 
 export interface Bookmark {

@@ -20,6 +20,7 @@ const defaultPreferences: Preferences = {
   customShortcuts: {},
   startupCommand: '',
   skipAssemblyPreview: false,
+  sidebarCollapsed: false,
 }
 
 interface PreferencesStore {
