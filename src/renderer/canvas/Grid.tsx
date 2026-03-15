@@ -30,8 +30,8 @@ const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
       <defs>
         <pattern
           id="grid-pattern"
-          x={-gridSize / 2}
-          y={-gridSize / 2}
+          x={0}
+          y={0}
           width={gridSize}
           height={gridSize}
           patternUnits="userSpaceOnUse"
