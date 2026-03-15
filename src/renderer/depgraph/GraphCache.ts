@@ -17,6 +17,9 @@ const importCache = new Map<string, CachedImports>()
 /** filePath → sessionId for files in the active dep graph */
 const activeGraph = new Map<string, string>()
 
+/** Files whose imports have been expanded (shown on canvas) */
+const expandedNodes = new Set<string>()
+
 // ── Cache operations ──
 
 export function getCachedImports(filePath: string): CachedImports | undefined {
@@ -61,6 +64,17 @@ export function getActiveGraphEntries(): ReadonlyMap<string, string> {
 
 export function clearActiveGraph(): void {
   activeGraph.clear()
+  expandedNodes.clear()
+}
+
+// ── Expanded node operations ──
+
+export function markNodeExpanded(filePath: string): void {
+  expandedNodes.add(filePath)
+}
+
+export function isNodeExpanded(filePath: string): boolean {
+  return expandedNodes.has(filePath)
 }
 
 // ── Diff utility ──
