@@ -110,3 +110,22 @@
   border-color: var(--accent-muted);
   color: var(--accent-text);
 }
+
+.config-section-divider {
+  border-top: 1px solid var(--border-subtle);
+  margin: 4px 0 2px;
+}
+
+.config-section-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+
+.config-input select,
+select.config-input {
+  appearance: auto;
+  cursor: pointer;
+}

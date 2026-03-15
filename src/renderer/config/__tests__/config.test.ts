@@ -13,6 +13,8 @@ describe('preferencesStore', () => {
         sidebarWidth: 240,
         theme: 'dark',
         defaultCwd: '',
+        aiApiKey: '',
+        aiModel: 'claude-sonnet-4-20250514',
       },
       loaded: false,
     })
@@ -28,6 +30,8 @@ describe('preferencesStore', () => {
     expect(preferences.sidebarWidth).toBe(240)
     expect(preferences.theme).toBe('dark')
     expect(preferences.defaultCwd).toBe('')
+    expect(preferences.aiApiKey).toBe('')
+    expect(preferences.aiModel).toBe('claude-sonnet-4-20250514')
   })
 
   it('setPreferences replaces all preferences and sets loaded', () => {
@@ -40,6 +44,8 @@ describe('preferencesStore', () => {
       sidebarWidth: 300,
       theme: 'light',
       defaultCwd: '/home/user',
+      aiApiKey: 'sk-ant-test',
+      aiModel: 'claude-opus-4-20250514',
     })
     const state = preferencesStore.getState()
     expect(state.loaded).toBe(true)

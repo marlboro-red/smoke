@@ -159,11 +159,16 @@ export function registerIpcHandlers(
     const validKeys: Array<keyof Preferences> = [
       'defaultShell', 'autoLaunchClaude', 'claudeCommand',
       'gridSize', 'sidebarPosition', 'sidebarWidth',
-      'theme', 'defaultCwd',
+      'theme', 'defaultCwd', 'aiApiKey', 'aiModel',
     ]
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig
     configStore.set(key, request.value as never)
+
+    // Invalidate AiService client cache when API key changes
+    if (request.key === 'aiApiKey') {
+      aiService.setConfig('aiApiKey', request.value)
+    }
   })
 
   // File system handlers

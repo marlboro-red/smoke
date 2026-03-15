@@ -52,6 +52,8 @@ export interface Preferences {
   sidebarWidth: number
   theme: string
   defaultCwd: string
+  aiApiKey: string
+  aiModel: string
 }
 
 export interface FsReaddirEntry {

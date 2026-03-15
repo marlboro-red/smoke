@@ -23,6 +23,8 @@ export interface Preferences {
   sidebarWidth: number
   theme: string
   defaultCwd: string
+  aiApiKey: string
+  aiModel: string
 }
 
 export const defaultPreferences: Preferences = {
@@ -34,6 +36,8 @@ export const defaultPreferences: Preferences = {
   sidebarWidth: 240,
   theme: 'dark',
   defaultCwd: '',
+  aiApiKey: '',
+  aiModel: 'claude-sonnet-4-20250514',
 }
 
 export interface SmokeConfig {
