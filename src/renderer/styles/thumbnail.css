@@ -166,3 +166,65 @@
   background: var(--border-strong);
   flex-shrink: 0;
 }
+
+/* ─── Directory Cluster Card ─── */
+
+.directory-cluster-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid rgba(74, 144, 217, 0.30);
+  border-radius: var(--radius-lg);
+  background: rgba(74, 144, 217, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  pointer-events: auto;
+  min-width: 100px;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.directory-cluster-card:hover {
+  border-color: rgba(74, 144, 217, 0.50);
+  background: rgba(74, 144, 217, 0.14);
+}
+
+.cluster-icon {
+  color: var(--text-tertiary);
+}
+
+.cluster-name {
+  font-family: var(--font-sans, system-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.cluster-badges {
+  display: flex;
+  gap: 4px;
+}
+
+.cluster-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 500;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.cluster-file-count {
+  background: rgba(74, 217, 122, 0.15);
+  color: rgba(74, 217, 122, 0.85);
+}
+
+.cluster-conn-count {
+  background: rgba(217, 199, 74, 0.15);
+  color: rgba(217, 199, 74, 0.85);
+}

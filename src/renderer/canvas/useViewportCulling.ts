@@ -5,6 +5,7 @@ import { canvasStore } from '../stores/canvasStore'
 const CULLING_MARGIN = 200
 
 export const THUMBNAIL_THRESHOLD = 0.4
+export const CLUSTER_THRESHOLD = 0.2
 
 interface ViewportRect {
   width: number
@@ -35,9 +36,10 @@ export function useViewportCulling(
   panRef: React.MutableRefObject<{ x: number; y: number }>,
   zoomRef: React.MutableRefObject<number>,
   rootRef: React.MutableRefObject<HTMLDivElement | null>
-): { visibleIds: Set<string>; isThumbnailMode: boolean; recalculate: () => void } {
+): { visibleIds: Set<string>; isThumbnailMode: boolean; isClusterMode: boolean; recalculate: () => void } {
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set())
   const [isThumbnailMode, setIsThumbnailMode] = useState(false)
+  const [isClusterMode, setIsClusterMode] = useState(false)
   const recalcTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const recalculate = useCallback(() => {
@@ -60,6 +62,7 @@ export function useViewportCulling(
 
     setVisibleIds(newVisible)
     setIsThumbnailMode(zoom < THUMBNAIL_THRESHOLD)
+    setIsClusterMode(zoom < CLUSTER_THRESHOLD)
   }, [panRef, zoomRef, rootRef])
 
   const debouncedRecalculate = useCallback(() => {
@@ -102,5 +105,5 @@ export function useViewportCulling(
     }
   }, [])
 
-  return { visibleIds, isThumbnailMode, recalculate: debouncedRecalculate }
+  return { visibleIds, isThumbnailMode, isClusterMode, recalculate: debouncedRecalculate }
 }

@@ -27,11 +27,14 @@ import ImageThumbnail from '../image/ImageThumbnail'
 import SnippetWindow from '../snippet/SnippetWindow'
 import SnippetThumbnail from '../snippet/SnippetThumbnail'
 import GroupCollapsedCard from './GroupCollapsedCard'
+import DirectoryClusterCard from './DirectoryClusterCard'
 import SnapPreview from './SnapPreview'
 import Minimap from './Minimap'
 import AlignmentToolbar from './AlignmentToolbar'
 import { useFileWatchManager } from '../fileviewer/useFileWatcher'
 import { useGraphInvalidation } from '../depgraph/useGraphInvalidation'
+import { useDirectoryClusters } from './useDirectoryClusters'
+import { useConnectorList } from '../stores/connectorStore'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -68,11 +71,26 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
 
   useRubberBandSelect(rootRef, panRef, zoomRef)
 
-  const { visibleIds, isThumbnailMode } = useViewportCulling(
+  const connectors = useConnectorList()
+
+  const { visibleIds, isThumbnailMode, isClusterMode } = useViewportCulling(
     panRef,
     zoomRef,
     rootRef
   )
+
+  const directoryClusters = useDirectoryClusters(sessions, connectors, isClusterMode)
+
+  // Build set of session IDs that are hidden because they belong to a directory cluster
+  const clusteredSessionIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const cluster of directoryClusters) {
+      for (const memberId of cluster.memberIds) {
+        ids.add(memberId)
+      }
+    }
+    return ids
+  }, [directoryClusters])
 
   useFileWatchManager(visibleIds)
   useGraphInvalidation(visibleIds)
@@ -103,6 +121,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
       // Only on empty canvas, not on terminal windows or regions
       if ((e.target as HTMLElement).closest('.terminal-window')) return
       if ((e.target as HTMLElement).closest('.region-shape')) return
+      if ((e.target as HTMLElement).closest('.directory-cluster-card')) return
 
       const root = rootRef.current
       if (!root) return
@@ -253,9 +272,13 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
         ))}
         {unpinnedSessions.map((session) => {
           if (collapsedMemberIds.has(session.id)) return null
+          if (clusteredSessionIds.has(session.id)) return null
           const isVis = visibleIds.has(session.id)
           return renderSessionElement(session, isVis)
         })}
+        {directoryClusters.map((cluster) => (
+          <DirectoryClusterCard key={cluster.id} cluster={cluster} />
+        ))}
         {collapsedGroups.map((group) => (
           <GroupCollapsedCard key={group.id} group={group} />
         ))}
