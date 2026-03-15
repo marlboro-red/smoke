@@ -50,6 +50,7 @@ export type ShortcutAction =
   | 'deleteSelected'
   | 'selectAll'
   | 'groupSelected'
+  | 'assembleWorkspace'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -113,6 +114,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   deleteSelected: 'Delete Selected',
   selectAll: 'Select All',
   groupSelected: 'Group Selected',
+  assembleWorkspace: 'Assemble Workspace',
   escape: 'Unfocus Session',
 }
 
@@ -138,7 +140,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   toggleAiPanel: { key: 'l', mod: true, shift: false, alt: false },
   toggleGroupCollapse: { key: 'g', mod: true, shift: true, alt: false },
   toggleBroadcast: { key: 'b', mod: true, shift: true, alt: false },
-  autoLayout: { key: 'a', mod: true, shift: true, alt: false },
+  autoLayout: { key: 'l', mod: true, shift: true, alt: true },
   canvasSearch: { key: 'f', mod: true, shift: true, alt: false },
   showShortcutsHelp: { key: '/', mod: true, shift: false, alt: false },
   commandPalette: { key: 'p', mod: true, shift: false, alt: false },
@@ -165,6 +167,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   deleteSelected: { key: 'Backspace', mod: true, shift: false, alt: false },
   selectAll: { key: 'a', mod: true, shift: false, alt: false },
   groupSelected: { key: 'g', mod: true, shift: false, alt: true },
+  assembleWorkspace: { key: 'a', mod: true, shift: true, alt: false },
   escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
 
@@ -204,7 +207,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'AI & Tools',
-    actions: ['toggleAiPanel'],
+    actions: ['toggleAiPanel', 'assembleWorkspace'],
   },
   {
     title: 'General',
