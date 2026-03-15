@@ -106,3 +106,42 @@
 .status-bar-branch svg {
   opacity: 0.7;
 }
+
+/* Indexing progress indicator */
+.status-bar-indexing {
+  color: var(--accent-strong, #58a6ff);
+  gap: 5px;
+}
+
+.status-bar-indexing-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: status-bar-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes status-bar-spin {
+  to { transform: rotate(360deg); }
+}
+
+.status-bar-progress-track {
+  display: inline-block;
+  width: 48px;
+  height: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.status-bar-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent-strong, #58a6ff);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}

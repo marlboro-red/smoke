@@ -3,6 +3,7 @@ import { useCanvasStore } from '../stores/canvasStore'
 import { sessionStore, useSessionList } from '../stores/sessionStore'
 import { canvasStore } from '../stores/canvasStore'
 import { getCanvasRootElement, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
+import { useIsIndexing, useSearchProgress, useStructureAnalyzing, indexingStore, computeSearchEta, formatEta } from '../stores/indexingStore'
 import type { ElementType } from '../stores/sessionStore'
 import '../styles/statusbar.css'
 
@@ -57,6 +58,11 @@ export default function StatusBar(): JSX.Element {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [showZoomMenu, setShowZoomMenu] = useState(false)
   const zoomMenuRef = useRef<HTMLDivElement>(null)
+
+  // Indexing progress
+  const isIndexing = useIsIndexing()
+  const searchProgress = useSearchProgress()
+  const structureAnalyzing = useStructureAnalyzing()
 
   // Fetch git branch on mount and periodically
   useEffect(() => {
@@ -170,6 +176,15 @@ export default function StatusBar(): JSX.Element {
         <div className="status-bar-item">
           {activeTerminals} active
         </div>
+        {isIndexing && (
+          <>
+            <div className="status-bar-separator" />
+            <IndexingIndicator
+              searchProgress={searchProgress}
+              structureAnalyzing={structureAnalyzing}
+            />
+          </>
+        )}
       </div>
       <div className="status-bar-right">
         {cursorPos && (
@@ -189,6 +204,46 @@ export default function StatusBar(): JSX.Element {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Compact indexing progress indicator for the status bar. */
+function IndexingIndicator({
+  searchProgress,
+  structureAnalyzing,
+}: {
+  searchProgress: { indexed: number; total: number; startedAt: number | null }
+  structureAnalyzing: boolean
+}): JSX.Element {
+  const state = indexingStore.getState()
+  const eta = computeSearchEta(state)
+  const etaStr = formatEta(eta)
+  const pct = searchProgress.total > 0
+    ? Math.round((searchProgress.indexed / searchProgress.total) * 100)
+    : 0
+
+  return (
+    <div className="status-bar-item status-bar-indexing">
+      <span className="status-bar-indexing-spinner" />
+      {searchProgress.total > 0 ? (
+        <span>
+          Indexing {searchProgress.indexed}/{searchProgress.total}
+          {etaStr && <span className="status-bar-dim"> {etaStr}</span>}
+        </span>
+      ) : structureAnalyzing ? (
+        <span>Analyzing structure</span>
+      ) : (
+        <span>Indexing...</span>
+      )}
+      {searchProgress.total > 0 && (
+        <span className="status-bar-progress-track">
+          <span
+            className="status-bar-progress-fill"
+            style={{ width: `${pct}%` }}
+          />
+        </span>
+      )}
     </div>
   )
 }
