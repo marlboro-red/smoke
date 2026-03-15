@@ -1,7 +1,8 @@
 import { useRef, useCallback } from 'react'
 import { useCanvasControls } from './useCanvasControls'
 import { useViewportCulling } from './useViewportCulling'
-import { useSessionList, sessionStore, type Session } from '../stores/sessionStore'
+import { useSessionList, sessionStore } from '../stores/sessionStore'
+import type { Session, TerminalSession } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
@@ -11,7 +12,7 @@ import TerminalWindow from '../terminal/TerminalWindow'
 import TerminalThumbnail from '../terminal/TerminalThumbnail'
 import '../styles/canvas.css'
 
-function ThumbnailRenderer({ session }: { session: Session }): JSX.Element {
+function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
   const textSnapshot = useSnapshot(session.id)
   return <TerminalThumbnail session={session} textSnapshot={textSnapshot} />
 }
@@ -70,17 +71,22 @@ export default function Canvas(): JSX.Element {
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         {sessions.map((session) => {
           if (!visibleIds.has(session.id)) return null
-          if (isThumbnailMode) {
-            return <ThumbnailRenderer key={session.id} session={session} />
+          switch (session.type) {
+            case 'terminal':
+              if (isThumbnailMode) {
+                return <ThumbnailRenderer key={session.id} session={session} />
+              }
+              return (
+                <TerminalWindow
+                  key={session.id}
+                  session={session}
+                  zoom={getZoom}
+                  gridSize={gridSize}
+                />
+              )
+            default:
+              return null
           }
-          return (
-            <TerminalWindow
-              key={session.id}
-              session={session}
-              zoom={getZoom}
-              gridSize={gridSize}
-            />
-          )
         })}
       </div>
     </div>

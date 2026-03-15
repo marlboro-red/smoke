@@ -12,8 +12,9 @@ function serializeCurrentLayout(name: string): Layout {
   return {
     name,
     sessions: Array.from(sessions.values()).map((s) => ({
+      type: s.type,
       title: s.title,
-      cwd: s.cwd,
+      cwd: s.type === 'terminal' ? s.cwd : '',
       position: { x: s.position.x, y: s.position.y },
       size: {
         width: s.size.width,
@@ -65,7 +66,9 @@ export function useLayoutRestore(): {
     // Close all existing sessions
     const { sessions } = sessionStore.getState()
     for (const session of sessions.values()) {
-      window.smokeAPI?.pty.kill(session.id)
+      if (session.type === 'terminal') {
+        window.smokeAPI?.pty.kill(session.id)
+      }
       sessionStore.getState().removeSession(session.id)
     }
 
@@ -76,19 +79,25 @@ export function useLayoutRestore(): {
 
     // Create sessions from layout
     for (const saved of layout.sessions) {
-      const cwd = saved.cwd
-      const session = sessionStore.getState().createSession(cwd, saved.position)
-      sessionStore.getState().updateSession(session.id, {
-        title: saved.title,
-        size: saved.size,
-      })
-      // Spawn PTY — gracefully fall back if cwd doesn't exist
-      window.smokeAPI?.pty.spawn({
-        id: session.id,
-        cwd,
-        cols: saved.size.cols,
-        rows: saved.size.rows,
-      })
+      const elementType = saved.type ?? 'terminal'
+      switch (elementType) {
+        case 'terminal': {
+          const cwd = saved.cwd
+          const session = sessionStore.getState().createSession(cwd, saved.position)
+          sessionStore.getState().updateSession(session.id, {
+            title: saved.title,
+            size: saved.size,
+          })
+          // Spawn PTY — gracefully fall back if cwd doesn't exist
+          window.smokeAPI?.pty.spawn({
+            id: session.id,
+            cwd,
+            cols: saved.size.cols,
+            rows: saved.size.rows,
+          })
+          break
+        }
+      }
     }
   }, [])
 
