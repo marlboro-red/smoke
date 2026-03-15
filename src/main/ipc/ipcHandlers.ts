@@ -5,6 +5,7 @@ import { PtyManager } from '../pty/PtyManager'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Preferences, SmokeConfig } from '../config/ConfigStore'
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
+import { AiService } from '../ai/AiService'
 import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
@@ -22,6 +23,10 @@ import {
   FS_READFILE,
   TERMINAL_BUFFER_READ,
   TERMINAL_BUFFER_READ_LINES,
+  AI_SEND,
+  AI_ABORT,
+  AI_CLEAR,
+  AI_CONFIG,
   APP_GET_LAUNCH_CWD,
   PtySpawnRequest,
   PtySpawnResponse,
@@ -38,13 +43,29 @@ import {
   FsReadfileResponse,
   TerminalBufferReadRequest,
   TerminalBufferReadLinesRequest,
+  AiSendRequest,
+  AiSendResponse,
+  AiAbortRequest,
+  AiClearRequest,
+  AiConfigSetRequest,
+  AiConfigGetResponse,
 } from './channels'
+
+let aiServiceInstance: AiService | null = null
+
+/** Get the shared AiService (available after registerIpcHandlers is called). */
+export function getAiService(): AiService | null {
+  return aiServiceInstance
+}
 
 export function registerIpcHandlers(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
   launchCwd: string
 ): void {
+  // Instantiate the AI service
+  const aiService = new AiService(getMainWindow)
+  aiServiceInstance = aiService
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
     const preferences = configStore.get('preferences', defaultPreferences)
 
@@ -202,5 +223,33 @@ export function registerIpcHandlers(
   // App info handlers
   ipcMain.handle(APP_GET_LAUNCH_CWD, (): string => {
     return launchCwd
+  })
+
+  // AI handlers
+  ipcMain.handle(
+    AI_SEND,
+    async (_event, request: AiSendRequest): Promise<AiSendResponse> => {
+      const conversationId = await aiService.sendMessage(
+        request.message,
+        request.conversationId
+      )
+      return { conversationId }
+    }
+  )
+
+  ipcMain.handle(AI_ABORT, (_event, request: AiAbortRequest): void => {
+    aiService.abort(request.conversationId)
+  })
+
+  ipcMain.handle(AI_CLEAR, (_event, request: AiClearRequest): void => {
+    aiService.clear(request.conversationId)
+  })
+
+  ipcMain.handle(AI_CONFIG, (_event, request?: AiConfigSetRequest): AiConfigGetResponse | void => {
+    if (request && request.key) {
+      aiService.setConfig(request.key, request.value)
+      return
+    }
+    return aiService.getConfig()
   })
 }
