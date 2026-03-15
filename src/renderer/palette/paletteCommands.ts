@@ -12,6 +12,8 @@ import { performAutoLayout } from '../layout/autoLayout'
 import { applyTheme } from '../themes/applyTheme'
 import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import { getSortedSessionIds } from '../shortcuts/shortcutMap'
+import { presentationStore } from '../presentation/presentationStore'
+import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 
 export interface PaletteItem {
   id: string
@@ -172,6 +174,40 @@ function getActionItems(): PaletteItem[] {
       category: 'Help',
       icon: '?',
       action: () => shortcutsOverlayStore.getState().open(),
+    },
+    {
+      id: 'action:add-bookmark',
+      title: 'Add Bookmark at Current View',
+      category: 'Presentation',
+      icon: 'B',
+      action: () => {
+        const pan = getCurrentPan()
+        const zoom = getCurrentZoom()
+        const count = presentationStore.getState().bookmarks.length
+        presentationStore.getState().addBookmark({
+          name: `Slide ${count + 1}`,
+          panX: pan.x,
+          panY: pan.y,
+          zoom,
+        })
+      },
+    },
+    {
+      id: 'action:start-presentation',
+      title: 'Start Presentation Mode',
+      category: 'Presentation',
+      icon: 'P',
+      action: () => presentationStore.getState().startPresentation(),
+    },
+    {
+      id: 'action:clear-bookmarks',
+      title: 'Clear All Bookmarks',
+      category: 'Presentation',
+      icon: 'X',
+      action: () => {
+        const { bookmarks } = presentationStore.getState()
+        bookmarks.forEach((b) => presentationStore.getState().removeBookmark(b.id))
+      },
     },
   ]
 }
