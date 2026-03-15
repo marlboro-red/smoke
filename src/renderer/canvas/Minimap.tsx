@@ -205,11 +205,11 @@ export default function Minimap(): JSX.Element | null {
     []
   )
 
-  if (sessions.length === 0) return null
-
   const stopPropagation = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
   }, [])
+
+  if (sessions.length === 0) return null
 
   return (
     <div

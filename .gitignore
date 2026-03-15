@@ -57,6 +57,9 @@ prebuilds/
 
 # Testing
 coverage/
+e2e/screenshots/
+test-results/
+playwright-report/
 
 # Misc
 .cache/

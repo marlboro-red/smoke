@@ -11,7 +11,10 @@
     "postinstall": "electron-vite build && electron-rebuild",
     "package:mac": "npm run build && electron-builder --mac",
     "package:win": "npm run build && electron-builder --win",
-    "package:all": "npm run build && electron-builder --mac --win"
+    "package:all": "npm run build && electron-builder --mac --win",
+    "test:e2e": "npm run build && npx playwright test",
+    "test:e2e:headed": "npm run build && HEADED=1 npx playwright test",
+    "test:e2e:only": "npx playwright test"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
@@ -48,6 +51,7 @@
   "devDependencies": {
     "@electron/notarize": "^3.1.1",
     "@electron/rebuild": "^3.7.1",
+    "@playwright/test": "^1.58.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/uuid": "^10.0.0",
