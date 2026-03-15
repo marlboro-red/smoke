@@ -28,3 +28,5 @@ export {
   type LayoutResult,
   type LayoutOptions,
 } from './layoutEngine'
+export { SearchIndex, type SearchResult, type SearchResponse, type SearchIndexStats } from './SearchIndex'
+export { StructureAnalyzer, type ModuleInfo, type ModuleType, type StructureMap } from './StructureAnalyzer'
