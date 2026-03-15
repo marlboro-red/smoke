@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -156,6 +156,12 @@ const smokeAPI: SmokeAPI = {
       ipcRenderer.invoke('codegraph:expand', {
         existingGraph, existingPositions, expandPath, projectRoot, maxDepth,
       }),
+    getImports: (filePath) =>
+      ipcRenderer.invoke('codegraph:get-imports', { filePath })
+        .then((r: { imports: CodeGraphImportEntry[] }) => r.imports),
+    resolveImport: (specifier, importerPath, projectRoot) =>
+      ipcRenderer.invoke('codegraph:resolve-import', { specifier, importerPath, projectRoot })
+        .then((r: { resolvedPath: string | null }) => r.resolvedPath),
     indexStats: () => ipcRenderer.invoke('codegraph:index-stats'),
     invalidateIndex: () => ipcRenderer.invoke('codegraph:invalidate'),
   }

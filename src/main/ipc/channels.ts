@@ -73,6 +73,8 @@ export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 // Code graph channels
 export const CODEGRAPH_BUILD = 'codegraph:build' as const
 export const CODEGRAPH_EXPAND = 'codegraph:expand' as const
+export const CODEGRAPH_GET_IMPORTS = 'codegraph:get-imports' as const
+export const CODEGRAPH_RESOLVE_IMPORT = 'codegraph:resolve-import' as const
 export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
 export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
 
@@ -407,6 +409,27 @@ export interface CodeGraphExpandRequest {
   expandPath: string
   projectRoot: string
   maxDepth?: number
+}
+
+export interface CodeGraphGetImportsRequest {
+  filePath: string
+}
+
+export interface CodeGraphGetImportsResponse {
+  imports: Array<{
+    specifier: string
+    type: 'import' | 'require' | 'use'
+  }>
+}
+
+export interface CodeGraphResolveImportRequest {
+  specifier: string
+  importerPath: string
+  projectRoot: string
+}
+
+export interface CodeGraphResolveImportResponse {
+  resolvedPath: string | null
 }
 
 export interface CodeGraphIndexStats {
