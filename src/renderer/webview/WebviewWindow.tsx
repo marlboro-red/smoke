@@ -9,7 +9,7 @@ import {
 } from '../stores/sessionStore'
 import { useFocusModeActiveIds } from '../stores/focusModeStore'
 import { useWindowDrag } from '../window/useWindowDrag'
-import { useFileViewerResize } from '../fileviewer/useFileViewerResize'
+import { useWebviewResize } from './useWebviewResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
 import WindowChrome from '../window/WindowChrome'
@@ -51,7 +51,7 @@ export default function WebviewWindow({
     gridSize,
   })
 
-  const { onResizeStart } = useFileViewerResize({
+  const { onResizeStart } = useWebviewResize({
     sessionId: session.id,
     zoom,
     gridSize,
