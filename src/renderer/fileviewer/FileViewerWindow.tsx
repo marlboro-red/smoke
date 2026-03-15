@@ -1,4 +1,5 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { EditorView } from '@codemirror/view'
 import {
   sessionStore,
   useFocusedId,
@@ -13,6 +14,7 @@ import { closeSession } from '../session/useSessionClose'
 import { addToast } from '../stores/toastStore'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
 import { createTerminalAtFileDir } from '../session/useSessionCreation'
+import { goToLineStore, useGoToLineSessionId } from './goToLineStore'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import FileViewerWidget from './FileViewerWidget'
@@ -36,10 +38,79 @@ export default function FileViewerWindow({
   const highlightedId = useHighlightedId()
   const selectedIds = useSelectedIds()
   const editing = session.editing ?? false
+  const goToLineSessionId = useGoToLineSessionId()
+  const showGoToLine = goToLineSessionId === session.id
+
+  const editorViewRef = useRef<EditorView | null>(null)
+  const viewerBodyRef = useRef<HTMLDivElement>(null)
+  const goToLineInputRef = useRef<HTMLInputElement>(null)
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
   const isSelected = selectedIds.has(session.id)
+
+  // Focus input when go-to-line activates
+  useEffect(() => {
+    if (showGoToLine) {
+      // Delay to ensure the input is rendered
+      requestAnimationFrame(() => goToLineInputRef.current?.focus())
+    }
+  }, [showGoToLine])
+
+  const handleGoToLine = useCallback(
+    (lineNumber: number) => {
+      const totalLines = session.content.split('\n').length
+      const targetLine = Math.max(1, Math.min(lineNumber, totalLines))
+
+      if (editing && editorViewRef.current) {
+        // CodeMirror edit mode: move cursor to line and scroll
+        const view = editorViewRef.current
+        const line = view.state.doc.line(Math.min(targetLine, view.state.doc.lines))
+        view.dispatch({
+          selection: { anchor: line.from },
+          effects: EditorView.scrollIntoView(line.from, { y: 'center' }),
+        })
+        view.focus()
+      } else if (viewerBodyRef.current) {
+        // Read-only mode: find the line span and scroll to it
+        const lineSpans = viewerBodyRef.current.querySelectorAll('.line')
+        const targetSpan = lineSpans[targetLine - 1] as HTMLElement | undefined
+        if (targetSpan) {
+          targetSpan.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          // Briefly highlight the line
+          targetSpan.classList.add('go-to-line-highlight')
+          setTimeout(() => targetSpan.classList.remove('go-to-line-highlight'), 1500)
+        }
+      }
+
+      goToLineStore.getState().close()
+    },
+    [editing, session.content]
+  )
+
+  const handleGoToLineSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault()
+      const value = goToLineInputRef.current?.value.trim()
+      if (value) {
+        const num = parseInt(value, 10)
+        if (!isNaN(num) && num > 0) {
+          handleGoToLine(num)
+        }
+      }
+    },
+    [handleGoToLine]
+  )
+
+  const handleGoToLineKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        goToLineStore.getState().close()
+      }
+    },
+    []
+  )
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -179,15 +250,31 @@ export default function FileViewerWindow({
         </button>
       </WindowChrome>
       <div
+        ref={viewerBodyRef}
         className="file-viewer-body"
         style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}
       >
+        {showGoToLine && (
+          <form className="go-to-line-bar" onSubmit={handleGoToLineSubmit}>
+            <label className="go-to-line-label">Go to Line:</label>
+            <input
+              ref={goToLineInputRef}
+              className="go-to-line-input"
+              type="number"
+              min={1}
+              placeholder={`1–${session.content.split('\n').length}`}
+              onKeyDown={handleGoToLineKeyDown}
+              onBlur={() => goToLineStore.getState().close()}
+            />
+          </form>
+        )}
         {editing ? (
           <FileEditorWidget
             content={session.content}
             language={session.language}
             onSave={handleSave}
             onChange={handleEditorChange}
+            editorViewRef={editorViewRef}
           />
         ) : (
           <FileViewerWidget

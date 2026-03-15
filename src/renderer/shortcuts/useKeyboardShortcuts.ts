@@ -17,6 +17,7 @@ import { performAutoLayout } from '../layout/autoLayout'
 import { presentationStore } from '../presentation/presentationStore'
 import { exportCanvasPng } from '../canvas/exportCanvas'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
+import { goToLineStore } from '../fileviewer/goToLineStore'
 import type { FileViewerSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { terminalSearchStore } from '../terminal/terminalSearchStore'
@@ -186,6 +187,16 @@ function executeShortcut(action: ShortcutAction): void {
           sessionStore.getState().updateSession(state.focusedId, {
             editing: !fileSession.editing,
           })
+        }
+      }
+      break
+    }
+
+    case 'goToLine': {
+      if (state.focusedId) {
+        const session = state.sessions.get(state.focusedId)
+        if (session?.type === 'file') {
+          goToLineStore.getState().open(state.focusedId)
         }
       }
       break
