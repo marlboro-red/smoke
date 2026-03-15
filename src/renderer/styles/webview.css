@@ -1,5 +1,16 @@
 .webview-window {
   background: var(--color-surface);
+  transform-origin: top left;
+}
+
+/* During resize: disable webview interaction and promote to GPU layer */
+.webview-window.resizing .webview-body {
+  pointer-events: none;
+  contain: strict;
+}
+
+.webview-window.resizing .webview-frame {
+  pointer-events: none;
 }
 
 .webview-nav-bar {
