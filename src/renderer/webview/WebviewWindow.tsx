@@ -108,7 +108,7 @@ export default function WebviewWindow({
       if (!url) return
 
       if (!isAllowedUrl(url)) {
-        setUrlError('Only localhost URLs are allowed')
+        setUrlError('Only http:// and https:// URLs are allowed')
         return
       }
 
@@ -180,7 +180,7 @@ export default function WebviewWindow({
     const onWillNavigate = (e: Electron.WillNavigateEvent): void => {
       if (!isAllowedUrl(e.url)) {
         e.preventDefault()
-        setUrlError('Blocked: only localhost URLs are allowed')
+        setUrlError('Blocked: only http:// and https:// URLs are allowed')
       }
     }
 
@@ -190,7 +190,7 @@ export default function WebviewWindow({
       if (isAllowedUrl(e.url)) {
         navigateTo(e.url)
       } else {
-        setUrlError('Blocked: only localhost URLs are allowed')
+        setUrlError('Blocked: only http:// and https:// URLs are allowed')
       }
     }
 
@@ -283,7 +283,7 @@ export default function WebviewWindow({
             setUrlError(null)
           }}
           onKeyDown={handleUrlSubmit}
-          placeholder="http://localhost:3000"
+          placeholder="https://example.com"
           spellCheck={false}
           title={urlError || undefined}
         />
