@@ -35,12 +35,20 @@ export type ShortcutAction =
   | 'startPresentation'
   | 'toggleFileViewerEdit'
   | 'newSnippet'
+  | 'splitHorizontal'
+  | 'splitVertical'
+  | 'navigatePaneLeft'
+  | 'navigatePaneRight'
+  | 'navigatePaneUp'
+  | 'navigatePaneDown'
+  | 'closePane'
   | 'escape'
 
 export interface ShortcutBinding {
   key: string
   mod: boolean
   shift: boolean
+  alt: boolean
 }
 
 export const isMac =
@@ -82,44 +90,58 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   startPresentation: 'Start Presentation',
   toggleFileViewerEdit: 'Toggle File Viewer Edit Mode',
   newSnippet: 'New Snippet',
+  splitHorizontal: 'Split Pane Horizontal',
+  splitVertical: 'Split Pane Vertical',
+  navigatePaneLeft: 'Navigate Pane Left',
+  navigatePaneRight: 'Navigate Pane Right',
+  navigatePaneUp: 'Navigate Pane Up',
+  navigatePaneDown: 'Navigate Pane Down',
+  closePane: 'Close Pane',
   escape: 'Unfocus Session',
 }
 
 export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
-  newSession: { key: 'n', mod: true, shift: false },
-  closeSession: { key: 'w', mod: true, shift: false },
-  cycleNextSession: { key: 'Tab', mod: true, shift: false },
-  cyclePrevSession: { key: 'Tab', mod: true, shift: true },
-  focusSession1: { key: '1', mod: true, shift: false },
-  focusSession2: { key: '2', mod: true, shift: false },
-  focusSession3: { key: '3', mod: true, shift: false },
-  focusSession4: { key: '4', mod: true, shift: false },
-  focusSession5: { key: '5', mod: true, shift: false },
-  focusSession6: { key: '6', mod: true, shift: false },
-  focusSession7: { key: '7', mod: true, shift: false },
-  focusSession8: { key: '8', mod: true, shift: false },
-  focusSession9: { key: '9', mod: true, shift: false },
-  resetZoom: { key: '0', mod: true, shift: false },
-  zoomIn: { key: '=', mod: true, shift: false },
-  zoomOut: { key: '-', mod: true, shift: false },
-  saveLayout: { key: 's', mod: true, shift: false },
-  openSettings: { key: ',', mod: true, shift: false },
-  toggleAiPanel: { key: 'l', mod: true, shift: false },
-  toggleGroupCollapse: { key: 'g', mod: true, shift: true },
-  toggleBroadcast: { key: 'b', mod: true, shift: true },
-  autoLayout: { key: 'a', mod: true, shift: true },
-  canvasSearch: { key: 'f', mod: true, shift: true },
-  showShortcutsHelp: { key: '/', mod: true, shift: false },
-  commandPalette: { key: 'p', mod: true, shift: false },
-  exportCanvasPng: { key: 'e', mod: true, shift: true },
-  saveBookmark: { key: 'd', mod: true, shift: false },
-  showDepGraph: { key: 'd', mod: true, shift: true },
-  openTerminalHere: { key: 't', mod: true, shift: true },
-  addBookmark: { key: 'b', mod: true, shift: false },
-  startPresentation: { key: 'F5', mod: false, shift: false },
-  toggleFileViewerEdit: { key: 'e', mod: true, shift: false },
-  newSnippet: { key: 'k', mod: true, shift: true },
-  escape: { key: 'Escape', mod: false, shift: false },
+  newSession: { key: 'n', mod: true, shift: false, alt: false },
+  closeSession: { key: 'w', mod: true, shift: false, alt: false },
+  cycleNextSession: { key: 'Tab', mod: true, shift: false, alt: false },
+  cyclePrevSession: { key: 'Tab', mod: true, shift: true, alt: false },
+  focusSession1: { key: '1', mod: true, shift: false, alt: false },
+  focusSession2: { key: '2', mod: true, shift: false, alt: false },
+  focusSession3: { key: '3', mod: true, shift: false, alt: false },
+  focusSession4: { key: '4', mod: true, shift: false, alt: false },
+  focusSession5: { key: '5', mod: true, shift: false, alt: false },
+  focusSession6: { key: '6', mod: true, shift: false, alt: false },
+  focusSession7: { key: '7', mod: true, shift: false, alt: false },
+  focusSession8: { key: '8', mod: true, shift: false, alt: false },
+  focusSession9: { key: '9', mod: true, shift: false, alt: false },
+  resetZoom: { key: '0', mod: true, shift: false, alt: false },
+  zoomIn: { key: '=', mod: true, shift: false, alt: false },
+  zoomOut: { key: '-', mod: true, shift: false, alt: false },
+  saveLayout: { key: 's', mod: true, shift: false, alt: false },
+  openSettings: { key: ',', mod: true, shift: false, alt: false },
+  toggleAiPanel: { key: 'l', mod: true, shift: false, alt: false },
+  toggleGroupCollapse: { key: 'g', mod: true, shift: true, alt: false },
+  toggleBroadcast: { key: 'b', mod: true, shift: true, alt: false },
+  autoLayout: { key: 'a', mod: true, shift: true, alt: false },
+  canvasSearch: { key: 'f', mod: true, shift: true, alt: false },
+  showShortcutsHelp: { key: '/', mod: true, shift: false, alt: false },
+  commandPalette: { key: 'p', mod: true, shift: false, alt: false },
+  exportCanvasPng: { key: 'e', mod: true, shift: true, alt: false },
+  saveBookmark: { key: 'k', mod: true, shift: false, alt: false },
+  showDepGraph: { key: 'i', mod: true, shift: true, alt: false },
+  openTerminalHere: { key: 't', mod: true, shift: true, alt: false },
+  addBookmark: { key: 'b', mod: true, shift: false, alt: false },
+  startPresentation: { key: 'F5', mod: false, shift: false, alt: false },
+  toggleFileViewerEdit: { key: 'e', mod: true, shift: false, alt: false },
+  newSnippet: { key: 'k', mod: true, shift: true, alt: false },
+  splitHorizontal: { key: 'd', mod: true, shift: false, alt: false },
+  splitVertical: { key: 'd', mod: true, shift: true, alt: false },
+  navigatePaneLeft: { key: 'ArrowLeft', mod: true, shift: false, alt: true },
+  navigatePaneRight: { key: 'ArrowRight', mod: true, shift: false, alt: true },
+  navigatePaneUp: { key: 'ArrowUp', mod: true, shift: false, alt: true },
+  navigatePaneDown: { key: 'ArrowDown', mod: true, shift: false, alt: true },
+  closePane: { key: 'w', mod: true, shift: true, alt: false },
+  escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
 
 export interface ShortcutGroupDef {
@@ -139,6 +161,10 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
       'focusSession4', 'focusSession5', 'focusSession6',
       'focusSession7', 'focusSession8', 'focusSession9',
     ],
+  },
+  {
+    title: 'Split Panes',
+    actions: ['splitHorizontal', 'splitVertical', 'navigatePaneLeft', 'navigatePaneRight', 'navigatePaneUp', 'navigatePaneDown', 'closePane'],
   },
   {
     title: 'Canvas',
@@ -184,7 +210,7 @@ export const shortcutBindingsStore = createStore<ShortcutBindingsState>((set, ge
     const custom: Record<string, ShortcutBinding | null> = {}
     for (const [a, b] of Object.entries(next)) {
       const def = DEFAULT_BINDINGS[a as ShortcutAction]
-      if (b === null || b.key !== def.key || b.mod !== def.mod || b.shift !== def.shift) {
+      if (b === null || b.key !== def.key || b.mod !== def.mod || b.shift !== def.shift || b.alt !== def.alt) {
         custom[a] = b
       }
     }
@@ -216,9 +242,14 @@ function normalizeKey(key: string): string {
 export function formatBindingParts(binding: ShortcutBinding): string[] {
   const parts: string[] = []
   if (binding.mod) parts.push(MOD_LABEL)
+  if (binding.alt) parts.push('Alt')
   if (binding.shift) parts.push('Shift')
   let keyLabel = binding.key
-  if (keyLabel.length === 1) keyLabel = keyLabel.toUpperCase()
+  if (keyLabel === 'ArrowLeft') keyLabel = '\u2190'
+  else if (keyLabel === 'ArrowRight') keyLabel = '\u2192'
+  else if (keyLabel === 'ArrowUp') keyLabel = '\u2191'
+  else if (keyLabel === 'ArrowDown') keyLabel = '\u2193'
+  else if (keyLabel.length === 1) keyLabel = keyLabel.toUpperCase()
   parts.push(keyLabel)
   return parts
 }
@@ -237,7 +268,8 @@ export function findConflict(
     if (
       normalizeKey(existing.key) === normKey &&
       existing.mod === binding.mod &&
-      existing.shift === binding.shift
+      existing.shift === binding.shift &&
+      existing.alt === binding.alt
     ) {
       return action as ShortcutAction
     }
@@ -254,6 +286,7 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
 
   const mod = isMac ? e.metaKey : e.ctrlKey
   const shift = e.shiftKey
+  const alt = e.altKey
   const eventKey = normalizeKey(e.key)
 
   const bindings = shortcutBindingsStore.getState().bindings
@@ -263,7 +296,8 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
     if (
       normalizeKey(binding.key) === eventKey &&
       binding.mod === mod &&
-      binding.shift === shift
+      binding.shift === shift &&
+      binding.alt === alt
     ) {
       return action as ShortcutAction
     }

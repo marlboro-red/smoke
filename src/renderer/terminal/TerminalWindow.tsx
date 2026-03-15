@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { sessionStore, useFocusedId, useHighlightedId, useSelectedIds, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
 import { snapshotStore } from '../stores/snapshotStore'
 import { findAgentBySessionGroupId } from '../stores/agentStore'
+import { splitPaneStore, useSplitPaneStore } from '../stores/splitPaneStore'
 import { getTerminal } from './terminalRegistry'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
@@ -10,6 +11,7 @@ import { closeSession } from '../session/useSessionClose'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import TerminalWidget from './TerminalWidget'
+import SplitPaneContainer from './SplitPaneContainer'
 import '../styles/window.css'
 
 const SNAPSHOT_INTERVAL = 5000
@@ -38,6 +40,10 @@ export default function TerminalWindow({
   const isHighlighted = highlightedId === session.id
   const isSelected = selectedIds.has(session.id)
   const isBroadcasting = !!(session.groupId && broadcastGroupId === session.groupId)
+
+  // Split pane state
+  const splitTree = useSplitPaneStore((s) => s.getTree(session.id))
+  const focusedPaneId = useSplitPaneStore((s) => s.getFocusedPane(session.id))
 
   // Find the agent assigned to this session's group
   const assignedAgent = useMemo(
@@ -169,15 +175,28 @@ export default function TerminalWindow({
         className="terminal-body"
         style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}
       >
-        <TerminalWidget
-          sessionId={session.id}
-          cols={session.size.cols}
-          rows={session.size.rows}
-          onCharDims={(dims) => {
-            charDimsRef.current = dims
-          }}
-          onSnapshot={handleSnapshotReady}
-        />
+        {splitTree ? (
+          <SplitPaneContainer
+            sessionId={session.id}
+            node={splitTree}
+            focusedPaneId={focusedPaneId}
+            windowIsFocused={isFocused}
+            onCharDims={(dims) => {
+              charDimsRef.current = dims
+            }}
+            onSnapshot={handleSnapshotReady}
+          />
+        ) : (
+          <TerminalWidget
+            sessionId={session.id}
+            cols={session.size.cols}
+            rows={session.size.rows}
+            onCharDims={(dims) => {
+              charDimsRef.current = dims
+            }}
+            onSnapshot={handleSnapshotReady}
+          />
+        )}
       </div>
       <ResizeHandle direction="e" onResizeStart={onResizeStart} />
       <ResizeHandle direction="s" onResizeStart={onResizeStart} />

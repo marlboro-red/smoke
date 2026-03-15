@@ -76,6 +76,7 @@ function ShortcutRow({
         key: e.key.length === 1 ? e.key.toLowerCase() : e.key,
         mod,
         shift: e.shiftKey,
+        alt: e.altKey,
       }
 
       onBindingCaptured(newBinding)
@@ -93,7 +94,8 @@ function ShortcutRow({
     binding !== null &&
     binding.key === DEFAULT_BINDINGS[action].key &&
     binding.mod === DEFAULT_BINDINGS[action].mod &&
-    binding.shift === DEFAULT_BINDINGS[action].shift
+    binding.shift === DEFAULT_BINDINGS[action].shift &&
+    binding.alt === DEFAULT_BINDINGS[action].alt
 
   return (
     <div className={`sc-row ${isCapturing ? 'sc-row-capturing' : ''}`}>
@@ -187,7 +189,7 @@ export default function ShortcutSettings(): JSX.Element {
   // Check if any bindings differ from defaults
   const hasCustomBindings = Object.entries(bindings).some(([action, binding]) => {
     const def = DEFAULT_BINDINGS[action as ShortcutAction]
-    return binding === null || binding.key !== def.key || binding.mod !== def.mod || binding.shift !== def.shift
+    return binding === null || binding.key !== def.key || binding.mod !== def.mod || binding.shift !== def.shift || binding.alt !== def.alt
   })
 
   return (
