@@ -36,6 +36,8 @@ export const AI_CANVAS_ACTION = 'ai:canvas-action' as const
 
 // Recording channels
 export const RECORDING_FLUSH = 'recording:flush' as const
+export const RECORDING_LIST = 'recording:list' as const
+export const RECORDING_LOAD = 'recording:load' as const
 
 // Agent management channels
 export const AGENT_CREATE = 'agent:create' as const
@@ -205,6 +207,17 @@ export interface RecordingFlushRequest {
   version: number
   startedAt: number
   events: Array<{ timestamp: number; type: string; payload: unknown }>
+}
+
+export interface RecordingListEntry {
+  filename: string
+  startedAt: number
+  eventCount: number
+  durationMs: number
+}
+
+export interface RecordingLoadRequest {
+  filename: string
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

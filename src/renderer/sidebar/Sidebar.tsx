@@ -9,6 +9,7 @@ import GroupHeader from './GroupHeader'
 import { usePanToSession, panToSession as panToSessionStandalone } from './useSidebarSync'
 import LayoutPanel from '../layout/LayoutPanel'
 import ConfigPanel from '../config/ConfigPanel'
+import ReplayPanel from '../replay/ReplayPanel'
 import FileTree from './FileTree'
 import '../styles/sidebar.css'
 
@@ -110,6 +111,7 @@ export default function Sidebar(): JSX.Element {
       </div>
       <FileTree onFileOpen={handleFileOpen} />
       <LayoutPanel />
+      <ReplayPanel />
       <ConfigPanel />
     </div>
   )

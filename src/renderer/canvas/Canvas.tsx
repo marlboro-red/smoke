@@ -25,7 +25,7 @@ function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Eleme
   return <TerminalThumbnail session={session} textSnapshot={textSnapshot} />
 }
 
-export default function Canvas(): JSX.Element {
+export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JSX.Element {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const { rootRef, panRef, zoomRef } = useCanvasControls(viewportRef)
   const sessions = useSessionList()
@@ -62,6 +62,7 @@ export default function Canvas(): JSX.Element {
 
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
+      if (readOnly) return
       // Only on empty canvas, not on terminal windows
       if ((e.target as HTMLElement).closest('.terminal-window')) return
 
@@ -75,16 +76,17 @@ export default function Canvas(): JSX.Element {
 
       createNewSession({ x: canvasX, y: canvasY })
     },
-    [rootRef, panRef, zoomRef]
+    [rootRef, panRef, zoomRef, readOnly]
   )
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
+      if (readOnly) return
       // Only unfocus when clicking empty canvas, not terminal windows
       if ((e.target as HTMLElement).closest('.terminal-window')) return
       sessionStore.getState().focusSession(null)
     },
-    []
+    [readOnly]
   )
 
   return (
