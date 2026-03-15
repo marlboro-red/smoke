@@ -5,6 +5,7 @@ import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
 import { settingsModalStore, useSettingsModalOpen } from './settingsStore'
 import { themes, THEME_IDS } from '../themes/themes'
+import { applyFontSettings } from '../themes/applyTheme'
 import '../styles/settings-modal.css'
 
 export default function SettingsModal(): JSX.Element | null {
@@ -44,6 +45,11 @@ export default function SettingsModal(): JSX.Element | null {
         const size = value as number
         gridStore.getState().setGridSize(size)
         canvasStore.getState().setGridSize(size)
+      }
+
+      if (key === 'fontFamily' || key === 'fontSize' || key === 'lineHeight') {
+        const p = preferencesStore.getState().preferences
+        applyFontSettings(p.fontFamily, p.fontSize, p.lineHeight)
       }
     },
     []
@@ -94,6 +100,62 @@ export default function SettingsModal(): JSX.Element | null {
                   </option>
                 ))}
               </select>
+            </div>
+          </section>
+
+          {/* ── Font ── */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Font</h3>
+
+            <div className="settings-row">
+              <div className="settings-row-info">
+                <label className="settings-label">Font Family</label>
+                <p className="settings-help">
+                  The monospace font used in terminals and code editors. Separate multiple fonts with commas for fallback.
+                </p>
+              </div>
+              <input
+                className="settings-input"
+                type="text"
+                placeholder='"Berkeley Mono", Menlo, monospace'
+                value={prefs.fontFamily}
+                onChange={(e) => updatePref('fontFamily', e.target.value)}
+              />
+            </div>
+
+            <div className="settings-row">
+              <div className="settings-row-info">
+                <label className="settings-label">Font Size: {prefs.fontSize}px</label>
+                <p className="settings-help">
+                  The font size for terminals and code editors (8–24px).
+                </p>
+              </div>
+              <input
+                className="settings-slider"
+                type="range"
+                min={8}
+                max={24}
+                value={prefs.fontSize}
+                onChange={(e) => updatePref('fontSize', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="settings-row">
+              <div className="settings-row-info">
+                <label className="settings-label">Line Height: {prefs.lineHeight}</label>
+                <p className="settings-help">
+                  The line height multiplier for terminals (1.0–2.0).
+                </p>
+              </div>
+              <input
+                className="settings-slider"
+                type="range"
+                min={1.0}
+                max={2.0}
+                step={0.1}
+                value={prefs.lineHeight}
+                onChange={(e) => updatePref('lineHeight', Number(e.target.value))}
+              />
             </div>
           </section>
 

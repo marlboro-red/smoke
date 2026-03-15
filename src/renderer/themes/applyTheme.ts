@@ -58,6 +58,20 @@ export function applyTerminalOpacity(opacity: number): void {
   }
 }
 
+export function applyFontSettings(fontFamily: string, fontSize: number, lineHeight: number): void {
+  const root = document.documentElement
+  root.style.setProperty('--font-mono', fontFamily)
+  root.style.setProperty('--font-size-lg', `${fontSize}px`)
+  root.style.setProperty('--line-height-code', String(lineHeight))
+
+  // Update all existing xterm.js terminal instances
+  for (const entry of getAllTerminals()) {
+    entry.terminal.options.fontFamily = fontFamily
+    entry.terminal.options.fontSize = fontSize
+    entry.terminal.options.lineHeight = lineHeight
+  }
+}
+
 export function applyTheme(themeId: string): void {
   const theme = getTheme(themeId)
   currentThemeId = theme.id

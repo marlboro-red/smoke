@@ -15,7 +15,7 @@ import { useIsReplaying } from './replay/replayStore'
 import ReplayControls from './replay/ReplayControls'
 import SettingsModal from './config/SettingsModal'
 import ShortcutsOverlay from './shortcuts/ShortcutsOverlay'
-import { applyTheme, applyTerminalOpacity } from './themes/applyTheme'
+import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -56,6 +56,13 @@ function App(): JSX.Element {
         canvasStore.getState().setGridSize(prefs.gridSize)
         applyTheme(prefs.theme || 'dark')
         applyTerminalOpacity(prefs.terminalOpacity ?? 1)
+        if (prefs.fontFamily || prefs.fontSize || prefs.lineHeight) {
+          applyFontSettings(
+            prefs.fontFamily || '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace',
+            prefs.fontSize || 13,
+            prefs.lineHeight || 1.2,
+          )
+        }
       }
     })
     window.smokeAPI?.app.getLaunchCwd().then((cwd) => {

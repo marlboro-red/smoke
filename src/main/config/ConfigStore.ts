@@ -33,6 +33,9 @@ export interface Preferences {
   aiApiKey: string
   aiModel: string
   terminalOpacity: number
+  fontFamily: string
+  fontSize: number
+  lineHeight: number
 }
 
 export const defaultPreferences: Preferences = {
@@ -48,6 +51,9 @@ export const defaultPreferences: Preferences = {
   aiApiKey: '',
   aiModel: 'claude-sonnet-4-20250514',
   terminalOpacity: 1,
+  fontFamily: '"Berkeley Mono", "Symbols Nerd Font", Menlo, Monaco, "Courier New", monospace',
+  fontSize: 13,
+  lineHeight: 1.2,
 }
 
 export interface SmokeConfig {

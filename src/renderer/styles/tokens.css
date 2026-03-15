@@ -76,6 +76,7 @@
   --font-size-sm: 11px;
   --font-size-md: 12px;
   --font-size-lg: 13px;
+  --line-height-code: 1.2;
 }
 
 /* ─── Global Reset ─── */
