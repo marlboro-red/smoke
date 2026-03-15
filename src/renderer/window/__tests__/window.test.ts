@@ -137,6 +137,52 @@ describe('useSnapping', () => {
   })
 })
 
+describe('grid dot positions match snap positions', () => {
+  // Simulates the SVG pattern dot placement from Grid.tsx.
+  // The pattern tile starts at (-gridSize/2, -gridSize/2) and the circle is
+  // at (cx, cy) = (0, 0).  Dot positions in SVG user space are:
+  //   cx + k * gridSize  for integer k.
+  // The SVG element is offset by a multiple of gridSize, so dots in canvas
+  // space land at multiples of gridSize — matching snap().
+  function gridDotPositions(gridSize: number, count: number): number[] {
+    const cx = 0 // must match Grid.tsx circle cx
+    const positions: number[] = []
+    for (let k = -count; k <= count; k++) {
+      positions.push(cx + k * gridSize)
+    }
+    return positions
+  }
+
+  it('grid dots coincide with snap targets for default gridSize', () => {
+    const gridSize = 20
+    const dots = gridDotPositions(gridSize, 10)
+    for (const dot of dots) {
+      expect(snap(dot, gridSize)).toBe(dot)
+    }
+  })
+
+  it('grid dots coincide with snap targets for all supported grid sizes', () => {
+    for (const gridSize of [10, 15, 20, 25, 30, 40, 50]) {
+      const dots = gridDotPositions(gridSize, 10)
+      for (const dot of dots) {
+        expect(snap(dot, gridSize)).toBe(dot)
+      }
+    }
+  })
+
+  it('snap never lands at a midpoint between grid dots', () => {
+    const gridSize = 20
+    // A midpoint between grid dots would be at gridSize/2 + k*gridSize
+    for (let k = -5; k <= 5; k++) {
+      const midpoint = gridSize / 2 + k * gridSize
+      const snapped = snap(midpoint, gridSize)
+      // snapped must be a grid dot position (multiple of gridSize), not a midpoint
+      expect(Math.abs(snapped % gridSize)).toBe(0)
+      expect(snapped).not.toBe(midpoint)
+    }
+  })
+})
+
 describe('zoom compensation math', () => {
   // This tests the critical zoom compensation formula used in drag/resize
   function applyZoomCompensatedDelta(

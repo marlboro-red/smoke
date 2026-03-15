@@ -37,8 +37,8 @@ const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
           patternUnits="userSpaceOnUse"
         >
           <circle
-            cx={gridSize / 2}
-            cy={gridSize / 2}
+            cx={0}
+            cy={0}
             r="0.8"
             fill="rgba(255,255,255,0.12)"
           />
