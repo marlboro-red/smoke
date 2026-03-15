@@ -34,6 +34,7 @@ export type ShortcutAction =
   | 'addBookmark'
   | 'startPresentation'
   | 'toggleFileViewerEdit'
+  | 'newSnippet'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -80,6 +81,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   addBookmark: 'Add Bookmark',
   startPresentation: 'Start Presentation',
   toggleFileViewerEdit: 'Toggle File Viewer Edit Mode',
+  newSnippet: 'New Snippet',
   escape: 'Unfocus Session',
 }
 
@@ -116,6 +118,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   addBookmark: { key: 'b', mod: true, shift: false },
   startPresentation: { key: 'F5', mod: false, shift: false },
   toggleFileViewerEdit: { key: 'e', mod: true, shift: false },
+  newSnippet: { key: 'k', mod: true, shift: true },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -127,7 +130,7 @@ export interface ShortcutGroupDef {
 export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   {
     title: 'Session Management',
-    actions: ['newSession', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
+    actions: ['newSession', 'newSnippet', 'closeSession', 'cycleNextSession', 'cyclePrevSession', 'openTerminalHere'],
   },
   {
     title: 'Session Focus',

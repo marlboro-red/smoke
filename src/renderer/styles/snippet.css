@@ -1,0 +1,65 @@
+/* Snippet Window */
+.snippet-window .window-chrome-status {
+  background: var(--color-accent, #c678dd);
+  box-shadow: 0 0 5px rgba(198, 120, 221, 0.35);
+}
+
+.snippet-lang-select {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-right: 4px;
+  line-height: 1.4;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.snippet-lang-select:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.snippet-lang-select option {
+  background: var(--bg-window);
+  color: var(--text-primary);
+}
+
+.snippet-body {
+  overflow: hidden;
+}
+
+.snippet-editor-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.snippet-editor-container .cm-editor {
+  height: 100%;
+}
+
+.snippet-editor-container .cm-scroller {
+  overflow: auto;
+}
+
+/* Thumbnail */
+.snippet-thumbnail-lang {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  padding-right: 4px;
+}
+
+.thumbnail-status.snippet {
+  background: var(--color-accent, #c678dd);
+}
+
+/* Sidebar status dot */
+.status-dot.snippet {
+  background: var(--color-accent, #c678dd);
+}

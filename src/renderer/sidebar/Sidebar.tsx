@@ -137,6 +137,11 @@ export default function Sidebar(): JSX.Element {
     sessionStore.getState().focusSession(session.id)
   }, [])
 
+  const handleNewSnippet = useCallback(() => {
+    const session = sessionStore.getState().createSnippetSession()
+    sessionStore.getState().focusSession(session.id)
+  }, [])
+
   const handleFileOpen = useCallback((filePath: string) => {
     if (isImageFile(filePath)) {
       openImageOrPanToExisting(filePath)
@@ -184,6 +189,9 @@ export default function Sidebar(): JSX.Element {
         </button>
         <button className="sidebar-new-btn" onClick={handleNewWebview}>
           + Web
+        </button>
+        <button className="sidebar-new-btn" onClick={handleNewSnippet}>
+          + Snippet
         </button>
         <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout (⌘⇧A)">
           Layout

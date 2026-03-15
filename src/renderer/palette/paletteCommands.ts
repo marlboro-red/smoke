@@ -29,6 +29,10 @@ function getTypeIcon(type: Session['type']): string {
       return '#'
     case 'note':
       return '*'
+    case 'snippet':
+      return '{'
+    case 'webview':
+      return '@'
   }
 }
 
@@ -44,7 +48,7 @@ function getSessionItems(): PaletteItem[] {
     return {
       id: `session:${id}`,
       title: session.title,
-      category: session.type === 'terminal' ? 'Terminal' : session.type === 'file' ? 'File' : 'Note',
+      category: session.type === 'terminal' ? 'Terminal' : session.type === 'file' ? 'File' : session.type === 'snippet' ? 'Snippet' : session.type === 'webview' ? 'Web' : 'Note',
       icon: getTypeIcon(session.type),
       action: () => panToSession(id),
     }
@@ -62,6 +66,16 @@ function getActionItems(): PaletteItem[] {
       category: 'Action',
       icon: '+',
       action: () => createNewSession(),
+    },
+    {
+      id: 'action:new-snippet',
+      title: 'New Snippet',
+      category: 'Action',
+      icon: '{',
+      action: () => {
+        const session = sessionStore.getState().createSnippetSession()
+        sessionStore.getState().focusSession(session.id)
+      },
     },
     {
       id: 'action:close-session',
