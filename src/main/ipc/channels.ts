@@ -72,6 +72,7 @@ export const TAB_SAVE_STATE = 'tab:save-state' as const
 
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
+export const APP_GET_GIT_BRANCH = 'app:get-git-branch' as const
 
 // Full-text search channels
 export const SEARCH_BUILD = 'search:build' as const

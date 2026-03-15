@@ -474,6 +474,7 @@ export interface SmokeAPI {
   }
   app: {
     getLaunchCwd: () => Promise<string>
+    getGitBranch: () => Promise<string | null>
   }
   recording: {
     flush: (log: EventLogData) => Promise<string>

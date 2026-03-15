@@ -70,6 +70,7 @@ const smokeAPI: SmokeAPI = {
 
   app: {
     getLaunchCwd: () => ipcRenderer.invoke('app:get-launch-cwd'),
+    getGitBranch: () => ipcRenderer.invoke('app:get-git-branch'),
   },
 
   recording: {

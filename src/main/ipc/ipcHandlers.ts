@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { execSync } from 'child_process'
 import { PtyManager } from '../pty/PtyManager'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/ConfigStore'
@@ -56,6 +57,7 @@ import {
   TAB_GET_STATE,
   TAB_SAVE_STATE,
   APP_GET_LAUNCH_CWD,
+  APP_GET_GIT_BRANCH,
   SEARCH_BUILD,
   SEARCH_QUERY,
   SEARCH_STATS,
@@ -653,6 +655,18 @@ export async function registerIpcHandlers(
   // App info handlers
   ipcMain.handle(APP_GET_LAUNCH_CWD, (): string => {
     return launchCwd
+  })
+
+  ipcMain.handle(APP_GET_GIT_BRANCH, (): string | null => {
+    try {
+      return execSync('git rev-parse --abbrev-ref HEAD', {
+        cwd: launchCwd,
+        encoding: 'utf-8',
+        timeout: 3000,
+      }).trim()
+    } catch {
+      return null
+    }
   })
 
   // Agent management handlers
