@@ -16,6 +16,7 @@ import ReplayControls from './replay/ReplayControls'
 import SettingsModal from './config/SettingsModal'
 import ShortcutsOverlay from './shortcuts/ShortcutsOverlay'
 import CommandPalette from './palette/CommandPalette'
+import SearchModal from './search/SearchModal'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 
 function App(): JSX.Element {
@@ -87,6 +88,7 @@ function App(): JSX.Element {
       <SettingsModal />
       <ShortcutsOverlay />
       <CommandPalette />
+      <SearchModal />
       {isReplaying && (
         <>
           <div className="replay-read-only-overlay">
