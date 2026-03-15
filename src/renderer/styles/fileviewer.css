@@ -33,7 +33,7 @@
 }
 
 .file-viewer-highlighted .line {
-  display: block;
+  display: inline;
 }
 
 .file-viewer-plaintext {
