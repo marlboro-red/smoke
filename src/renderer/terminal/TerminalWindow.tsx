@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { sessionStore, useFocusedId, useHighlightedId, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
 import { snapshotStore } from '../stores/snapshotStore'
 import { findAgentBySessionGroupId } from '../stores/agentStore'
+import { getTerminal } from './terminalRegistry'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -17,12 +18,14 @@ interface TerminalWindowProps {
   session: TerminalSession
   zoom: () => number
   gridSize: number
+  hidden?: boolean
 }
 
 export default function TerminalWindow({
   session,
   zoom,
   gridSize,
+  hidden,
 }: TerminalWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
@@ -104,6 +107,20 @@ export default function TerminalWindow({
     }
   }, [session.id])
 
+  // Refresh terminal rendering when transitioning from hidden to visible.
+  // While hidden via CSS, the WebGL/canvas renderer may skip painting;
+  // a full refresh ensures the buffer content is drawn immediately.
+  const prevHiddenRef = useRef(hidden)
+  useEffect(() => {
+    if (prevHiddenRef.current && !hidden) {
+      const entry = getTerminal(session.id)
+      if (entry) {
+        entry.terminal.refresh(0, entry.terminal.rows - 1)
+      }
+    }
+    prevHiddenRef.current = hidden
+  }, [hidden, session.id])
+
   const classNames = [
     'terminal-window',
     isFocused && 'focused',
@@ -123,6 +140,8 @@ export default function TerminalWindow({
         width: session.size.width,
         height: session.size.height,
         zIndex: session.zIndex,
+        visibility: hidden ? 'hidden' : undefined,
+        pointerEvents: hidden ? 'none' : undefined,
       }}
       onPointerDown={handlePointerDown}
     >
