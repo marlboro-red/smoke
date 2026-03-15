@@ -15,6 +15,7 @@ import { useIsReplaying } from './replay/replayStore'
 import ReplayControls from './replay/ReplayControls'
 import SettingsModal from './config/SettingsModal'
 import ShortcutsOverlay from './shortcuts/ShortcutsOverlay'
+import CommandPalette from './palette/CommandPalette'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 
 function App(): JSX.Element {
@@ -85,6 +86,7 @@ function App(): JSX.Element {
       {aiPanelOpen && !isReplaying && <AiChatPanel />}
       <SettingsModal />
       <ShortcutsOverlay />
+      <CommandPalette />
       {isReplaying && (
         <>
           <div className="replay-read-only-overlay">

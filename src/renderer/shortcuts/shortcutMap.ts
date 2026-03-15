@@ -25,6 +25,7 @@ export type ShortcutAction =
   | 'toggleBroadcast'
   | 'autoLayout'
   | 'showShortcutsHelp'
+  | 'commandPalette'
   | 'escape'
 
 export interface ShortcutBinding {
@@ -62,6 +63,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   toggleBroadcast: 'Toggle Broadcast',
   autoLayout: 'Auto Layout',
   showShortcutsHelp: 'Keyboard Shortcuts',
+  commandPalette: 'Command Palette',
   escape: 'Unfocus Session',
 }
 
@@ -89,6 +91,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   toggleBroadcast: { key: 'b', mod: true, shift: true },
   autoLayout: { key: 'a', mod: true, shift: true },
   showShortcutsHelp: { key: '/', mod: true, shift: false },
+  commandPalette: { key: 'p', mod: true, shift: false },
   escape: { key: 'Escape', mod: false, shift: false },
 }
 
@@ -128,7 +131,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'General',
-    actions: ['showShortcutsHelp'],
+    actions: ['commandPalette', 'showShortcutsHelp'],
   },
 ]
 

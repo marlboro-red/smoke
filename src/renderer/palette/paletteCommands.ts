@@ -1,0 +1,247 @@
+import { sessionStore, type Session } from '../stores/sessionStore'
+import { preferencesStore } from '../stores/preferencesStore'
+import { createNewSession } from '../session/useSessionCreation'
+import { closeSession } from '../session/useSessionClose'
+import { panToSession } from '../sidebar/useSidebarSync'
+import { setZoomTo, zoomIn, zoomOut } from '../canvas/useCanvasControls'
+import { serializeCurrentLayout } from '../layout/useLayoutPersistence'
+import { settingsModalStore } from '../config/settingsStore'
+import { shortcutsOverlayStore } from '../shortcuts/shortcutsOverlayStore'
+import { aiStore } from '../stores/aiStore'
+import { performAutoLayout } from '../layout/autoLayout'
+import { applyTheme } from '../themes/applyTheme'
+import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
+import { getSortedSessionIds } from '../shortcuts/shortcutMap'
+
+export interface PaletteItem {
+  id: string
+  title: string
+  category: string
+  icon: string
+  action: () => void
+}
+
+function getTypeIcon(type: Session['type']): string {
+  switch (type) {
+    case 'terminal':
+      return '>'
+    case 'file':
+      return '#'
+    case 'note':
+      return '*'
+  }
+}
+
+/**
+ * Build the list of session items (jump-to-element commands).
+ */
+function getSessionItems(): PaletteItem[] {
+  const { sessions } = sessionStore.getState()
+  const sorted = getSortedSessionIds(sessions)
+
+  return sorted.map((id) => {
+    const session = sessions.get(id)!
+    return {
+      id: `session:${id}`,
+      title: session.title,
+      category: session.type === 'terminal' ? 'Terminal' : session.type === 'file' ? 'File' : 'Note',
+      icon: getTypeIcon(session.type),
+      action: () => panToSession(id),
+    }
+  })
+}
+
+/**
+ * Static action commands available in the palette.
+ */
+function getActionItems(): PaletteItem[] {
+  return [
+    {
+      id: 'action:new-terminal',
+      title: 'New Terminal',
+      category: 'Action',
+      icon: '+',
+      action: () => createNewSession(),
+    },
+    {
+      id: 'action:close-session',
+      title: 'Close Focused Session',
+      category: 'Action',
+      icon: 'x',
+      action: () => {
+        const { focusedId } = sessionStore.getState()
+        if (focusedId) closeSession(focusedId)
+      },
+    },
+    {
+      id: 'action:save-layout',
+      title: 'Save Layout',
+      category: 'Layout',
+      icon: 'S',
+      action: () => {
+        const layout = serializeCurrentLayout('__default__')
+        window.smokeAPI?.layout.save('__default__', layout)
+      },
+    },
+    {
+      id: 'action:auto-layout',
+      title: 'Auto Layout (Grid)',
+      category: 'Layout',
+      icon: '#',
+      action: () => performAutoLayout('grid'),
+    },
+    {
+      id: 'action:auto-layout-h',
+      title: 'Auto Layout (Horizontal)',
+      category: 'Layout',
+      icon: '-',
+      action: () => performAutoLayout('horizontal'),
+    },
+    {
+      id: 'action:auto-layout-v',
+      title: 'Auto Layout (Vertical)',
+      category: 'Layout',
+      icon: '|',
+      action: () => performAutoLayout('vertical'),
+    },
+    {
+      id: 'action:toggle-theme',
+      title: 'Toggle Theme',
+      category: 'Settings',
+      icon: '@',
+      action: () => {
+        const { preferences } = preferencesStore.getState()
+        const next = preferences.theme === 'light' ? 'dark' : 'light'
+        preferencesStore.getState().setPreferences({ ...preferences, theme: next })
+        applyTheme(next)
+        window.smokeAPI?.config.set('theme', next)
+      },
+    },
+    {
+      id: 'action:open-settings',
+      title: 'Open Settings',
+      category: 'Settings',
+      icon: ',',
+      action: () => settingsModalStore.getState().open(),
+    },
+    {
+      id: 'action:toggle-ai',
+      title: 'Toggle AI Panel',
+      category: 'Tools',
+      icon: 'A',
+      action: () => aiStore.getState().togglePanel(),
+    },
+    {
+      id: 'action:zoom-in',
+      title: 'Zoom In',
+      category: 'Canvas',
+      icon: '+',
+      action: () => zoomIn(),
+    },
+    {
+      id: 'action:zoom-out',
+      title: 'Zoom Out',
+      category: 'Canvas',
+      icon: '-',
+      action: () => zoomOut(),
+    },
+    {
+      id: 'action:reset-zoom',
+      title: 'Reset Zoom',
+      category: 'Canvas',
+      icon: '0',
+      action: () => setZoomTo(1.0),
+    },
+    {
+      id: 'action:shortcuts-help',
+      title: 'Show Keyboard Shortcuts',
+      category: 'Help',
+      icon: '?',
+      action: () => shortcutsOverlayStore.getState().open(),
+    },
+  ]
+}
+
+/**
+ * Build file items from a directory listing.
+ */
+export function buildFileItems(
+  files: Array<{ name: string; isDirectory: boolean; path: string }>
+): PaletteItem[] {
+  return files
+    .filter((f) => !f.isDirectory)
+    .map((f) => ({
+      id: `file:${f.path}`,
+      title: f.name,
+      category: 'File',
+      icon: '#',
+      action: () => createFileViewerSession(f.path),
+    }))
+}
+
+/**
+ * Simple fuzzy match: checks if all characters in the pattern appear in order
+ * within the text (case-insensitive). Returns a score (lower = better match)
+ * or -1 for no match.
+ */
+export function fuzzyMatch(text: string, pattern: string): number {
+  if (pattern.length === 0) return 0
+
+  const lowerText = text.toLowerCase()
+  const lowerPattern = pattern.toLowerCase()
+
+  let patternIdx = 0
+  let score = 0
+  let lastMatchIdx = -1
+
+  for (let i = 0; i < lowerText.length && patternIdx < lowerPattern.length; i++) {
+    if (lowerText[i] === lowerPattern[patternIdx]) {
+      // Bonus for consecutive matches
+      if (lastMatchIdx === i - 1) {
+        score += 0
+      } else {
+        score += i - (lastMatchIdx + 1)
+      }
+      lastMatchIdx = i
+      patternIdx++
+    }
+  }
+
+  // All pattern characters were found
+  if (patternIdx === lowerPattern.length) {
+    return score
+  }
+
+  return -1
+}
+
+/**
+ * Get all palette items: sessions first, then actions.
+ */
+export function getAllItems(): PaletteItem[] {
+  return [...getSessionItems(), ...getActionItems()]
+}
+
+/**
+ * Filter and rank items by fuzzy match against a query.
+ */
+export function filterItems(items: PaletteItem[], query: string): PaletteItem[] {
+  if (query.length === 0) return items
+
+  const scored = items
+    .map((item) => {
+      // Match against title and category
+      const titleScore = fuzzyMatch(item.title, query)
+      const catScore = fuzzyMatch(item.category, query)
+      const bestScore = titleScore >= 0 && catScore >= 0
+        ? Math.min(titleScore, catScore)
+        : titleScore >= 0
+          ? titleScore
+          : catScore
+      return { item, score: bestScore }
+    })
+    .filter(({ score }) => score >= 0)
+    .sort((a, b) => a.score - b.score)
+
+  return scored.map(({ item }) => item)
+}
