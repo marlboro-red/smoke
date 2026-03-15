@@ -102,6 +102,11 @@
   box-shadow: 0 0 5px var(--color-info-glow);
 }
 
+.status-dot.note {
+  background: var(--color-warning);
+  box-shadow: 0 0 5px rgba(251, 191, 36, 0.35);
+}
+
 .session-info {
   display: flex;
   flex-direction: column;

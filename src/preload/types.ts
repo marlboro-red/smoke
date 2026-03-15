@@ -24,7 +24,7 @@ export interface PtyExitEvent {
   signal?: number
 }
 
-export type LayoutElementType = 'terminal' | 'file'
+export type LayoutElementType = 'terminal' | 'file' | 'note'
 
 export interface LayoutSession {
   type?: LayoutElementType
@@ -32,6 +32,8 @@ export interface LayoutSession {
   cwd: string
   filePath?: string
   language?: string
+  content?: string
+  color?: string
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }

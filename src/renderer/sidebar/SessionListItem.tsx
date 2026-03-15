@@ -43,7 +43,7 @@ function SessionListItem({ session, isFocused, isHighlighted, onPanTo }: Session
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
     >
-      <span className={`status-dot ${session.type === 'file' ? 'file' : isExited ? 'exited' : 'running'}`} />
+      <span className={`status-dot ${session.type === 'file' ? 'file' : session.type === 'note' ? 'note' : isExited ? 'exited' : 'running'}`} />
       <div className="session-info">
         <span className="session-title">{session.title}</span>
         {session.type === 'terminal' && (
@@ -51,6 +51,9 @@ function SessionListItem({ session, isFocused, isHighlighted, onPanTo }: Session
         )}
         {session.type === 'file' && (
           <span className="session-cwd">{shortenPath(session.filePath)}</span>
+        )}
+        {session.type === 'note' && session.content && (
+          <span className="session-cwd">{session.content.slice(0, 40)}</span>
         )}
       </div>
     </div>

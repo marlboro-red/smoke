@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { useSessionList, useFocusedId, useHighlightedId, findFileSessionByPath } from '../stores/sessionStore'
+import { useSessionList, useFocusedId, useHighlightedId, findFileSessionByPath, sessionStore } from '../stores/sessionStore'
 import { createNewSession } from '../session/useSessionCreation'
 import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import SessionListItem from './SessionListItem'
@@ -24,6 +24,11 @@ export default function Sidebar(): JSX.Element {
     createNewSession()
   }, [])
 
+  const handleNewNote = useCallback(() => {
+    const session = sessionStore.getState().createNoteSession()
+    sessionStore.getState().focusSession(session.id)
+  }, [])
+
   const handleFileOpen = useCallback((filePath: string) => {
     const existing = findFileSessionByPath(filePath)
     if (existing) {
@@ -37,6 +42,9 @@ export default function Sidebar(): JSX.Element {
     <div className="sidebar">
       <div className="sidebar-header">
         <span className="sidebar-title">Sessions</span>
+        <button className="sidebar-new-btn" onClick={handleNewNote}>
+          + Note
+        </button>
         <button className="sidebar-new-btn" onClick={handleNewSession}>
           + New
         </button>
