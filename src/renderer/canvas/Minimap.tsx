@@ -153,8 +153,17 @@ export default function Minimap(): JSX.Element | null {
 
   if (sessions.length === 0) return null
 
+  const stopPropagation = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
+
   return (
-    <div className="minimap-container">
+    <div
+      className="minimap-container"
+      onClick={stopPropagation}
+      onDoubleClick={stopPropagation}
+      onMouseDown={stopPropagation}
+    >
       <canvas
         ref={canvasRef}
         className="minimap-canvas"
