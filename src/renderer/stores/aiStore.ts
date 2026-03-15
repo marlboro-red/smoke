@@ -41,6 +41,7 @@ interface AiStore {
   messages: ChatMessage[]
   isGenerating: boolean
   error: string | null
+  panelOpen: boolean
 
   addUserMessage: (text: string) => ChatMessage
   addAssistantMessage: () => ChatMessage
@@ -51,12 +52,14 @@ interface AiStore {
   setGenerating: (generating: boolean) => void
   setError: (error: string | null) => void
   clearHistory: () => void
+  togglePanel: () => void
 }
 
 export const aiStore = createStore<AiStore>((set, get) => ({
   messages: [],
   isGenerating: false,
   error: null,
+  panelOpen: false,
 
   addUserMessage: (text: string): ChatMessage => {
     const message: ChatMessage = {
@@ -148,6 +151,10 @@ export const aiStore = createStore<AiStore>((set, get) => ({
   clearHistory: () => {
     set({ messages: [], isGenerating: false, error: null })
   },
+
+  togglePanel: () => {
+    set((state) => ({ panelOpen: !state.panelOpen }))
+  },
 }))
 
 // --- Selector hooks ---
@@ -160,6 +167,9 @@ export const useAiIsGenerating = (): boolean =>
 
 export const useAiError = (): string | null =>
   useStore(aiStore, (state) => state.error)
+
+export const useAiPanelOpen = (): boolean =>
+  useStore(aiStore, (state) => state.panelOpen)
 
 export const useAiStore = <T>(selector: (state: AiStore) => T): T =>
   useStore(aiStore, selector)
