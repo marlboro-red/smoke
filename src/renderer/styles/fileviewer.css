@@ -68,6 +68,52 @@
   pointer-events: none !important;
 }
 
+/* Edit toggle button in window chrome */
+.file-viewer-edit-toggle {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-right: 4px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.file-viewer-edit-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.file-viewer-edit-toggle.active {
+  background: var(--color-info);
+  border-color: var(--color-info);
+  color: var(--bg-primary);
+}
+
+/* Editing mode status dot */
+.file-viewer-editing .window-chrome-status {
+  background: var(--color-warning, #e5c07b);
+  box-shadow: 0 0 5px var(--color-warning-glow, rgba(229, 192, 123, 0.5));
+}
+
+/* CodeMirror editor container */
+.file-editor-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.file-editor-container .cm-editor {
+  height: 100%;
+}
+
+.file-editor-container .cm-scroller {
+  overflow: auto;
+}
+
 /* Thumbnail status dot for file type */
 .thumbnail-status.file {
   background: var(--color-info);

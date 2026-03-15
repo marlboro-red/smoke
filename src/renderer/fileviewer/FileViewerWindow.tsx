@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
   sessionStore,
   useFocusedId,
@@ -12,6 +12,7 @@ import { closeSession } from '../session/useSessionClose'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import FileViewerWidget from './FileViewerWidget'
+import FileEditorWidget from './FileEditorWidget'
 import '../styles/fileviewer.css'
 
 interface FileViewerWindowProps {
@@ -29,6 +30,7 @@ export default function FileViewerWindow({
 }: FileViewerWindowProps): JSX.Element {
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
+  const [editing, setEditing] = useState(false)
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
@@ -61,9 +63,22 @@ export default function FileViewerWindow({
     closeSession(session.id)
   }, [session.id])
 
+  const handleToggleEdit = useCallback(() => {
+    setEditing((prev) => !prev)
+  }, [])
+
+  const handleSave = useCallback(
+    async (content: string) => {
+      await window.smokeAPI.fs.writefile(session.filePath, content)
+      sessionStore.getState().updateSession(session.id, { content })
+    },
+    [session.id, session.filePath]
+  )
+
   const classNames = [
     'terminal-window',
     'file-viewer-window',
+    editing && 'file-viewer-editing',
     isFocused && 'focused',
     isHighlighted && 'highlighted',
     extraClassName,
@@ -90,15 +105,32 @@ export default function FileViewerWindow({
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}
-      />
+      >
+        <button
+          className={`file-viewer-edit-toggle ${editing ? 'active' : ''}`}
+          onClick={handleToggleEdit}
+          onPointerDown={(e) => e.stopPropagation()}
+          title={editing ? 'Switch to view mode' : 'Switch to edit mode'}
+        >
+          {editing ? 'View' : 'Edit'}
+        </button>
+      </WindowChrome>
       <div
         className="file-viewer-body"
         style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}
       >
-        <FileViewerWidget
-          content={session.content}
-          language={session.language}
-        />
+        {editing ? (
+          <FileEditorWidget
+            content={session.content}
+            language={session.language}
+            onSave={handleSave}
+          />
+        ) : (
+          <FileViewerWidget
+            content={session.content}
+            language={session.language}
+          />
+        )}
       </div>
       <ResizeHandle direction="e" onResizeStart={onResizeStart} />
       <ResizeHandle direction="s" onResizeStart={onResizeStart} />
