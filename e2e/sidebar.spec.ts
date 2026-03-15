@@ -230,26 +230,26 @@ test.describe('Sidebar Session List and Interaction', () => {
     const sidebar = mainWindow.locator('.sidebar')
     await expect(sidebar).toBeVisible({ timeout: 5000 })
 
-    // Get the first divider (between session list and file tree)
-    const divider = sidebar.locator('.sidebar-section-divider').first()
+    // Use the second divider (between fileTree and layouts) — fileTree defaults to 200px so has room to resize
+    const divider = sidebar.locator('.sidebar-section-divider').nth(1)
     await expect(divider).toBeVisible()
 
-    // Get the first section's initial height
-    const firstSection = sidebar.locator('.sidebar-section').first()
-    const initialHeight = await firstSection.evaluate((el) => el.getBoundingClientRect().height)
+    // Get fileTree section (first .sidebar-section) initial height
+    const fileTreeSection = sidebar.locator('.sidebar-section').first()
+    const initialHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
 
-    // Drag the divider down by 50px
+    // Drag the divider up by 50px to shrink fileTree and grow layouts
     const dividerBox = await divider.boundingBox()
     if (dividerBox) {
       await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2)
       await mainWindow.mouse.down()
-      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2 + 50, { steps: 5 })
+      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2 - 50, { steps: 5 })
       await mainWindow.mouse.up()
     }
 
-    // First section height should have changed
-    const newHeight = await firstSection.evaluate((el) => el.getBoundingClientRect().height)
-    expect(newHeight).not.toBe(initialHeight)
+    // fileTree section height should have decreased
+    const newHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
+    expect(newHeight).toBeLessThan(initialHeight)
   })
 
   test('sidebar position toggle left/right', async ({ mainWindow }) => {
