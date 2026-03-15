@@ -230,26 +230,27 @@ test.describe('Sidebar Session List and Interaction', () => {
     const sidebar = mainWindow.locator('.sidebar')
     await expect(sidebar).toBeVisible({ timeout: 5000 })
 
-    // Use the second divider (between fileTree and layouts) — fileTree defaults to 200px so has room to resize
-    const divider = sidebar.locator('.sidebar-section-divider').nth(1)
+    // Use the first divider (between session-list and fileTree)
+    // Drag UP to shrink session-list and grow fileTree
+    const divider = sidebar.locator('.sidebar-section-divider').first()
     await expect(divider).toBeVisible()
 
     // Get fileTree section (first .sidebar-section) initial height
     const fileTreeSection = sidebar.locator('.sidebar-section').first()
     const initialHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
 
-    // Drag the divider up by 50px to shrink fileTree and grow layouts
+    // Drag the divider up by 60px — this shrinks session-list and grows fileTree
     const dividerBox = await divider.boundingBox()
     if (dividerBox) {
       await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2)
       await mainWindow.mouse.down()
-      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2 - 50, { steps: 5 })
+      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2 - 60, { steps: 10 })
       await mainWindow.mouse.up()
     }
 
-    // fileTree section height should have decreased
+    // fileTree section height should have increased (session-list shrunk, fileTree grew)
     const newHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
-    expect(newHeight).toBeLessThan(initialHeight)
+    expect(newHeight).toBeGreaterThan(initialHeight)
   })
 
   test('sidebar position toggle left/right', async ({ mainWindow }) => {
