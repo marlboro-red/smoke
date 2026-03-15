@@ -14,6 +14,7 @@
 import { sessionStore, findFileSessionByPath, type FileViewerSession } from '../stores/sessionStore'
 import { connectorStore } from '../stores/connectorStore'
 import { gridStore } from '../stores/gridStore'
+import { regionStore } from '../stores/regionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import {
   setCachedImports,
@@ -27,6 +28,11 @@ import type { CodeGraphResult, CodeGraphPosition, CodeGraphNode, CodeGraphEdge }
 
 const CONNECTOR_COLOR = '#4A90D9'
 const ANIMATION_DURATION_MS = 300
+const REGION_PADDING = 40
+
+// Track region IDs created by graph materialization so we can clear them on rebuild
+// Exported for testing
+export const graphRegionIds = new Set<string>()
 
 function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
@@ -100,6 +106,90 @@ function animateSessionPositions(
 }
 
 /**
+ * Remove all regions previously created by graph materialization.
+ */
+function clearGraphRegions(): void {
+  for (const id of graphRegionIds) {
+    regionStore.getState().removeRegion(id)
+  }
+  graphRegionIds.clear()
+}
+
+/**
+ * Extract a human-readable directory label from a file path.
+ * E.g., "/project/src/renderer/stores/sessionStore.ts" → "stores"
+ */
+function extractDirLabel(filePath: string): string {
+  const parts = filePath.split('/')
+  parts.pop() // remove filename
+  return parts[parts.length - 1] || '/'
+}
+
+/**
+ * Auto-group graph nodes by directory and create canvas regions.
+ *
+ * Groups nodes by their moduleGroup (parent directory). For each directory
+ * with 2+ files, computes a bounding box around the positioned sessions
+ * and creates a Region in the regionStore.
+ */
+function createRegionsFromGraph(
+  nodes: CodeGraphNode[],
+  fileToSession: Map<string, string>,
+): void {
+  // Group nodes by directory (moduleGroup)
+  const dirGroups = new Map<string, string[]>()
+
+  for (const node of nodes) {
+    const dir = node.moduleGroup || extractDirLabel(node.filePath)
+    if (!dirGroups.has(dir)) {
+      dirGroups.set(dir, [])
+    }
+    dirGroups.get(dir)!.push(node.filePath)
+  }
+
+  const { snapToGrid } = gridStore.getState()
+
+  for (const [dir, filePaths] of dirGroups) {
+    if (filePaths.length < 2) continue
+
+    // Compute bounding box of all sessions in this directory
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    let found = 0
+
+    for (const fp of filePaths) {
+      const sessionId = fileToSession.get(fp)
+      if (!sessionId) continue
+      const session = sessionStore.getState().sessions.get(sessionId)
+      if (!session) continue
+
+      minX = Math.min(minX, session.position.x)
+      minY = Math.min(minY, session.position.y)
+      maxX = Math.max(maxX, session.position.x + session.size.width)
+      maxY = Math.max(maxY, session.position.y + session.size.height)
+      found++
+    }
+
+    if (found < 2) continue
+
+    const region = regionStore.getState().createRegion(
+      dir,
+      {
+        x: snapToGrid(minX - REGION_PADDING),
+        y: snapToGrid(minY - REGION_PADDING),
+      },
+      {
+        width: snapToGrid(maxX - minX + 2 * REGION_PADDING),
+        height: snapToGrid(maxY - minY + 2 * REGION_PADDING),
+      },
+    )
+    graphRegionIds.add(region.id)
+  }
+}
+
+/**
  * Build and materialize a full dependency graph from a root file viewer.
  *
  * Calls codegraph:build via IPC to get the graph + layout, then creates
@@ -109,9 +199,10 @@ export async function buildDepGraph(rootSession: FileViewerSession): Promise<voi
   const projectRoot = preferencesStore.getState().launchCwd
   if (!projectRoot) return
 
-  // Reset graph cache for fresh build
+  // Reset graph cache and regions for fresh build
   clearActiveGraph()
   clearImportCache()
+  clearGraphRegions()
 
   // Build graph via IPC — returns nodes, edges, and layout positions
   const result: CodeGraphResult = await window.smokeAPI.codegraph.build(
@@ -216,6 +307,9 @@ async function materializeGraph(
   if (repositions.length > 0) {
     animateSessionPositions(repositions)
   }
+
+  // Auto-group nodes by directory into canvas regions
+  createRegionsFromGraph(nodes, fileToSession)
 }
 
 /**
@@ -281,6 +375,10 @@ async function materializeIncrementalGraph(
   if (repositions.length > 0) {
     animateSessionPositions(repositions)
   }
+
+  // Update regions: clear old graph regions and recreate from updated graph
+  clearGraphRegions()
+  createRegionsFromGraph(nodes, fileToSession)
 }
 
 /**
