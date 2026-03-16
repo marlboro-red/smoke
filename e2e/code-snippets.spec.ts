@@ -95,8 +95,11 @@ test.describe('Code Snippet Creation', () => {
   test('create a snippet via sidebar button', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const snippetBtn = mainWindow.locator('.sidebar-new-btn', { hasText: 'Snippet' })
-    await snippetBtn.click()
+    // Open create menu and click "Code Snippet"
+    const createBtn = mainWindow.locator('.sidebar-create-btn')
+    await createBtn.click()
+    const snippetItem = mainWindow.locator('.create-menu-item', { hasText: 'Code Snippet' })
+    await snippetItem.click()
 
     const snippetWindow = mainWindow.locator('.snippet-window')
     await expect(snippetWindow.first()).toBeVisible({ timeout: 5000 })

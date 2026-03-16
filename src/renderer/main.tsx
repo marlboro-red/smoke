@@ -27,9 +27,10 @@ import { registerPluginElementType, getPluginElementRegistration } from './plugi
 import { default as PluginWindow } from './plugin/PluginWindow'
 import { default as PluginThumbnail } from './plugin/PluginThumbnail'
 import { pluginStore } from './stores/pluginStore'
+import { tabStore } from './stores/tabStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore, preferencesStore, canvasStore, canvasControls: { setPanTo, setZoomTo }, depgraph: { buildDepGraph, expandDepGraph, buildDependentsGraph }, canvasSearchStore, regionStore, replayStore, commandPaletteStore, pluginStore, pluginRegistry: { registerPluginElementType, getPluginElementRegistration, PluginWindow, PluginThumbnail } }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore, preferencesStore, canvasStore, canvasControls: { setPanTo, setZoomTo }, depgraph: { buildDepGraph, expandDepGraph, buildDependentsGraph }, canvasSearchStore, regionStore, replayStore, commandPaletteStore, pluginStore, pluginRegistry: { registerPluginElementType, getPluginElementRegistration, PluginWindow, PluginThumbnail }, tabStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)

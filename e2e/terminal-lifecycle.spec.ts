@@ -27,8 +27,11 @@ test.describe('Terminal Session Lifecycle', () => {
   test('create terminal via sidebar button', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const newBtn = mainWindow.locator('.sidebar-new-btn', { hasText: 'New' })
-    await newBtn.click()
+    // Open the create menu and click "Terminal"
+    const createBtn = mainWindow.locator('.sidebar-create-btn')
+    await createBtn.click()
+    const terminalItem = mainWindow.locator('.create-menu-item', { hasText: 'Terminal' })
+    await terminalItem.click()
 
     const terminalWindow = mainWindow.locator('.terminal-window')
     await expect(terminalWindow.first()).toBeVisible({ timeout: 5000 })

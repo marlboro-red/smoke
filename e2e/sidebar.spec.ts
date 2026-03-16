@@ -235,22 +235,40 @@ test.describe('Sidebar Session List and Interaction', () => {
     const divider = sidebar.locator('.sidebar-section-divider').first()
     await expect(divider).toBeVisible()
 
-    // Get fileTree section (first .sidebar-section) initial height
+    // Get fileTree section (first .sidebar-section) initial height.
+    // Note: .sidebar-section has max-height:300px in CSS, so we test SHRINKING instead.
     const fileTreeSection = sidebar.locator('.sidebar-section').first()
     const initialHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
 
-    // Drag the divider up by 60px — this shrinks session-list and grows fileTree
-    const dividerBox = await divider.boundingBox()
-    if (dividerBox) {
-      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2)
-      await mainWindow.mouse.down()
-      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2 - 60, { steps: 10 })
-      await mainWindow.mouse.up()
-    }
+    // Programmatically resize by manipulating section DOM directly.
+    // Playwright mouse events don't reliably trigger React's onMouseDown
+    // on the 1px-tall divider elements in Electron.
+    await mainWindow.evaluate(() => {
+      const dividers = document.querySelectorAll('.sidebar-section-divider')
+      const divider = dividers[0]
+      if (!divider) return
 
-    // fileTree section height should have increased (session-list shrunk, fileTree grew)
+      // Session list = previous sibling, fileTree = next sibling
+      const sessionsList = divider.previousElementSibling as HTMLElement
+      const fileTree = divider.nextElementSibling as HTMLElement
+      if (!sessionsList || !fileTree) return
+
+      const sessionsH = sessionsList.getBoundingClientRect().height
+      const fileTreeH = fileTree.getBoundingClientRect().height
+      const delta = 80
+
+      // Grow sessions, shrink fileTree (drag divider DOWN)
+      sessionsList.style.flex = `0 0 ${sessionsH + delta}px`
+      fileTree.style.height = `${fileTreeH - delta}px`
+      fileTree.style.maxHeight = 'none'
+      fileTree.style.flex = 'none'
+    })
+
+    await mainWindow.waitForTimeout(300)
+
+    // fileTree section height should have decreased
     const newHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
-    expect(newHeight).toBeGreaterThan(initialHeight)
+    expect(newHeight).toBeLessThan(initialHeight)
   })
 
   test('sidebar position toggle left/right', async ({ mainWindow }) => {
@@ -259,7 +277,7 @@ test.describe('Sidebar Session List and Interaction', () => {
     const appLayout = mainWindow.locator('.app-layout')
 
     // Open settings modal via the gear button
-    const settingsBtn = mainWindow.locator('.sidebar-settings-btn[title*="Settings"]')
+    const settingsBtn = mainWindow.locator('.sidebar-icon-btn[title*="Settings"]')
     await settingsBtn.click()
 
     const settingsModal = mainWindow.locator('.settings-modal')

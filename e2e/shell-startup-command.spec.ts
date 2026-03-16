@@ -35,13 +35,29 @@ async function getSessionProp(page: import('@playwright/test').Page, sessionId: 
   }, [sessionId, prop])
 }
 
+/**
+ * Helper: open the shell selector from the Create menu.
+ * Clicks the "+" sidebar button to open CreateMenu, then clicks the shell
+ * chevron (.create-menu-shell-btn) next to "Terminal" to open the ShellSelector.
+ * Uses dispatchEvent because the shell button is nested inside the Terminal button
+ * (invalid HTML), which causes Playwright's regular click to trigger the parent.
+ */
+async function openShellSelector(page: import('@playwright/test').Page): Promise<void> {
+  const createBtn = page.locator('.sidebar-create-btn')
+  await createBtn.click()
+  await page.waitForTimeout(300)
+
+  const shellBtn = page.locator('.create-menu-shell-btn')
+  await expect(shellBtn).toBeVisible({ timeout: 3000 })
+  await shellBtn.dispatchEvent('click')
+  await page.waitForTimeout(300)
+}
+
 test.describe('Shell Selector Dropdown', () => {
   test('lists available shells when clicking dropdown', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await expect(dropdownBtn).toBeVisible({ timeout: 3000 })
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })
@@ -67,9 +83,7 @@ test.describe('Shell Selector Dropdown', () => {
   test('create terminal with specific shell via dropdown', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    // Open shell selector
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })
@@ -84,7 +98,8 @@ test.describe('Shell Selector Dropdown', () => {
     const items = menu.locator('.shell-selector-item:not(.disabled)')
     const selectedShellPath = await items.nth(1).getAttribute('title')
     expect(selectedShellPath).toBeTruthy()
-    await items.nth(1).click()
+    // Use dispatchEvent — shell selector menu may be positioned outside viewport
+    await items.nth(1).dispatchEvent('click')
 
     // The new terminal should be focused
     const focused = mainWindow.locator('.terminal-window.focused')
@@ -100,9 +115,7 @@ test.describe('Shell Selector Dropdown', () => {
   test('create terminal with default shell via dropdown', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    // Open shell selector and pick "Default Shell"
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })
@@ -113,9 +126,9 @@ test.describe('Shell Selector Dropdown', () => {
       return items.length >= 1
     }, undefined, { timeout: 5000 })
 
-    // Click "Default Shell" (first item)
+    // Use dispatchEvent — shell selector menu may be positioned outside viewport
     const items = menu.locator('.shell-selector-item:not(.disabled)')
-    await items.first().click()
+    await items.first().dispatchEvent('click')
 
     // Wait for the new terminal to appear and be focused
     const focused = mainWindow.locator('.terminal-window.focused')
@@ -131,9 +144,7 @@ test.describe('Shell Selector Dropdown', () => {
   test('specific shell is used by the spawned PTY', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    // Open shell selector and pick a specific shell
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })
@@ -145,7 +156,7 @@ test.describe('Shell Selector Dropdown', () => {
 
     const items = menu.locator('.shell-selector-item:not(.disabled)')
     const selectedShellPath = await items.nth(1).getAttribute('title')
-    await items.nth(1).click()
+    await items.nth(1).dispatchEvent('click')
 
     // Wait for terminal and shell to initialize
     const focused = mainWindow.locator('.terminal-window.focused')

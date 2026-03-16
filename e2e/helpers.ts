@@ -61,3 +61,16 @@ export async function pressShortcut(page: Page, key: string, options?: { shift?:
   parts.push(key)
   await page.keyboard.press(parts.join('+'))
 }
+
+/**
+ * Open the sidebar Create menu and click an item by its label text.
+ * The Create menu is accessed via the "+" button (.sidebar-create-btn),
+ * then items are .create-menu-item buttons with .create-menu-label children.
+ */
+export async function clickCreateMenuItem(page: Page, label: string): Promise<void> {
+  const createBtn = page.locator('.sidebar-create-btn')
+  await createBtn.click()
+
+  const menuItem = page.locator('.create-menu-item', { hasText: label })
+  await menuItem.click()
+}

@@ -99,10 +99,11 @@ test.describe('Web Preview Element', () => {
     await waitForAppReady(mainWindow)
     await clearAllSessions(mainWindow)
 
-    // Click the "+ Web" sidebar button
-    const webBtn = mainWindow.locator('.sidebar-new-btn', { hasText: '+ Web' })
-    await expect(webBtn).toBeVisible({ timeout: 5000 })
-    await webBtn.click()
+    // Open create menu and click "Web Browser"
+    const createBtn = mainWindow.locator('.sidebar-create-btn')
+    await createBtn.click()
+    const webItem = mainWindow.locator('.create-menu-item', { hasText: 'Web Browser' })
+    await webItem.click()
     await mainWindow.waitForTimeout(1000)
 
     // A new webview window should appear

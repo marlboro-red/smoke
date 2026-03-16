@@ -103,8 +103,11 @@ test.describe('Toast Notification System', () => {
     const toast = mainWindow.locator('.toast')
     await expect(toast).toBeVisible({ timeout: 3000 })
 
-    const dismissBtn = toast.first().locator('.toast-dismiss')
-    await dismissBtn.click()
+    // Use dispatchEvent to bypass minimap canvas intercepting pointer events
+    await mainWindow.evaluate(() => {
+      const btn = document.querySelector('.toast .toast-dismiss') as HTMLElement
+      if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    })
 
     await expect(toast).not.toBeVisible({ timeout: 3000 })
   })
@@ -135,9 +138,12 @@ test.describe('Toast Notification System', () => {
     const toasts = mainWindow.locator('.toast')
     await expect(toasts).toHaveCount(2, { timeout: 3000 })
 
-    // Dismiss the error toast
-    const errorToast = mainWindow.locator('.toast--error')
-    await errorToast.locator('.toast-dismiss').click()
+    // Dismiss the error toast using dispatchEvent to bypass minimap canvas
+    await mainWindow.evaluate(() => {
+      const errorToast = document.querySelector('.toast--error')
+      const btn = errorToast?.querySelector('.toast-dismiss') as HTMLElement
+      if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+    })
 
     await expect(toasts).toHaveCount(1, { timeout: 3000 })
 

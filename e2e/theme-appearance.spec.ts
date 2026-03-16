@@ -162,11 +162,27 @@ test.describe('Theme: All themes apply correct variables', () => {
       const themeSelect = modal.locator('.settings-select')
 
       await themeSelect.selectOption(themeId)
-      await mainWindow.waitForTimeout(500)
+
+      // Wait for theme to be applied
+      await mainWindow.waitForFunction(
+        (id) => document.documentElement.dataset.theme === id,
+        themeId,
+        { timeout: 5000 }
+      )
 
       // Verify data-theme attribute
       const appliedTheme = await mainWindow.evaluate(() => document.documentElement.dataset.theme)
       expect(appliedTheme).toBe(themeId)
+
+      // Wait for CSS variables to be applied
+      await mainWindow.waitForFunction(
+        (expectedBg) => {
+          const val = getComputedStyle(document.documentElement).getPropertyValue('--bg-base').trim()
+          return val === expectedBg
+        },
+        expected.bgBase,
+        { timeout: 5000 }
+      )
 
       // Verify --bg-base (canvas background)
       const bgBase = await getCssVar(mainWindow, '--bg-base')
