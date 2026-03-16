@@ -2,6 +2,7 @@ import { PtyProcess, PtyProcessOptions } from './PtyProcess'
 
 export class PtyManager {
   private processes = new Map<string, PtyProcess>()
+  private userInitiatedKills = new Set<string>()
 
   spawn(options: PtyProcessOptions): PtyProcess {
     const pty = new PtyProcess(options)
@@ -28,6 +29,19 @@ export class PtyManager {
 
   kill(id: string): void {
     this.processes.get(id)?.kill()
+  }
+
+  gracefulKill(id: string): void {
+    this.userInitiatedKills.add(id)
+    this.processes.get(id)?.gracefulKill()
+  }
+
+  isUserInitiatedKill(id: string): boolean {
+    return this.userInitiatedKills.has(id)
+  }
+
+  clearUserInitiatedKill(id: string): void {
+    this.userInitiatedKills.delete(id)
   }
 
   killAll(): void {

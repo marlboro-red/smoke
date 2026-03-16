@@ -28,6 +28,7 @@ export interface PtyExitEvent {
   id: string
   exitCode: number
   signal?: number
+  userInitiated?: boolean
 }
 
 export type BuiltinLayoutElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'

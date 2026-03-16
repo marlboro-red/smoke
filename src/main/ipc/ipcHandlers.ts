@@ -261,9 +261,11 @@ export async function registerIpcHandlers(
       try {
         ptyBatcher.remove(pty.id)
         terminalOutputBuffer.delete(pty.id)
+        const userInitiated = ptyManager.isUserInitiatedKill(pty.id)
+        ptyManager.clearUserInitiatedKill(pty.id)
         const win = getMainWindow()
         if (win && !win.isDestroyed()) {
-          win.webContents.send(PTY_EXIT, { id: pty.id, exitCode, signal })
+          win.webContents.send(PTY_EXIT, { id: pty.id, exitCode, signal, userInitiated })
         }
       } catch (err) {
         console.error(`[pty:exit] Error handling exit for ${pty.id}:`, err)
@@ -320,7 +322,7 @@ export async function registerIpcHandlers(
 
   ipcMain.on(PTY_KILL, (_event, message: PtyKillMessage) => {
     try {
-      ptyManager.kill(message.id)
+      ptyManager.gracefulKill(message.id)
     } catch (err) {
       console.error('[pty:kill] Error killing PTY:', err)
     }

@@ -184,6 +184,7 @@ export interface PtyExitMessage {
   id: string
   exitCode: number
   signal?: number
+  userInitiated?: boolean
 }
 
 // Layout message types
