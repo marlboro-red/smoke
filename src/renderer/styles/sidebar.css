@@ -99,13 +99,15 @@
 
 .sidebar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   padding: var(--space-sm) 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .sidebar-new-btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 56px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -113,6 +115,7 @@
   font-size: var(--font-size-md);
   padding: var(--space-xs) 10px;
   cursor: pointer;
+  white-space: nowrap;
   transition: background var(--duration-fast), color var(--duration-fast),
     border-color var(--duration-fast);
 }
@@ -392,8 +395,8 @@
 
 .sidebar-new-btn-group {
   display: flex;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 56px;
 }
 
 .sidebar-new-btn-group .sidebar-new-btn {
