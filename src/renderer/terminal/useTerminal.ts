@@ -104,15 +104,14 @@ export function useTerminal(
     } else {
       // Create new terminal
       const opacity = preferencesStore.getState().preferences.terminalOpacity
-      const transparent = opacity < 1
       const theme = getCurrentTheme()
       const terminalOptions = getTerminalOptions()
       const terminal = new Terminal({
         ...terminalOptions,
-        allowTransparency: transparent,
+        allowTransparency: true,
         theme: {
           ...theme.xtermTheme,
-          background: transparent ? 'transparent' : theme.xtermTheme.background,
+          background: opacity < 1 ? 'transparent' : theme.xtermTheme.background,
         },
         cols: cols ?? 80,
         rows: rows ?? 24,

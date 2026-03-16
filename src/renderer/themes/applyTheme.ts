@@ -47,13 +47,14 @@ export function applyTerminalOpacity(opacity: number): void {
   // Add frosted glass blur when translucent
   root.style.setProperty('--terminal-backdrop', opacity < 1 ? 'blur(12px)' : 'none')
 
-  // Update xterm.js terminals
-  const transparent = opacity < 1
+  // Update xterm.js terminals — always keep allowTransparency enabled so the
+  // WebGL context retains its alpha channel and can switch to transparent
+  // backgrounds without needing to be recreated.
   for (const entry of getAllTerminals()) {
-    entry.terminal.options.allowTransparency = transparent
+    entry.terminal.options.allowTransparency = true
     entry.terminal.options.theme = {
       ...theme.xtermTheme,
-      background: transparent ? 'transparent' : theme.xtermTheme.background,
+      background: opacity < 1 ? 'transparent' : theme.xtermTheme.background,
     }
   }
 }
@@ -84,11 +85,10 @@ export function applyTheme(themeId: string): void {
   }
 
   // Update all existing terminal instances
-  const transparent = currentTerminalOpacity < 1
   for (const entry of getAllTerminals()) {
     entry.terminal.options.theme = {
       ...theme.xtermTheme,
-      background: transparent ? 'transparent' : theme.xtermTheme.background,
+      background: currentTerminalOpacity < 1 ? 'transparent' : theme.xtermTheme.background,
     }
   }
 
