@@ -1,13 +1,14 @@
 import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'path'
 import { PtyManager } from './pty/PtyManager'
-import { registerIpcHandlers } from './ipc/ipcHandlers'
+import { registerIpcHandlers, type IpcCleanup } from './ipc/ipcHandlers'
 
 // Capture before Electron changes cwd
 const launchCwd = process.cwd()
 
 const ptyManager = new PtyManager()
 let mainWindow: BrowserWindow | null = null
+let ipcCleanup: IpcCleanup | null = null
 
 function createWindow(): void {
   const isMac = process.platform === 'darwin'
@@ -103,7 +104,7 @@ app.whenReady().then(async () => {
     Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   }
 
-  await registerIpcHandlers(ptyManager, () => mainWindow, launchCwd)
+  ipcCleanup = await registerIpcHandlers(ptyManager, () => mainWindow, launchCwd)
   createWindow()
 
   app.on('activate', () => {
@@ -114,6 +115,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('before-quit', () => {
+  ipcCleanup?.dispose()
   ptyManager.killAll()
 })
 
