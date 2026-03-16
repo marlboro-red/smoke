@@ -162,6 +162,10 @@ import {
   PLUGIN_CHANGED,
   PLUGIN_INSTALL,
   PLUGIN_UNINSTALL,
+  PLUGIN_CONFIG_GET,
+  PLUGIN_CONFIG_SET,
+  PLUGIN_SET_ENABLED,
+  PLUGIN_GET_DISABLED,
   PluginGetRequest,
   PluginInfo,
   PluginListResponse,
@@ -170,6 +174,9 @@ import {
   PluginInstallResponse,
   PluginUninstallRequest,
   PluginUninstallResponse,
+  PluginConfigGetRequest,
+  PluginConfigSetRequest,
+  PluginSetEnabledRequest,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 import { PluginLoader, type LoadedPlugin } from '../plugin/PluginLoader'
@@ -1077,6 +1084,37 @@ export async function registerIpcHandlers(
       return result
     }
   )
+
+  // ── Plugin config ────────────────────────────────────────────────────
+
+  ipcMain.handle(PLUGIN_CONFIG_GET, (_event, request: PluginConfigGetRequest): Record<string, unknown> => {
+    const allSettings = configStore.get('pluginSettings', {})
+    return allSettings[request.pluginName] ?? {}
+  })
+
+  ipcMain.handle(PLUGIN_CONFIG_SET, (_event, request: PluginConfigSetRequest): void => {
+    const allSettings = configStore.get('pluginSettings', {})
+    if (!allSettings[request.pluginName]) {
+      allSettings[request.pluginName] = {}
+    }
+    allSettings[request.pluginName][request.key] = request.value
+    configStore.set('pluginSettings', allSettings)
+  })
+
+  ipcMain.handle(PLUGIN_SET_ENABLED, (_event, request: PluginSetEnabledRequest): void => {
+    const disabled = configStore.get('disabledPlugins', [])
+    if (request.enabled) {
+      configStore.set('disabledPlugins', disabled.filter((n: string) => n !== request.pluginName))
+    } else {
+      if (!disabled.includes(request.pluginName)) {
+        configStore.set('disabledPlugins', [...disabled, request.pluginName])
+      }
+    }
+  })
+
+  ipcMain.handle(PLUGIN_GET_DISABLED, (): string[] => {
+    return configStore.get('disabledPlugins', [])
+  })
 }
 
 function toPluginInfo(p: LoadedPlugin): PluginInfo {
@@ -1092,5 +1130,6 @@ function toPluginInfo(p: LoadedPlugin): PluginInfo {
     pluginDir: p.pluginDir,
     source: p.source,
     installSource: p.installSource,
+    configSchema: p.manifest.configSchema,
   }
 }

@@ -124,6 +124,12 @@ export const PLUGIN_CHANGED = 'plugin:changed' as const
 export const PLUGIN_INSTALL = 'plugin:install' as const
 export const PLUGIN_UNINSTALL = 'plugin:uninstall' as const
 
+// Plugin config channels
+export const PLUGIN_CONFIG_GET = 'plugin:config:get' as const
+export const PLUGIN_CONFIG_SET = 'plugin:config:set' as const
+export const PLUGIN_SET_ENABLED = 'plugin:set-enabled' as const
+export const PLUGIN_GET_DISABLED = 'plugin:get-disabled' as const
+
 // Plugin IPC bridge channels
 export const PLUGIN_REGISTER = 'plugin:register' as const
 export const PLUGIN_UNREGISTER = 'plugin:unregister' as const
@@ -649,6 +655,22 @@ export interface ShellInfo {
   name: string
 }
 
+// Plugin config message types
+export interface PluginConfigGetRequest {
+  pluginName: string
+}
+
+export interface PluginConfigSetRequest {
+  pluginName: string
+  key: string
+  value: unknown
+}
+
+export interface PluginSetEnabledRequest {
+  pluginName: string
+  enabled: boolean
+}
+
 // Plugin loader message types
 export interface PluginGetRequest {
   name: string
@@ -667,6 +689,7 @@ export interface PluginInfo {
   source: 'global' | 'project'
   /** How this plugin was installed (npm, url, or local/undefined for manually placed). */
   installSource?: 'npm' | 'url' | 'local'
+  configSchema?: Record<string, import('../plugin/pluginManifest').PluginConfigField>
 }
 
 export interface PluginInstallRequest {

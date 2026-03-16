@@ -86,6 +86,8 @@ export interface SmokeConfig {
   preferences: Preferences
   tabs: TabInfo[]
   activeTabId: string
+  pluginSettings: Record<string, Record<string, unknown>>
+  disabledPlugins: string[]
 }
 
 const storeOptions = {
@@ -97,6 +99,8 @@ const storeOptions = {
     preferences: { ...defaultPreferences },
     tabs: [{ id: 'default', name: 'Canvas 1' }] as TabInfo[],
     activeTabId: 'default',
+    pluginSettings: {} as Record<string, Record<string, unknown>>,
+    disabledPlugins: [] as string[],
   },
   // Allow E2E tests to redirect config to an isolated temp directory
   ...(process.env.SMOKE_E2E_CONFIG_DIR ? { cwd: process.env.SMOKE_E2E_CONFIG_DIR } : {}),

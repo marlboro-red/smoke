@@ -451,6 +451,16 @@ export interface WorkspaceLayoutResult {
 }
 
 // Plugin loader types
+export interface PluginConfigField {
+  type: 'string' | 'number' | 'boolean' | 'select'
+  label: string
+  description?: string
+  default?: string | number | boolean
+  options?: string[]
+  min?: number
+  max?: number
+}
+
 export interface PluginInfo {
   name: string
   version: string
@@ -464,6 +474,7 @@ export interface PluginInfo {
   source: 'global' | 'project'
   /** How this plugin was installed (npm, url, or local/undefined for manually placed). */
   installSource?: 'npm' | 'url' | 'local'
+  configSchema?: Record<string, PluginConfigField>
 }
 
 export interface PluginLoadError {
@@ -655,6 +666,11 @@ export interface SmokeAPI {
     // Plugin install/uninstall
     install: (source: string) => Promise<{ success: boolean; pluginName?: string; error?: string }>
     uninstall: (name: string, force?: boolean) => Promise<{ success: boolean; error?: string }>
+    // Plugin config
+    getConfig: (pluginName: string) => Promise<Record<string, unknown>>
+    setConfig: (pluginName: string, key: string, value: unknown) => Promise<void>
+    setEnabled: (pluginName: string, enabled: boolean) => Promise<void>
+    getDisabled: () => Promise<string[]>
     // Plugin IPC bridge
     register: (pluginId: string, permissions: ManifestPermission[], sandboxRoot: string) => Promise<void>
     unregister: (pluginId: string) => Promise<void>

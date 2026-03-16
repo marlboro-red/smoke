@@ -33,9 +33,11 @@ vi.mock('../../codegraph/StructureAnalyzer', () => ({
   StructureAnalyzer: function StructureAnalyzer() { return mockStructureAnalyzer },
 }))
 
-// Mock child_process (used by ClaudeCodeManager)
+// Mock child_process (used by ClaudeCodeManager and PluginInstaller)
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
+  execFile: vi.fn(),
+  execSync: vi.fn().mockReturnValue(Buffer.from('')),
 }))
 
 // Mock fs (sync methods used by ClaudeCodeManager for MCP config)
@@ -412,6 +414,58 @@ describe('registerIpcHandlers', () => {
     it('rejects invalid preference keys', () => {
       handlers['config:set']({}, { key: 'invalidKey', value: 'bad' })
       expect(mockConfig.preferences).not.toHaveProperty('invalidKey')
+    })
+  })
+
+  describe('Plugin config handlers', () => {
+    beforeEach(() => {
+      mockConfig.pluginSettings = {}
+      mockConfig.disabledPlugins = []
+    })
+
+    it('gets plugin config (empty by default)', () => {
+      const result = handlers['plugin:config:get']({}, { pluginName: 'my-plugin' })
+      expect(result).toEqual({})
+    })
+
+    it('gets plugin config for a configured plugin', () => {
+      mockConfig.pluginSettings = { 'my-plugin': { refreshInterval: 10 } }
+      const result = handlers['plugin:config:get']({}, { pluginName: 'my-plugin' })
+      expect(result).toEqual({ refreshInterval: 10 })
+    })
+
+    it('sets a plugin config value', () => {
+      handlers['plugin:config:set']({}, { pluginName: 'my-plugin', key: 'refreshInterval', value: 5 })
+      expect(mockConfig.pluginSettings['my-plugin']).toEqual({ refreshInterval: 5 })
+    })
+
+    it('sets multiple plugin config values', () => {
+      handlers['plugin:config:set']({}, { pluginName: 'my-plugin', key: 'a', value: 1 })
+      handlers['plugin:config:set']({}, { pluginName: 'my-plugin', key: 'b', value: 'hello' })
+      expect(mockConfig.pluginSettings['my-plugin']).toEqual({ a: 1, b: 'hello' })
+    })
+
+    it('disables a plugin', () => {
+      handlers['plugin:set-enabled']({}, { pluginName: 'my-plugin', enabled: false })
+      expect(mockConfig.disabledPlugins).toContain('my-plugin')
+    })
+
+    it('enables a previously disabled plugin', () => {
+      mockConfig.disabledPlugins = ['my-plugin']
+      handlers['plugin:set-enabled']({}, { pluginName: 'my-plugin', enabled: true })
+      expect(mockConfig.disabledPlugins).not.toContain('my-plugin')
+    })
+
+    it('does not duplicate disabled entries', () => {
+      handlers['plugin:set-enabled']({}, { pluginName: 'my-plugin', enabled: false })
+      handlers['plugin:set-enabled']({}, { pluginName: 'my-plugin', enabled: false })
+      expect(mockConfig.disabledPlugins.filter((n: string) => n === 'my-plugin')).toHaveLength(1)
+    })
+
+    it('gets disabled plugins list', () => {
+      mockConfig.disabledPlugins = ['plugin-a', 'plugin-b']
+      const result = handlers['plugin:get-disabled']()
+      expect(result).toEqual(['plugin-a', 'plugin-b'])
     })
   })
 
