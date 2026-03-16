@@ -48,12 +48,12 @@ describe('TerminalOutputBuffer', () => {
   })
 
   it('trims from the front when over capacity', () => {
-    // Fill with 100 chars
+    // Fill with 80 ASCII bytes then 40 more
     buffer.append('s1', 'A'.repeat(80))
     buffer.append('s1', 'B'.repeat(40))
     const result = buffer.read('s1')
-    expect(result.length).toBe(100)
-    // Should keep the tail: 20 A's + 40 B's
+    expect(Buffer.byteLength(result, 'utf8')).toBe(100)
+    // Should keep the tail: 60 A's + 40 B's
     expect(result).toBe('A'.repeat(60) + 'B'.repeat(40))
   })
 
@@ -76,7 +76,7 @@ describe('TerminalOutputBuffer', () => {
     expect(buffer.sessions().sort()).toEqual(['s1', 's2'])
   })
 
-  it('reports buffer size', () => {
+  it('reports buffer size in bytes', () => {
     buffer.append('s1', 'hello')
     expect(buffer.size('s1')).toBe(5)
     expect(buffer.size('unknown')).toBe(0)
@@ -96,6 +96,55 @@ describe('TerminalOutputBuffer', () => {
     expect(buffer.sessions()).toEqual([])
   })
 
+  describe('byte-accurate sizing', () => {
+    it('tracks multibyte characters by actual UTF-8 bytes', () => {
+      // '€' is 3 bytes in UTF-8, '😀' is 4 bytes
+      buffer.append('s1', '€')
+      expect(buffer.size('s1')).toBe(3)
+
+      buffer.append('s1', '😀')
+      expect(buffer.size('s1')).toBe(7) // 3 + 4
+    })
+
+    it('enforces byte limit correctly with multibyte content', () => {
+      const smallBuf = new TerminalOutputBuffer(10)
+      // 'aaaa' = 4 bytes, '€€€' = 9 bytes → total 13, over 10
+      smallBuf.append('s1', 'aaaa')
+      smallBuf.append('s1', '€€€')
+      expect(smallBuf.size('s1')).toBeLessThanOrEqual(10)
+    })
+
+    it('handles single chunk exceeding maxBytes', () => {
+      const smallBuf = new TerminalOutputBuffer(10)
+      smallBuf.append('s1', 'A'.repeat(20))
+      expect(smallBuf.size('s1')).toBe(10)
+      expect(smallBuf.read('s1')).toBe('A'.repeat(10))
+    })
+  })
+
+  describe('chunked storage', () => {
+    it('does not rebuild entire string on each append', () => {
+      // Append many small chunks — should not cause O(n²) copies
+      for (let i = 0; i < 50; i++) {
+        buffer.append('s1', 'x')
+      }
+      expect(buffer.read('s1')).toBe('x'.repeat(50))
+      expect(buffer.size('s1')).toBe(50)
+    })
+
+    it('evicts oldest chunks when over capacity', () => {
+      // Fill with 10 chunks of 15 bytes each = 150 total, limit is 100
+      for (let i = 0; i < 10; i++) {
+        buffer.append('s1', String(i).repeat(15))
+      }
+      const result = buffer.read('s1')
+      expect(Buffer.byteLength(result, 'utf8')).toBe(100)
+      // Should contain the last chunks, not the first
+      expect(result).toContain('9'.repeat(15))
+      expect(result.startsWith('0')).toBe(false)
+    })
+  })
+
   describe('readLines', () => {
     it('returns last N lines', () => {
       buffer.append('s1', 'line1\nline2\nline3\nline4\n')
@@ -110,5 +159,63 @@ describe('TerminalOutputBuffer', () => {
     it('returns empty for unknown session', () => {
       expect(buffer.readLines('x', 5)).toBe('')
     })
+
+    it('returns lines spanning multiple chunks', () => {
+      buffer.append('s1', 'line1\nline2\n')
+      buffer.append('s1', 'line3\nline4\n')
+      expect(buffer.readLines('s1', 3)).toBe('line3\nline4\n')
+    })
+  })
+})
+
+describe('TerminalOutputBuffer throughput', () => {
+  it('handles high-throughput PTY output efficiently', () => {
+    const buf = new TerminalOutputBuffer(50 * 1024) // 50KB default
+    const chunk = 'build output line with some typical content here\n'
+    const iterations = 10000
+
+    const start = performance.now()
+    for (let i = 0; i < iterations; i++) {
+      buf.append('bench', chunk)
+    }
+    const elapsed = performance.now() - start
+
+    // Verify correctness
+    expect(buf.size('bench')).toBeLessThanOrEqual(50 * 1024)
+    expect(buf.read('bench').length).toBeGreaterThan(0)
+
+    // Should complete 10k appends well under 1 second
+    expect(elapsed).toBeLessThan(1000)
+  })
+
+  it('handles high-throughput with ANSI-heavy output', () => {
+    const buf = new TerminalOutputBuffer(50 * 1024)
+    const chunk = '\x1b[32m✓\x1b[0m \x1b[1mtest passed\x1b[0m: some test name here\n'
+    const iterations = 10000
+
+    const start = performance.now()
+    for (let i = 0; i < iterations; i++) {
+      buf.append('bench', chunk)
+    }
+    const elapsed = performance.now() - start
+
+    expect(buf.size('bench')).toBeLessThanOrEqual(50 * 1024)
+    expect(elapsed).toBeLessThan(1000)
+  })
+
+  it('handles multibyte-heavy throughput', () => {
+    const buf = new TerminalOutputBuffer(50 * 1024)
+    // Simulate CJK/emoji-heavy output (3-4 bytes per char)
+    const chunk = '你好世界🚀テスト完了\n'
+    const iterations = 5000
+
+    const start = performance.now()
+    for (let i = 0; i < iterations; i++) {
+      buf.append('bench', chunk)
+    }
+    const elapsed = performance.now() - start
+
+    expect(buf.size('bench')).toBeLessThanOrEqual(50 * 1024)
+    expect(elapsed).toBeLessThan(1000)
   })
 })

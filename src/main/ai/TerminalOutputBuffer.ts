@@ -1,7 +1,11 @@
 /**
- * Ring buffer that captures PTY output per session, strips ANSI escape codes,
- * and retains the last ~50KB per terminal. Designed to let the AI orchestrator
- * read terminal output without going through the renderer.
+ * Chunked ring buffer that captures PTY output per session, strips ANSI escape
+ * codes, and retains the last ~50KB (measured in actual UTF-8 bytes) per terminal.
+ * Designed to let the AI orchestrator read terminal output without going through
+ * the renderer.
+ *
+ * Uses an array-of-chunks design to avoid full-string copies on every append.
+ * Size is tracked via Buffer.byteLength for byte-accurate enforcement.
  */
 
 const DEFAULT_MAX_BYTES = 50 * 1024 // 50KB
@@ -17,8 +21,13 @@ export function stripAnsi(text: string): string {
   return text.replace(ANSI_RE, '')
 }
 
+interface ChunkedBuffer {
+  chunks: string[]
+  totalBytes: number
+}
+
 export class TerminalOutputBuffer {
-  private buffers = new Map<string, string>()
+  private buffers = new Map<string, ChunkedBuffer>()
   private maxBytes: number
 
   constructor(maxBytes = DEFAULT_MAX_BYTES) {
@@ -30,20 +39,51 @@ export class TerminalOutputBuffer {
     const clean = stripAnsi(rawData)
     if (clean.length === 0) return
 
-    const existing = this.buffers.get(sessionId) ?? ''
-    let combined = existing + clean
+    const cleanBytes = Buffer.byteLength(clean, 'utf8')
 
-    // Trim from the front if over capacity
-    if (combined.length > this.maxBytes) {
-      combined = combined.slice(combined.length - this.maxBytes)
+    let buf = this.buffers.get(sessionId)
+    if (!buf) {
+      buf = { chunks: [], totalBytes: 0 }
+      this.buffers.set(sessionId, buf)
     }
 
-    this.buffers.set(sessionId, combined)
+    // If a single chunk exceeds maxBytes, keep only the tail
+    if (cleanBytes >= this.maxBytes) {
+      const encoded = Buffer.from(clean, 'utf8')
+      const trimmed = encoded.subarray(encoded.length - this.maxBytes)
+      buf.chunks = [trimmed.toString('utf8')]
+      buf.totalBytes = this.maxBytes
+      return
+    }
+
+    buf.chunks.push(clean)
+    buf.totalBytes += cleanBytes
+
+    // Evict oldest chunks until we're within capacity
+    while (buf.totalBytes > this.maxBytes) {
+      const oldest = buf.chunks[0]
+      const oldestBytes = Buffer.byteLength(oldest, 'utf8')
+
+      if (buf.totalBytes - oldestBytes <= this.maxBytes) {
+        // Partial trim of the first chunk
+        const excess = buf.totalBytes - this.maxBytes
+        const encoded = Buffer.from(oldest, 'utf8')
+        const trimmed = encoded.subarray(excess)
+        buf.chunks[0] = trimmed.toString('utf8')
+        buf.totalBytes = this.maxBytes
+      } else {
+        // Drop entire first chunk
+        buf.chunks.shift()
+        buf.totalBytes -= oldestBytes
+      }
+    }
   }
 
   /** Read the buffered output for a session. Returns empty string if none. */
   read(sessionId: string): string {
-    return this.buffers.get(sessionId) ?? ''
+    const buf = this.buffers.get(sessionId)
+    if (!buf || buf.chunks.length === 0) return ''
+    return buf.chunks.join('')
   }
 
   /** Read the last N lines of output for a session. */
@@ -69,9 +109,9 @@ export class TerminalOutputBuffer {
     return Array.from(this.buffers.keys())
   }
 
-  /** Get the byte size of a session's buffer. */
+  /** Get the byte size (UTF-8) of a session's buffer. */
   size(sessionId: string): number {
-    return this.buffers.get(sessionId)?.length ?? 0
+    return this.buffers.get(sessionId)?.totalBytes ?? 0
   }
 }
 
