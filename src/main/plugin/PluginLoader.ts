@@ -105,7 +105,8 @@ export class PluginLoader {
       entries = dirEntries
         .filter((e) => e.isDirectory())
         .map((e) => e.name)
-    } catch {
+    } catch (err) {
+      console.warn(`[plugin] Failed to scan plugin directory ${dir}:`, err)
       return { plugins, errors }
     }
 

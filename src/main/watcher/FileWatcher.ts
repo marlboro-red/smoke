@@ -38,14 +38,14 @@ export class FileWatcher {
         }, DEBOUNCE_MS)
       })
 
-      watcher.on('error', () => {
-        // Silently remove broken watchers
+      watcher.on('error', (err) => {
+        console.warn(`[FileWatcher] Watcher error for ${resolved}:`, err)
         this.unwatch(resolved)
       })
 
       this.watchers.set(resolved, { watcher, debounceTimer: null })
-    } catch {
-      // File may not exist or be inaccessible — skip silently
+    } catch (err) {
+      console.warn(`[FileWatcher] Failed to watch ${resolved}:`, err)
     }
   }
 

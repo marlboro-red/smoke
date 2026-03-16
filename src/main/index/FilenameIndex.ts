@@ -103,7 +103,8 @@ export class FilenameIndex {
     let entries: fs.Dirent[]
     try {
       entries = await fsp.readdir(dirPath, { withFileTypes: true })
-    } catch {
+    } catch (err) {
+      console.warn(`[FilenameIndex] Failed to read directory ${dirPath}:`, err)
       return
     }
 
@@ -173,15 +174,15 @@ export class FilenameIndex {
         }
       )
 
-      this.watcher.on('error', () => {
-        // Watcher may fail if the directory is deleted
+      this.watcher.on('error', (err) => {
+        console.warn(`[FilenameIndex] Watcher error for ${this.rootPath}:`, err)
         if (this.watcher) {
           this.watcher.close()
           this.watcher = null
         }
       })
-    } catch {
-      // Directory may not support watching
+    } catch (err) {
+      console.warn(`[FilenameIndex] Failed to start watcher for ${this.rootPath}:`, err)
     }
   }
 
