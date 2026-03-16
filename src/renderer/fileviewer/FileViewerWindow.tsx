@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { EditorView } from '@codemirror/view'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
@@ -50,7 +51,7 @@ export default function FileViewerWindow({
   const editorViewRef = useRef<EditorView | null>(null)
   const viewerBodyRef = useRef<HTMLDivElement>(null)
   const goToLineInputRef = useRef<HTMLInputElement>(null)
-  const [extractMenu, setExtractMenu] = useState<{ x: number; y: number } | null>(null)
+  const [extractButton, setExtractButton] = useState<{ x: number; y: number } | null>(null)
 
   const focusModeActiveIds = useFocusModeActiveIds()
 
@@ -250,16 +251,74 @@ export default function FileViewerWindow({
     [session.id, session.content]
   )
 
+  // Show "Extract to Note" button when user finishes selecting text (mouseup).
+  // Uses rAF to let the selection settle, fixing the race condition.
+  const handleSelectionEnd = useCallback(() => {
+    requestAnimationFrame(() => {
+      const selection = window.getSelection()
+      const selectedText = selection?.toString()?.trim()
+
+      if (!selectedText || !selection || selection.rangeCount === 0) {
+        setExtractButton(null)
+        return
+      }
+
+      // Verify selection is within this file viewer body
+      const range = selection.getRangeAt(0)
+      if (!viewerBodyRef.current?.contains(range.commonAncestorContainer)) {
+        setExtractButton(null)
+        return
+      }
+
+      // Position button near the end of the selection (viewport coordinates)
+      const rect = range.getBoundingClientRect()
+      setExtractButton({
+        x: Math.min(rect.right + 8, window.innerWidth - 180),
+        y: Math.max(rect.top - 36, 8),
+      })
+    })
+  }, [])
+
+  // Also show on right-click when text is selected
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
       const selectedText = window.getSelection()?.toString()?.trim()
       if (selectedText) {
         e.preventDefault()
-        setExtractMenu({ x: e.clientX, y: e.clientY })
+        setExtractButton({ x: e.clientX, y: e.clientY })
       }
     },
     []
   )
+
+  // Dismiss button when selection is cleared (debounced to avoid race with button click)
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    const handleSelectionChange = () => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        const selection = window.getSelection()
+        if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+          setExtractButton(null)
+        }
+      }, 100)
+    }
+
+    document.addEventListener('selectionchange', handleSelectionChange)
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange)
+      clearTimeout(timeout)
+    }
+  }, [])
+
+  // Dismiss button when file viewer body scrolls (selection position becomes stale)
+  useEffect(() => {
+    const body = viewerBodyRef.current
+    if (!body) return
+    const handleScroll = () => setExtractButton(null)
+    body.addEventListener('scroll', handleScroll, true)
+    return () => body.removeEventListener('scroll', handleScroll, true)
+  }, [])
 
   const classNames = [
     'terminal-window',
@@ -344,14 +403,8 @@ export default function FileViewerWindow({
         className="file-viewer-body"
         style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}
         onContextMenu={handleContextMenu}
+        onMouseUp={handleSelectionEnd}
       >
-        {extractMenu && (
-          <ExtractContextMenu
-            x={extractMenu.x}
-            y={extractMenu.y}
-            onClose={() => setExtractMenu(null)}
-          />
-        )}
         {showGoToLine && (
           <form className="go-to-line-bar" onSubmit={handleGoToLineSubmit}>
             <label className="go-to-line-label">Go to Line:</label>
@@ -384,6 +437,16 @@ export default function FileViewerWindow({
       <ResizeHandle direction="e" onResizeStart={onResizeStart} />
       <ResizeHandle direction="s" onResizeStart={onResizeStart} />
       <ResizeHandle direction="se" onResizeStart={onResizeStart} />
+      {/* Portal to document.body so position:fixed works correctly
+          despite the canvas-viewport CSS transform */}
+      {extractButton && createPortal(
+        <ExtractContextMenu
+          x={extractButton.x}
+          y={extractButton.y}
+          onClose={() => setExtractButton(null)}
+        />,
+        document.body
+      )}
     </div>
   )
 }
