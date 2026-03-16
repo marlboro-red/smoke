@@ -185,7 +185,7 @@
 }
 
 .replay-panel-content {
-  padding: 0 14px 12px;
+  padding: var(--space-sm) 14px 12px;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);

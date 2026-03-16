@@ -30,7 +30,7 @@
 }
 
 .bookmark-panel-content {
-  padding: 0 14px 12px;
+  padding: var(--space-sm) 14px 12px;
   overflow-y: auto;
   flex: 1;
 }
