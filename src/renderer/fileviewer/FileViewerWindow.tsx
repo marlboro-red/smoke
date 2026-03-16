@@ -28,6 +28,7 @@ interface FileViewerWindowProps {
   session: FileViewerSession
   zoom: () => number
   gridSize: number
+  hidden?: boolean
   className?: string
 }
 
@@ -35,6 +36,7 @@ export default function FileViewerWindow({
   session,
   zoom,
   gridSize,
+  hidden,
   className: extraClassName,
 }: FileViewerWindowProps): JSX.Element {
   const focusedId = useFocusedId()
@@ -273,6 +275,8 @@ export default function FileViewerWindow({
         width: session.size.width,
         height: session.size.height,
         zIndex: session.zIndex,
+        visibility: hidden ? 'hidden' : undefined,
+        pointerEvents: hidden ? 'none' : undefined,
       }}
       onPointerDown={handlePointerDown}
     >
