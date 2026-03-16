@@ -27,7 +27,9 @@ async function createTerminalAt(
 ): Promise<string> {
   const sessionId = await page.evaluate(({ x, y }) => {
     const store = (window as any).__SMOKE_STORES__?.sessionStore
-    const session = store.getState().createSession(process.cwd(), { x, y })
+    // Use home directory or '/' as cwd — process.cwd() is unavailable in renderer
+    const cwd = '/'
+    const session = store.getState().createSession(cwd, { x, y })
     return session.id
   }, { x, y })
   await page.waitForTimeout(500)
