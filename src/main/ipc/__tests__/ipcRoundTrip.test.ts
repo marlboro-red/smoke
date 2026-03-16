@@ -39,7 +39,7 @@ const mockWindow = {
 }
 
 // Mock SearchIndex and StructureAnalyzer
-const { mockSearchIndex, mockStructureAnalyzer } = vi.hoisted(() => ({
+const { mockSearchIndex, mockStructureAnalyzer, mockCodegraph } = vi.hoisted(() => ({
   mockSearchIndex: {
     build: vi.fn().mockResolvedValue({ fileCount: 0, tokenCount: 0 }),
     search: vi.fn().mockReturnValue({ results: [], totalMatches: 0, durationMs: 0 }),
@@ -51,6 +51,25 @@ const { mockSearchIndex, mockStructureAnalyzer } = vi.hoisted(() => ({
     getCached: vi.fn().mockReturnValue(null),
     getModule: vi.fn().mockReturnValue(null),
   },
+  mockCodegraph: {
+    buildCodeGraph: vi.fn(),
+    expandCodeGraph: vi.fn(),
+    buildDependentsGraph: vi.fn(),
+    getDependents: vi.fn(),
+    ensureIndex: vi.fn(),
+    getIndexStats: vi.fn().mockReturnValue(null),
+    invalidateIndex: vi.fn(),
+    parseImports: vi.fn().mockReturnValue([]),
+    detectLanguage: vi.fn().mockReturnValue('typescript'),
+    resolveImport: vi.fn().mockReturnValue({ resolvedPath: null }),
+    loadPathAliases: vi.fn().mockResolvedValue({}),
+    computeLayout: vi.fn().mockReturnValue({ positions: [], bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }),
+    computeIncrementalLayout: vi.fn().mockReturnValue({ positions: [], bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }),
+    computeWorkspaceLayout: vi.fn().mockReturnValue({ positions: [], arrows: [], regions: [], bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }),
+    scoreRelevance: vi.fn().mockResolvedValue({ rankedFiles: [], keywords: [] }),
+    parseTask: vi.fn().mockResolvedValue({ intent: 'investigate', keywords: [], filePatterns: [], includeFileTypes: [], usedAi: false }),
+    collectContext: vi.fn().mockResolvedValue({ files: [], parsedTask: {}, structureMap: null, timing: {} }),
+  },
 }))
 
 vi.mock('../../codegraph/SearchIndex', () => ({
@@ -60,6 +79,8 @@ vi.mock('../../codegraph/SearchIndex', () => ({
 vi.mock('../../codegraph/StructureAnalyzer', () => ({
   StructureAnalyzer: function StructureAnalyzer() { return mockStructureAnalyzer },
 }))
+
+vi.mock('../../codegraph', () => mockCodegraph)
 
 // Mock child_process
 vi.mock('child_process', () => ({
@@ -225,6 +246,18 @@ function buildBridge() {
       maximize: () => ipcRenderer.invoke('window:maximize'),
       close: () => ipcRenderer.invoke('window:close'),
       isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
+    },
+    codegraph: {
+      build: (filePath: string, projectRoot: string, maxDepth?: number) =>
+        ipcRenderer.invoke('codegraph:build', { filePath, projectRoot, maxDepth }),
+      expand: (existingGraph: any, existingPositions: any, expandPath: string, projectRoot: string, maxDepth?: number) =>
+        ipcRenderer.invoke('codegraph:expand', {
+          existingGraph, existingPositions, expandPath, projectRoot, maxDepth,
+        }),
+      getImports: (filePath: string) =>
+        ipcRenderer.invoke('codegraph:get-imports', { filePath })
+          .then((r: any) => r.imports),
+      indexStats: () => ipcRenderer.invoke('codegraph:index-stats'),
     },
   }
 }
@@ -723,6 +756,138 @@ describe('IPC Round-Trip Integration', () => {
       expect(result).toEqual(
         expect.objectContaining({ id: '.', name: 'root' })
       )
+    })
+  })
+
+  // ── Code graph (graph:expand) round-trip ─────────────────────────────────
+
+  describe('codegraph:build / expand round-trip', () => {
+    const sampleGraph = {
+      nodes: [
+        { filePath: '/project/src/index.ts', imports: ['./utils'], importedBy: [], depth: 0 },
+        { filePath: '/project/src/utils.ts', imports: [], importedBy: ['./index'], depth: 1 },
+      ],
+      edges: [
+        { from: '/project/src/index.ts', to: '/project/src/utils.ts', type: 'import' as const },
+      ],
+    }
+
+    const sampleLayout = {
+      positions: [
+        { filePath: '/project/src/index.ts', x: 0, y: 0, depth: 0 },
+        { filePath: '/project/src/utils.ts', x: 200, y: 0, depth: 1 },
+      ],
+      bounds: { minX: 0, minY: 0, maxX: 200, maxY: 0 },
+    }
+
+    it('builds a code graph via the bridge', async () => {
+      mockCodegraph.buildCodeGraph.mockResolvedValue({
+        graph: sampleGraph,
+        rootPath: '/project/src/index.ts',
+        fileCount: 2,
+        edgeCount: 1,
+      })
+      mockCodegraph.computeLayout.mockReturnValue(sampleLayout)
+
+      const result = await api.codegraph.build('/project/src/index.ts', '/project')
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          graph: expect.objectContaining({
+            nodes: expect.arrayContaining([
+              expect.objectContaining({ filePath: '/project/src/index.ts' }),
+            ]),
+            edges: expect.arrayContaining([
+              expect.objectContaining({
+                from: '/project/src/index.ts',
+                to: '/project/src/utils.ts',
+              }),
+            ]),
+          }),
+          fileCount: 2,
+          edgeCount: 1,
+          layout: expect.objectContaining({
+            positions: expect.any(Array),
+            bounds: expect.objectContaining({
+              minX: expect.any(Number),
+              maxX: expect.any(Number),
+            }),
+          }),
+        })
+      )
+    })
+
+    it('expands a code graph via the bridge (graph:expand)', async () => {
+      const expandedGraph = {
+        ...sampleGraph,
+        nodes: [
+          ...sampleGraph.nodes,
+          { filePath: '/project/src/helpers.ts', imports: [], importedBy: ['./utils'], depth: 2 },
+        ],
+        edges: [
+          ...sampleGraph.edges,
+          { from: '/project/src/utils.ts', to: '/project/src/helpers.ts', type: 'import' as const },
+        ],
+      }
+
+      mockCodegraph.expandCodeGraph.mockResolvedValue({
+        graph: expandedGraph,
+        rootPath: '/project/src/index.ts',
+        fileCount: 3,
+        edgeCount: 2,
+      })
+
+      const expandedLayout = {
+        positions: [
+          ...sampleLayout.positions,
+          { filePath: '/project/src/helpers.ts', x: 400, y: 0, depth: 2 },
+        ],
+        bounds: { minX: 0, minY: 0, maxX: 400, maxY: 0 },
+      }
+      mockCodegraph.computeIncrementalLayout.mockReturnValue(expandedLayout)
+
+      const result = await api.codegraph.expand(
+        sampleGraph,
+        sampleLayout.positions,
+        '/project/src/utils.ts',
+        '/project'
+      )
+
+      expect(result.graph.nodes).toHaveLength(3)
+      expect(result.graph.edges).toHaveLength(2)
+      expect(result.fileCount).toBe(3)
+      expect(result.layout.positions).toHaveLength(3)
+
+      // Verify the new node was added
+      const newNode = result.graph.nodes.find(
+        (n: any) => n.filePath === '/project/src/helpers.ts'
+      )
+      expect(newNode).toBeDefined()
+      expect(newNode!.depth).toBe(2)
+
+      // Verify expandCodeGraph was called with correct args
+      expect(mockCodegraph.expandCodeGraph).toHaveBeenCalledWith(
+        sampleGraph,
+        '/project/src/utils.ts',
+        '/project',
+        undefined // maxDepth
+      )
+    })
+
+    it('returns index stats via the bridge', async () => {
+      mockCodegraph.getIndexStats.mockReturnValue({ root: '/project', fileCount: 50 })
+
+      const stats = await api.codegraph.indexStats()
+
+      expect(stats).toEqual({ root: '/project', fileCount: 50 })
+    })
+
+    it('returns null when no index exists', async () => {
+      mockCodegraph.getIndexStats.mockReturnValue(null)
+
+      const stats = await api.codegraph.indexStats()
+
+      expect(stats).toBeNull()
     })
   })
 
