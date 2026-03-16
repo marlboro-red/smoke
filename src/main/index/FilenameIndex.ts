@@ -38,6 +38,8 @@ const IGNORE_DIRS = new Set([
 ])
 
 const DEBOUNCE_MS = 500
+/** Flush immediately when pending updates exceed this count (burst protection). */
+const BURST_LIMIT = 50
 
 export class FilenameIndex {
   private index = new Map<string, string[]>()
@@ -46,6 +48,7 @@ export class FilenameIndex {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private pendingAdds = new Set<string>()
   private pendingDeletes = new Set<string>()
+  private lastNotifyTime = 0
   private getWindow: () => BrowserWindow | null
   private building = false
 
@@ -197,6 +200,16 @@ export class FilenameIndex {
         this.pendingDeletes.delete(fullPath)
       }
 
+      // Burst protection: flush immediately when queue is full
+      if (this.pendingAdds.size + this.pendingDeletes.size >= BURST_LIMIT) {
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer)
+          this.debounceTimer = null
+        }
+        this.flushPending()
+        return
+      }
+
       if (this.debounceTimer) clearTimeout(this.debounceTimer)
       this.debounceTimer = setTimeout(() => {
         this.debounceTimer = null
@@ -226,6 +239,10 @@ export class FilenameIndex {
   }
 
   private notifyUpdated(): void {
+    const now = Date.now()
+    if (now - this.lastNotifyTime < DEBOUNCE_MS) return
+    this.lastNotifyTime = now
+
     const win = this.getWindow()
     if (win && !win.isDestroyed()) {
       win.webContents.send('project:index-updated', {
