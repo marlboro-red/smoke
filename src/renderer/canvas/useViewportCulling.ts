@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { sessionStore, type Session } from '../stores/sessionStore'
 import { canvasStore } from '../stores/canvasStore'
+import { SpatialIndex } from './SpatialIndex'
 
 const CULLING_MARGIN = 200
 
@@ -32,6 +33,24 @@ export function isVisible(
   )
 }
 
+function buildSpatialIndex(sessions: Map<string, Session>): SpatialIndex {
+  const entries: Array<{ id: string; bounds: { x: number; y: number; width: number; height: number } }> = []
+  for (const [id, session] of sessions) {
+    if (!session.isPinned) {
+      entries.push({
+        id,
+        bounds: {
+          x: session.position.x,
+          y: session.position.y,
+          width: session.size.width,
+          height: session.size.height,
+        },
+      })
+    }
+  }
+  return SpatialIndex.fromEntries(entries)
+}
+
 export function useViewportCulling(
   panRef: React.MutableRefObject<{ x: number; y: number }>,
   zoomRef: React.MutableRefObject<number>,
@@ -41,21 +60,51 @@ export function useViewportCulling(
   const [isThumbnailMode, setIsThumbnailMode] = useState(false)
   const [isClusterMode, setIsClusterMode] = useState(false)
   const recalcTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const spatialIndexRef = useRef<SpatialIndex | null>(null)
+  const pinnedIdsRef = useRef<string[]>([])
+
+  // Rebuild spatial index when sessions change
+  const rebuildIndex = useCallback(() => {
+    const sessions = sessionStore.getState().sessions
+    spatialIndexRef.current = buildSpatialIndex(sessions)
+    // Cache pinned IDs separately (always visible, not in spatial index)
+    const pinned: string[] = []
+    for (const [id, session] of sessions) {
+      if (session.isPinned) pinned.push(id)
+    }
+    pinnedIdsRef.current = pinned
+  }, [])
 
   const recalculate = useCallback(() => {
     const root = rootRef.current
     if (!root) return
 
     const rect = root.getBoundingClientRect()
-    const canvasRect: ViewportRect = { width: rect.width, height: rect.height }
     const pan = panRef.current
     const zoom = zoomRef.current
 
-    const sessions = sessionStore.getState().sessions
     const newVisible = new Set<string>()
 
-    for (const [id, session] of sessions) {
-      if (session.isPinned || isVisible(session, pan, zoom, canvasRect)) {
+    // Add pinned sessions (always visible)
+    for (const id of pinnedIdsRef.current) {
+      newVisible.add(id)
+    }
+
+    // Query spatial index for viewport intersection
+    const index = spatialIndexRef.current
+    if (index) {
+      const vpLeft = -pan.x / zoom - CULLING_MARGIN
+      const vpTop = -pan.y / zoom - CULLING_MARGIN
+      const vpWidth = rect.width / zoom + CULLING_MARGIN * 2
+      const vpHeight = rect.height / zoom + CULLING_MARGIN * 2
+
+      const hits = index.query({
+        x: vpLeft,
+        y: vpTop,
+        width: vpWidth,
+        height: vpHeight,
+      })
+      for (const id of hits) {
         newVisible.add(id)
       }
     }
@@ -70,13 +119,14 @@ export function useViewportCulling(
     recalcTimeoutRef.current = setTimeout(recalculate, 100)
   }, [recalculate])
 
-  // Subscribe to session store changes (create/delete/move)
+  // Subscribe to session store changes (create/delete/move) — rebuild index + recalc
   useEffect(() => {
     const unsub = sessionStore.subscribe(() => {
+      rebuildIndex()
       debouncedRecalculate()
     })
     return unsub
-  }, [debouncedRecalculate])
+  }, [rebuildIndex, debouncedRecalculate])
 
   // Subscribe to canvas store changes (pan-end, zoom-end trigger store sync)
   useEffect(() => {
@@ -93,10 +143,11 @@ export function useViewportCulling(
     return () => window.removeEventListener('resize', onResize)
   }, [recalculate])
 
-  // Initial calculation
+  // Initial index build + calculation
   useEffect(() => {
+    rebuildIndex()
     recalculate()
-  }, [recalculate])
+  }, [rebuildIndex, recalculate])
 
   // Cleanup timeout
   useEffect(() => {
