@@ -9,6 +9,7 @@ import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/Confi
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
+import { assertWithinHome } from './pathBoundary'
 import { FilenameIndex } from '../index/FilenameIndex'
 import { buildCodeGraph, expandCodeGraph, buildDependentsGraph, getDependents, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask, collectContext } from '../codegraph'
 import { SearchIndex } from '../codegraph/SearchIndex'
@@ -434,9 +435,7 @@ export async function registerIpcHandlers(
 
     // Safety: reject absolute paths outside the user's home directory
     const homedir = require('os').homedir()
-    if (!filePath.startsWith(homedir)) {
-      throw new Error(`Write denied: path must be within the user home directory`)
-    }
+    await assertWithinHome(filePath, homedir)
 
     // Safety: reject writes to dotfiles/hidden config directories at the home root
     const relToHome = path.relative(homedir, filePath)

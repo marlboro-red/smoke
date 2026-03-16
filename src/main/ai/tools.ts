@@ -12,6 +12,7 @@
 
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { assertWithinHome } from '../ipc/pathBoundary'
 import { v4 as uuid } from 'uuid'
 import type { BrowserWindow } from 'electron'
 import { app } from 'electron'
@@ -370,9 +371,7 @@ export function createExecutors(
 
     // Safety: reject paths outside the user's home directory
     const homedir = require('os').homedir()
-    if (!filePath.startsWith(homedir)) {
-      throw new Error('Write denied: path must be within the user home directory')
-    }
+    await assertWithinHome(filePath, homedir)
 
     // Safety: reject writes to hidden config directories at the home root
     const relToHome = path.relative(homedir, filePath)
