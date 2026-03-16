@@ -80,6 +80,7 @@ export function applyTheme(themeId: string): void {
   // Apply CSS variables to the document root
   const root = document.documentElement
   root.dataset.theme = theme.id
+  root.style.colorScheme = theme.isDark ? 'dark' : 'light'
   for (const [key, value] of Object.entries(theme.cssVars)) {
     root.style.setProperty(key, value)
   }
