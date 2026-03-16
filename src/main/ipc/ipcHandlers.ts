@@ -392,6 +392,7 @@ export async function registerIpcHandlers(
       'gridSize', 'sidebarPosition', 'sidebarWidth', 'sidebarSectionSizes',
       'theme', 'defaultCwd',
       'terminalOpacity', 'fontFamily', 'fontSize', 'lineHeight',
+      'customShortcuts',
     ]
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig

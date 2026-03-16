@@ -11,8 +11,9 @@ import {
   setShortcutCapturing,
   formatBindingParts,
   findConflict,
+  findSystemConflict,
 } from '../shortcuts/shortcutMap'
-import { preferencesStore } from '../stores/preferencesStore'
+import { preferencesStore, usePreferencesStore } from '../stores/preferencesStore'
 import '../styles/shortcut-settings.css'
 
 function KeyBadge({ label }: { label: string }): JSX.Element {
@@ -140,6 +141,10 @@ export default function ShortcutSettings(): JSX.Element {
     conflictsWith: ShortcutAction
     binding: ShortcutBinding
   } | null>(null)
+  const [systemConflict, setSystemConflict] = useState<{
+    action: ShortcutAction
+    systemLabel: string
+  } | null>(null)
 
   const saveBinding = useCallback(
     async (action: ShortcutAction, binding: ShortcutBinding | null) => {
@@ -152,14 +157,25 @@ export default function ShortcutSettings(): JSX.Element {
 
   const handleBindingCaptured = useCallback(
     (action: ShortcutAction, binding: ShortcutBinding) => {
+      // Check system shortcut conflicts first (cannot be overridden)
+      const sysLabel = findSystemConflict(binding)
+      if (sysLabel) {
+        setSystemConflict({ action, systemLabel: sysLabel })
+        setConflictInfo(null)
+        setCapturingAction(null)
+        return
+      }
+
       const conflict = findConflict(binding, action)
       if (conflict) {
         setConflictInfo({ action, conflictsWith: conflict, binding })
+        setSystemConflict(null)
         setCapturingAction(null)
         return
       }
       setCapturingAction(null)
       setConflictInfo(null)
+      setSystemConflict(null)
       saveBinding(action, binding)
     },
     [saveBinding]
@@ -183,8 +199,11 @@ export default function ShortcutSettings(): JSX.Element {
     preferencesStore.getState().updatePreference('customShortcuts', {})
     await window.smokeAPI?.config.set('customShortcuts', {})
     setConflictInfo(null)
+    setSystemConflict(null)
     setCapturingAction(null)
   }, [])
+
+  const startupWarnings = usePreferencesStore((s) => s.shortcutWarnings)
 
   // Check if any bindings differ from defaults
   const hasCustomBindings = Object.entries(bindings).some(([action, binding]) => {
@@ -194,6 +213,16 @@ export default function ShortcutSettings(): JSX.Element {
 
   return (
     <div className="sc-container">
+      {startupWarnings.length > 0 && (
+        <div className="sc-startup-warnings">
+          {startupWarnings.map((w, i) => (
+            <div key={i} className={`sc-conflict-banner ${w.type === 'system' ? 'sc-system-conflict' : ''}`}>
+              <span className="sc-conflict-text">{w.detail}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {SHORTCUT_GROUPS.map((group) => (
         <div key={group.title} className="sc-group">
           <h4 className="sc-group-title">{group.title}</h4>
@@ -206,6 +235,7 @@ export default function ShortcutSettings(): JSX.Element {
               onStartCapture={() => {
                 setCapturingAction(action)
                 setConflictInfo(null)
+                setSystemConflict(null)
               }}
               onCancelCapture={() => setCapturingAction(null)}
               onBindingCaptured={(b) => handleBindingCaptured(action, b)}
@@ -213,6 +243,19 @@ export default function ShortcutSettings(): JSX.Element {
           ))}
         </div>
       ))}
+
+      {systemConflict && (
+        <div className="sc-conflict-banner sc-system-conflict">
+          <span className="sc-conflict-text">
+            Cannot override system shortcut <strong>{systemConflict.systemLabel}</strong>
+          </span>
+          <div className="sc-conflict-actions">
+            <button className="sc-conflict-btn sc-conflict-cancel" onClick={() => setSystemConflict(null)}>
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {conflictInfo && (
         <div className="sc-conflict-banner">

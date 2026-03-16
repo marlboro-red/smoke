@@ -79,6 +79,14 @@ function App(): JSX.Element {
             prefs.lineHeight || 1.2,
           )
         }
+        // Show toast for shortcut conflicts detected on startup
+        const warnings = preferencesStore.getState().shortcutWarnings
+        if (warnings.length > 0) {
+          addToast(
+            `${warnings.length} keyboard shortcut conflict${warnings.length > 1 ? 's' : ''} detected. Check Settings to resolve.`,
+            'warning'
+          )
+        }
       }
     }).catch((err) => {
       console.error('Failed to load preferences:', err)

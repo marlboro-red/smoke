@@ -287,6 +287,51 @@ export function formatBindingParts(binding: ShortcutBinding): string[] {
   return parts
 }
 
+// --- System shortcuts (cannot be overridden) ---
+
+interface SystemShortcut {
+  key: string
+  mod: boolean
+  shift: boolean
+  alt: boolean
+  label: string
+}
+
+const SYSTEM_SHORTCUTS: SystemShortcut[] = isMac
+  ? [
+      { key: 'q', mod: true, shift: false, alt: false, label: 'Quit (⌘Q)' },
+      { key: 'h', mod: true, shift: false, alt: false, label: 'Hide (⌘H)' },
+      { key: 'h', mod: true, shift: false, alt: true, label: 'Hide Others (⌘⌥H)' },
+      { key: 'm', mod: true, shift: false, alt: false, label: 'Minimize (⌘M)' },
+      { key: 'Tab', mod: false, shift: false, alt: true, label: 'Switch App (⌥Tab)' },
+    ]
+  : [
+      { key: 'F4', mod: false, shift: false, alt: true, label: 'Close Window (Alt+F4)' },
+      { key: 'Tab', mod: false, shift: false, alt: true, label: 'Switch App (Alt+Tab)' },
+    ]
+
+function bindingsMatch(a: ShortcutBinding, b: { key: string; mod: boolean; shift: boolean; alt: boolean }): boolean {
+  return (
+    normalizeKey(a.key) === normalizeKey(b.key) &&
+    a.mod === b.mod &&
+    a.shift === b.shift &&
+    a.alt === b.alt
+  )
+}
+
+/**
+ * Check if a binding conflicts with a built-in system/Electron shortcut.
+ * Returns the human-readable label of the system shortcut, or null if no conflict.
+ */
+export function findSystemConflict(binding: ShortcutBinding): string | null {
+  for (const sys of SYSTEM_SHORTCUTS) {
+    if (bindingsMatch(binding, sys)) {
+      return sys.label
+    }
+  }
+  return null
+}
+
 // --- Conflict detection ---
 
 export function findConflict(
@@ -308,6 +353,56 @@ export function findConflict(
     }
   }
   return null
+}
+
+// --- Startup validation ---
+
+export interface ShortcutConflictWarning {
+  type: 'duplicate' | 'system'
+  actions: ShortcutAction[]
+  detail: string
+}
+
+/**
+ * Validate current shortcut bindings for conflicts.
+ * Called on app startup to catch issues from manual config edits.
+ * Returns an array of warnings (empty if no conflicts).
+ */
+export function validateBindings(): ShortcutConflictWarning[] {
+  const warnings: ShortcutConflictWarning[] = []
+  const bindings = shortcutBindingsStore.getState().bindings
+
+  // Check for duplicate bindings (two actions with the same key combo)
+  const seen = new Map<string, ShortcutAction>()
+  for (const [action, binding] of Object.entries(bindings)) {
+    if (!binding) continue
+    const fingerprint = `${normalizeKey(binding.key)}|${binding.mod}|${binding.shift}|${binding.alt}`
+    const existing = seen.get(fingerprint)
+    if (existing) {
+      warnings.push({
+        type: 'duplicate',
+        actions: [existing, action as ShortcutAction],
+        detail: `"${ACTION_LABELS[existing]}" and "${ACTION_LABELS[action as ShortcutAction]}" share the same binding (${formatBindingParts(binding).join('+')})`,
+      })
+    } else {
+      seen.set(fingerprint, action as ShortcutAction)
+    }
+  }
+
+  // Check for system shortcut conflicts
+  for (const [action, binding] of Object.entries(bindings)) {
+    if (!binding) continue
+    const sysLabel = findSystemConflict(binding)
+    if (sysLabel) {
+      warnings.push({
+        type: 'system',
+        actions: [action as ShortcutAction],
+        detail: `"${ACTION_LABELS[action as ShortcutAction]}" conflicts with system shortcut ${sysLabel}`,
+      })
+    }
+  }
+
+  return warnings
 }
 
 /**
