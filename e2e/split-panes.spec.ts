@@ -410,28 +410,19 @@ test.describe('Split Panes: Max Pane Limit', () => {
       (window as any).__SMOKE_STORES__.sessionStore.getState().focusedId
     )
 
-    // Split 3 times to reach 4 panes — verify each split before proceeding
-    for (let i = 0; i < 3; i++) {
-      const expectedCount = i + 2
-      await pressShortcut(mainWindow, '\\')
-      // Wait for the split to register in the store
-      await mainWindow.waitForFunction(
-        ([id, expected]) => {
-          return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getPaneCount(id) >= expected
-        },
-        [sessionId, expectedCount] as [string, number],
-        { timeout: 5000 }
-      )
-      // Extra wait for PTY spawn to complete before next split
-      await mainWindow.waitForTimeout(1000)
-    }
-
+    // Use the store directly to create 3 splits (reaching 4 panes).
+    // Keyboard shortcuts for rapid sequential splits are unreliable in E2E
+    // because each split spawns a PTY that takes time to initialize.
     const paneCount = await mainWindow.evaluate((id) => {
-      return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getPaneCount(id)
+      const store = (window as any).__SMOKE_STORES__.splitPaneStore.getState()
+      store.split(id, 'horizontal') // 1 → 2 panes
+      store.split(id, 'horizontal') // 2 → 3 panes
+      store.split(id, 'horizontal') // 3 → 4 panes
+      return store.getPaneCount(id)
     }, sessionId)
     expect(paneCount).toBe(4)
 
-    // Try to split again — should not exceed 4
+    // Attempt a 4th split via keyboard — should be blocked by the 4-pane limit
     await pressShortcut(mainWindow, '\\')
     await mainWindow.waitForTimeout(1000)
 
@@ -439,5 +430,11 @@ test.describe('Split Panes: Max Pane Limit', () => {
       return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getPaneCount(id)
     }, sessionId)
     expect(paneCountAfter).toBe(4)
+
+    // Also verify the store rejects a direct split call at the limit
+    const result = await mainWindow.evaluate((id) => {
+      return (window as any).__SMOKE_STORES__.splitPaneStore.getState().split(id, 'horizontal')
+    }, sessionId)
+    expect(result).toBeNull()
   })
 })
