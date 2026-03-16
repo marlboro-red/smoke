@@ -4,7 +4,8 @@ import { sessionStore, useSessionList } from '../stores/sessionStore'
 import { canvasStore } from '../stores/canvasStore'
 import { getCanvasRootElement, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { useIsIndexing, useSearchProgress, useStructureAnalyzing, indexingStore, computeSearchEta, formatEta } from '../stores/indexingStore'
-import type { ElementType } from '../stores/sessionStore'
+import type { ElementType, BuiltinElementType } from '../stores/sessionStore'
+import { isPluginElementType, getPluginElementRegistration } from '../plugin/pluginElementRegistry'
 import '../styles/statusbar.css'
 
 const ZOOM_PRESETS = [
@@ -129,7 +130,7 @@ export default function StatusBar(): JSX.Element {
   }
 
   const breakdownParts: string[] = []
-  const typeLabels: Record<ElementType, string> = {
+  const builtinTypeLabels: Record<BuiltinElementType, string> = {
     terminal: 'term',
     file: 'file',
     note: 'note',
@@ -138,7 +139,14 @@ export default function StatusBar(): JSX.Element {
     snippet: 'snip',
   }
   for (const [type, count] of typeCounts) {
-    breakdownParts.push(`${count} ${typeLabels[type]}`)
+    let label: string
+    if (isPluginElementType(type)) {
+      const reg = getPluginElementRegistration(type)
+      label = reg?.statusLabel ?? type.slice('plugin:'.length)
+    } else {
+      label = builtinTypeLabels[type as BuiltinElementType] ?? type
+    }
+    breakdownParts.push(`${count} ${label}`)
   }
 
   return (

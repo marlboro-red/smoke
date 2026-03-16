@@ -7,7 +7,9 @@ import { preferencesStore } from './preferencesStore'
 import { snap } from '../window/useSnapping'
 import { gridStore } from './gridStore'
 
-export type ElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
+export type BuiltinElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
+export type PluginElementType = `plugin:${string}`
+export type ElementType = BuiltinElementType | PluginElementType
 
 export interface BaseSession {
   id: string
@@ -70,7 +72,12 @@ export interface SnippetSession extends BaseSession {
   language: string
 }
 
-export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession | ImageSession | SnippetSession
+export interface PluginSession extends BaseSession {
+  type: PluginElementType
+  pluginData: Record<string, unknown>
+}
+
+export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession | ImageSession | SnippetSession | PluginSession
 
 interface SessionStore {
   sessions: Map<string, Session>
@@ -86,6 +93,7 @@ interface SessionStore {
   createNoteSession: (position?: { x: number; y: number }, color?: string) => NoteSession
   createWebviewSession: (url?: string, position?: { x: number; y: number }) => WebviewSession
   createSnippetSession: (language?: string, content?: string, position?: { x: number; y: number }) => SnippetSession
+  createPluginSession: (pluginType: PluginElementType, title: string, pluginData?: Record<string, unknown>, position?: { x: number; y: number }, size?: { width: number; height: number }) => PluginSession
   removeSession: (id: string) => void
   updateSession: (id: string, patch: Partial<Session>) => void
   focusSession: (id: string | null) => void
@@ -255,6 +263,26 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       language: lang,
       position: position ?? { x: 0, y: 0 },
       size: { cols: 0, rows: 0, width: 480, height: 360 },
+      zIndex: nextZIndex,
+      createdAt: Date.now(),
+    }
+    set((state) => {
+      const sessions = new Map(state.sessions)
+      sessions.set(session.id, session)
+      return { sessions, nextZIndex: nextZIndex + 1 }
+    })
+    return session
+  },
+
+  createPluginSession: (pluginType: PluginElementType, title: string, pluginData?: Record<string, unknown>, position?: { x: number; y: number }, size?: { width: number; height: number }): PluginSession => {
+    const { nextZIndex } = get()
+    const session: PluginSession = {
+      id: uuidv4(),
+      type: pluginType,
+      title,
+      pluginData: pluginData ?? {},
+      position: position ?? { x: 0, y: 0 },
+      size: { cols: 0, rows: 0, width: size?.width ?? 480, height: size?.height ?? 360 },
       zIndex: nextZIndex,
       createdAt: Date.now(),
     }
