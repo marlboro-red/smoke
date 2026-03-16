@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useSessionList, useFocusedId, useHighlightedId, useBroadcastGroupId, findFileSessionByPath, sessionStore } from '../stores/sessionStore'
 import type { Session } from '../stores/sessionStore'
 import { useGroupList } from '../stores/groupStore'
@@ -19,6 +19,7 @@ import { shortcutsOverlayStore } from '../shortcuts/shortcutsOverlayStore'
 import { performAutoLayout } from '../layout/autoLayout'
 import FileTree from './FileTree'
 import { taskInputStore } from '../assembly/taskInputStore'
+import ShellSelector from './ShellSelector'
 import '../styles/sidebar.css'
 import '../styles/settings-modal.css'
 
@@ -31,6 +32,8 @@ export default function Sidebar(): JSX.Element {
   const panToSession = usePanToSession()
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [shellSelectorOpen, setShellSelectorOpen] = useState(false)
+  const newBtnRef = useRef<HTMLButtonElement>(null)
 
   const handleContextMenu = useCallback((sessionId: string, x: number, y: number) => {
     setContextMenu({ sessionId, x, y })
@@ -138,9 +141,26 @@ export default function Sidebar(): JSX.Element {
         </div>
       </div>
       <div className="sidebar-actions">
-        <button className="sidebar-new-btn" onClick={handleNewSession} title="New terminal session">
-          + New
-        </button>
+        <span className="sidebar-new-btn-group">
+          <button className="sidebar-new-btn" onClick={handleNewSession} title="New terminal session">
+            + New
+          </button>
+          <button
+            ref={newBtnRef}
+            className="sidebar-new-btn sidebar-shell-dropdown-btn"
+            onClick={() => setShellSelectorOpen((v) => !v)}
+            title="Choose shell for new terminal"
+          >
+            &#9662;
+          </button>
+        </span>
+        {shellSelectorOpen && (
+          <ShellSelector
+            buttonRef={newBtnRef}
+            onSelect={(shell) => createNewSession(undefined, shell)}
+            onClose={() => setShellSelectorOpen(false)}
+          />
+        )}
         <button className="sidebar-new-btn" onClick={handleNewNote} title="New note">
           + Note
         </button>

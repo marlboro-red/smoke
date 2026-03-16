@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { sessionStore } from '../stores/sessionStore'
+import type { ShellInfo } from '../../preload/types'
 
 export interface ContextMenuState {
   sessionId: string
@@ -17,6 +18,9 @@ interface ContextMenuProps {
 
 export default function ContextMenu({ state, onClose, onCloseSession, onRenameSession }: ContextMenuProps): JSX.Element {
   const menuRef = useRef<HTMLDivElement>(null)
+  const [shellSubmenuOpen, setShellSubmenuOpen] = useState(false)
+  const [shells, setShells] = useState<ShellInfo[]>([])
+  const [shellsLoaded, setShellsLoaded] = useState(false)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent): void {
@@ -89,6 +93,51 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
       >
         Set Startup Command
       </button>
+      <div
+        className="context-menu-item context-menu-submenu-trigger"
+        onMouseEnter={() => {
+          setShellSubmenuOpen(true)
+          if (!shellsLoaded) {
+            window.smokeAPI?.shell.list().then((list) => {
+              setShells(list)
+              setShellsLoaded(true)
+            }).catch(() => setShellsLoaded(true))
+          }
+        }}
+        onMouseLeave={() => setShellSubmenuOpen(false)}
+        title="Change the shell used by this terminal (requires restart)"
+      >
+        Change Shell &#9656;
+        {shellSubmenuOpen && (
+          <div className="context-submenu">
+            <button
+              className="context-menu-item"
+              onClick={() => {
+                sessionStore.getState().updateSession(state.sessionId, { shell: undefined })
+                onClose()
+              }}
+            >
+              Default Shell
+            </button>
+            {shells.map((shell) => (
+              <button
+                key={shell.path}
+                className="context-menu-item"
+                onClick={() => {
+                  sessionStore.getState().updateSession(state.sessionId, { shell: shell.path })
+                  onClose()
+                }}
+                title={shell.path}
+              >
+                {shell.name}
+              </button>
+            ))}
+            {!shellsLoaded && (
+              <div className="context-menu-item disabled">Loading...</div>
+            )}
+          </div>
+        )}
+      </div>
       <button
         className="context-menu-item"
         onClick={() => {

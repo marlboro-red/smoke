@@ -253,12 +253,14 @@ function executeShortcut(action: ShortcutAction): void {
           const direction = action === 'splitHorizontal' ? 'horizontal' : 'vertical'
           const newPaneId = splitPaneStore.getState().split(state.focusedId, direction)
           if (newPaneId) {
-            const cwd = (session as { cwd: string }).cwd ||
+            const termSession = session as TerminalSession
+            const cwd = termSession.cwd ||
               preferencesStore.getState().preferences.defaultCwd ||
               preferencesStore.getState().launchCwd || ''
-            const startupCommand = (session as TerminalSession).startupCommand ||
+            const startupCommand = termSession.startupCommand ||
               preferencesStore.getState().preferences.startupCommand || undefined
-            window.smokeAPI?.pty.spawn({ id: newPaneId, cwd, startupCommand })
+            const shell = termSession.shell || undefined
+            window.smokeAPI?.pty.spawn({ id: newPaneId, cwd, startupCommand, ...(shell ? { shell } : {}) })
           }
         }
       }

@@ -14,6 +14,11 @@ export interface PtySpawnResult {
   pid: number
 }
 
+export interface ShellInfo {
+  path: string
+  name: string
+}
+
 export interface PtyDataEvent {
   id: string
   data: string
@@ -31,6 +36,7 @@ export interface LayoutSession {
   type?: LayoutElementType
   title: string
   cwd: string
+  shell?: string
   filePath?: string
   language?: string
   content?: string
@@ -567,6 +573,9 @@ export interface SmokeAPI {
     close: () => Promise<void>
     isMaximized: () => Promise<boolean>
     platform: string
+  }
+  shell: {
+    list: () => Promise<ShellInfo[]>
   }
 }
 

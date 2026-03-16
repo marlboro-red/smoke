@@ -26,7 +26,7 @@ function getDefaultCwd(): string {
   return preferences.defaultCwd || launchCwd || ''
 }
 
-export function createNewSession(position?: { x: number; y: number }): void {
+export function createNewSession(position?: { x: number; y: number }, shell?: string): void {
   const cwd = getDefaultCwd()
   const { snapToGrid } = gridStore.getState()
 
@@ -37,10 +37,10 @@ export function createNewSession(position?: { x: number; y: number }): void {
     y: snapToGrid(rawPos.y),
   }
 
-  const session = sessionStore.getState().createSession(cwd, snappedPos)
+  const session = sessionStore.getState().createSession(cwd, snappedPos, shell)
   const { preferences } = preferencesStore.getState()
   const startupCommand = preferences.startupCommand || undefined
-  window.smokeAPI?.pty.spawn({ id: session.id, cwd, startupCommand })
+  window.smokeAPI?.pty.spawn({ id: session.id, cwd, startupCommand, ...(shell ? { shell } : {}) })
 
   // Focus and bring to front
   sessionStore.getState().focusSession(session.id)
@@ -90,9 +90,9 @@ export function duplicateSession(sourceId: string): void {
   switch (source.type) {
     case 'terminal': {
       const src = source as TerminalSession
-      newSession = state.createSession(src.cwd, pos)
+      newSession = state.createSession(src.cwd, pos, src.shell)
       const startupCommand = src.startupCommand || preferencesStore.getState().preferences.startupCommand || undefined
-      window.smokeAPI?.pty.spawn({ id: newSession.id, cwd: src.cwd, startupCommand })
+      window.smokeAPI?.pty.spawn({ id: newSession.id, cwd: src.cwd, startupCommand, ...(src.shell ? { shell: src.shell } : {}) })
       break
     }
     case 'file': {
@@ -131,8 +131,8 @@ export function duplicateSession(sourceId: string): void {
   }
 }
 
-export function useCreateSession(): (position?: { x: number; y: number }) => void {
-  return useCallback((position?: { x: number; y: number }) => {
-    createNewSession(position)
+export function useCreateSession(): (position?: { x: number; y: number }, shell?: string) => void {
+  return useCallback((position?: { x: number; y: number }, shell?: string) => {
+    createNewSession(position, shell)
   }, [])
 }

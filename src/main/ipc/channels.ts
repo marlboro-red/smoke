@@ -111,6 +111,9 @@ export const RELEVANCE_SCORE = 'relevance:score' as const
 // Context collector channels
 export const CONTEXT_COLLECT = 'context:collect' as const
 
+// Shell detection channels
+export const SHELL_LIST = 'shell:list' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -618,6 +621,11 @@ export interface ContextCollectResponse {
     scoring: number
     total: number
   }
+}
+
+export interface ShellInfo {
+  path: string
+  name: string
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

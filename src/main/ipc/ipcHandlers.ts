@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
+import * as fsSync from 'fs'
 import * as path from 'path'
 import { execSync } from 'child_process'
 import { PtyManager } from '../pty/PtyManager'
@@ -153,6 +154,8 @@ import {
   RelevanceScoringResponse,
   ContextCollectRequest,
   ContextCollectResponse,
+  SHELL_LIST,
+  ShellInfo,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 
@@ -893,4 +896,59 @@ export async function registerIpcHandlers(
       return collectContext(request, searchIndex, structureAnalyzer)
     }
   )
+
+  // Shell detection handler
+  ipcMain.handle(SHELL_LIST, (): ShellInfo[] => {
+    const shells: ShellInfo[] = []
+    const seen = new Set<string>()
+
+    if (process.platform === 'win32') {
+      const candidates = [
+        { path: 'powershell.exe', name: 'PowerShell' },
+        { path: 'pwsh.exe', name: 'PowerShell Core' },
+        { path: 'cmd.exe', name: 'Command Prompt' },
+        { path: 'bash.exe', name: 'Bash (WSL)' },
+        { path: 'wsl.exe', name: 'WSL' },
+      ]
+      for (const c of candidates) {
+        try {
+          execSync(`where ${c.path}`, { timeout: 2000, stdio: 'ignore' })
+          shells.push(c)
+        } catch {
+          // not found
+        }
+      }
+    } else {
+      // Unix: read /etc/shells for known shell paths
+      try {
+        const etcShells = fsSync.readFileSync('/etc/shells', 'utf-8')
+        for (const line of etcShells.split('\n')) {
+          const trimmed = line.trim()
+          if (!trimmed || trimmed.startsWith('#')) continue
+          if (seen.has(trimmed)) continue
+          try {
+            fsSync.accessSync(trimmed, fsSync.constants.X_OK)
+            seen.add(trimmed)
+            const name = path.basename(trimmed)
+            shells.push({ path: trimmed, name })
+          } catch {
+            // not executable or doesn't exist
+          }
+        }
+      } catch {
+        // /etc/shells not readable — fall back to common paths
+        const fallbacks = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/fish']
+        for (const p of fallbacks) {
+          try {
+            fsSync.accessSync(p, fsSync.constants.X_OK)
+            shells.push({ path: p, name: path.basename(p) })
+          } catch {
+            // not available
+          }
+        }
+      }
+    }
+
+    return shells
+  })
 }

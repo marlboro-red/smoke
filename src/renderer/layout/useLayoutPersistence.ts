@@ -44,8 +44,13 @@ function serializeCurrentLayout(name: string): Layout {
       if (s.type === 'webview') {
         return { ...base, url: s.url }
       }
-      if (s.type === 'terminal' && s.startupCommand) {
-        return { ...base, startupCommand: s.startupCommand }
+      if (s.type === 'terminal') {
+        const termExtra: Record<string, unknown> = {}
+        if (s.shell) termExtra.shell = s.shell
+        if (s.startupCommand) termExtra.startupCommand = s.startupCommand
+        if (Object.keys(termExtra).length > 0) {
+          return { ...base, ...termExtra }
+        }
       }
       if (s.type === 'image') {
         return { ...base, filePath: s.filePath, aspectRatio: s.aspectRatio }
@@ -91,10 +96,11 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
     switch (elementType) {
       case 'terminal': {
         const cwd = saved.cwd
-        const session = sessionStore.getState().createSession(cwd, pos)
+        const session = sessionStore.getState().createSession(cwd, pos, saved.shell)
         sessionStore.getState().updateSession(session.id, {
           title: saved.title,
           size: { ...saved.size, width: size.width, height: size.height },
+          ...(saved.shell ? { shell: saved.shell } : {}),
           ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
         })
         window.smokeAPI?.pty.spawn({
@@ -102,6 +108,7 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
           cwd,
           cols: saved.size.cols,
           rows: saved.size.rows,
+          ...(saved.shell ? { shell: saved.shell } : {}),
           ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
         })
         break
@@ -278,11 +285,12 @@ export function useLayoutRestore(): {
       switch (elementType) {
         case 'terminal': {
           const cwd = saved.cwd
-          const session = sessionStore.getState().createSession(cwd, pos)
+          const session = sessionStore.getState().createSession(cwd, pos, saved.shell)
           createdId = session.id
           sessionStore.getState().updateSession(session.id, {
             title: saved.title,
             size: { ...saved.size, width: size.width, height: size.height },
+            ...(saved.shell ? { shell: saved.shell } : {}),
             ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
             ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
@@ -292,6 +300,7 @@ export function useLayoutRestore(): {
             cwd,
             cols: saved.size.cols,
             rows: saved.size.rows,
+            ...(saved.shell ? { shell: saved.shell } : {}),
             ...(saved.startupCommand ? { startupCommand: saved.startupCommand } : {}),
           })
           break
