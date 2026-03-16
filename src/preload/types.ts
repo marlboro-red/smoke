@@ -446,6 +446,30 @@ export interface WorkspaceLayoutResult {
   bounds: CodeGraphBounds
 }
 
+// Plugin types
+export interface PluginInfo {
+  name: string
+  version: string
+  description: string
+  author: string
+  icon?: string
+  defaultSize: { width: number; height: number }
+  entryPointPath: string
+  permissions: string[]
+  pluginDir: string
+  source: 'global' | 'project'
+}
+
+export interface PluginLoadError {
+  pluginDir: string
+  error: string
+}
+
+export interface PluginChangedEvent {
+  plugins: PluginInfo[]
+  errors: PluginLoadError[]
+}
+
 export interface SmokeAPI {
   pty: {
     spawn: (options: PtySpawnOptions) => Promise<PtySpawnResult>
@@ -576,6 +600,12 @@ export interface SmokeAPI {
   }
   shell: {
     list: () => Promise<ShellInfo[]>
+  }
+  plugin: {
+    list: () => Promise<{ plugins: PluginInfo[] }>
+    get: (name: string) => Promise<PluginInfo | null>
+    reload: () => Promise<{ plugins: PluginInfo[]; errors: PluginLoadError[] }>
+    onChanged: (callback: (event: PluginChangedEvent) => void) => () => void
   }
 }
 
