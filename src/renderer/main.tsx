@@ -4,9 +4,10 @@ import App from './App'
 import { sessionStore } from './stores/sessionStore'
 import { connectorStore } from './stores/connectorStore'
 import { goToLineStore } from './fileviewer/goToLineStore'
+import { toastStore } from './stores/toastStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
