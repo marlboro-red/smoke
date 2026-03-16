@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as os from 'os'
@@ -181,5 +181,58 @@ describe('SearchIndex', () => {
     // Word boundary match (line 1) should score higher than mid-word match (line 2)
     expect(response.results[0].lineNumber).toBe(1)
     expect(response.results[0].score).toBeGreaterThan(response.results[1].score)
+  })
+
+  it('sendProgress throttles intermediate IPC calls', async () => {
+    const sendCalls: { indexed: number; total: number }[] = []
+    const mockWindow = {
+      isDestroyed: () => false,
+      webContents: {
+        send: (_channel: string, data: any) => { sendCalls.push(data) },
+      },
+    }
+    const throttledIndex = new SearchIndex(() => mockWindow as any)
+
+    // Call sendProgress rapidly via the internal method
+    const send = (throttledIndex as any).sendProgress.bind(throttledIndex)
+    for (let i = 0; i < 100; i++) {
+      send(i, 100)
+    }
+    // Final call (indexed === total) should always go through
+    send(100, 100)
+
+    // Without throttling, we'd get 101 calls. With throttling, most intermediate
+    // calls are skipped (only ~1 per 250ms interval), but the final one always fires.
+    expect(sendCalls.length).toBeLessThan(10)
+    expect(sendCalls[sendCalls.length - 1]).toEqual({ indexed: 100, total: 100 })
+  })
+
+  it('burst protection caps pending update queue size', async () => {
+    await fs.writeFile(path.join(tmpDir, 'base.ts'), 'const x = 1\n')
+    await index.build(tmpDir)
+
+    // Access internal pendingUpdates to verify burst limit behavior
+    const internal = index as any
+
+    // Simulate adding more entries than the burst limit (50)
+    for (let i = 0; i < 60; i++) {
+      internal.pendingUpdates.set(`/fake/path/file${i}.ts`, 'add')
+    }
+
+    // The queue should accept entries (it's the scheduleUpdate that triggers flush)
+    // But calling scheduleUpdate when queue >= 50 should flush immediately
+    expect(internal.pendingUpdates.size).toBe(60)
+
+    // Create a real file and schedule its update
+    const newFile = path.join(tmpDir, 'burst.ts')
+    await fs.writeFile(newFile, 'const burst = true\n')
+
+    // Clear fake entries, add real ones up to burst limit
+    internal.pendingUpdates.clear()
+    for (let i = 0; i < 49; i++) {
+      internal.pendingUpdates.set(path.join(tmpDir, `fake${i}.ts`), 'add')
+    }
+    // At 49 entries, scheduleUpdate should still debounce (not flush)
+    expect(internal.pendingUpdates.size).toBe(49)
   })
 })

@@ -42,6 +42,10 @@ const SKIP_DIRS = new Set([
 const MAX_FILE_SIZE = 256 * 1024
 
 const WATCHER_DEBOUNCE_MS = 500
+/** Flush immediately when pending updates exceed this count (burst protection). */
+const BURST_LIMIT = 50
+/** Minimum interval between IPC progress notifications (ms). */
+const PROGRESS_THROTTLE_MS = 250
 
 export interface SearchResult {
   /** Absolute file path. */
@@ -98,6 +102,7 @@ export class SearchIndex {
   private watcher: fsSync.FSWatcher | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
   private pendingUpdates = new Map<string, 'add' | 'delete'>()
+  private lastProgressTime = 0
   private getMainWindow: () => BrowserWindow | null
 
   constructor(getMainWindow: () => BrowserWindow | null) {
@@ -476,6 +481,16 @@ export class SearchIndex {
     fsSync.access(fullPath, fsSync.constants.F_OK, (err) => {
       this.pendingUpdates.set(fullPath, err ? 'delete' : 'add')
 
+      // Burst protection: flush immediately when queue is full
+      if (this.pendingUpdates.size >= BURST_LIMIT) {
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer)
+          this.debounceTimer = null
+        }
+        this.flushPending()
+        return
+      }
+
       if (this.debounceTimer) clearTimeout(this.debounceTimer)
       this.debounceTimer = setTimeout(() => {
         this.debounceTimer = null
@@ -498,6 +513,11 @@ export class SearchIndex {
   }
 
   private sendProgress(indexed: number, total: number): void {
+    const now = Date.now()
+    // Always send the final progress; throttle intermediate updates
+    if (indexed < total && now - this.lastProgressTime < PROGRESS_THROTTLE_MS) return
+    this.lastProgressTime = now
+
     const win = this.getMainWindow()
     if (win && !win.isDestroyed()) {
       win.webContents.send('search:index-progress', { indexed, total })
