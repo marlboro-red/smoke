@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'path'
 import { PtyManager } from './pty/PtyManager'
 import { registerIpcHandlers } from './ipc/ipcHandlers'
@@ -59,6 +59,50 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  // Set an explicit application menu to prevent macOS "representedObject is not a
+  // WeakPtrToElectronMenuModelAsNSObject" console spam (Electron bug triggered by
+  // the auto-generated default menu during text input in CodeMirror).
+  if (process.platform === 'darwin') {
+    const template: Electron.MenuItemConstructorOptions[] = [
+      {
+        label: app.name,
+        submenu: [
+          { role: 'about' },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' }
+        ]
+      },
+      {
+        label: 'Edit',
+        submenu: [
+          { role: 'undo' },
+          { role: 'redo' },
+          { type: 'separator' },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'selectAll' }
+        ]
+      },
+      {
+        label: 'Window',
+        submenu: [
+          { role: 'minimize' },
+          { role: 'close' },
+          { type: 'separator' },
+          { role: 'front' }
+        ]
+      }
+    ]
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+  }
+
   await registerIpcHandlers(ptyManager, () => mainWindow, launchCwd)
   createWindow()
 
