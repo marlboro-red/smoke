@@ -104,6 +104,26 @@ export default function NoteWindow({
     [session.id]
   )
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        const textarea = e.currentTarget
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        const value = textarea.value
+        const newValue = value.substring(0, start) + '\t' + value.substring(end)
+        // Update via store (source of truth) and restore cursor
+        sessionStore.getState().updateSession(session.id, { content: newValue })
+        // Must defer cursor restore since React will re-render the textarea
+        requestAnimationFrame(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 1
+        })
+      }
+    },
+    [session.id]
+  )
+
   const handleColorChange = useCallback(
     (color: string) => {
       sessionStore.getState().updateSession(session.id, { color })
@@ -171,6 +191,7 @@ export default function NoteWindow({
           className="note-textarea"
           value={session.content}
           onChange={handleContentChange}
+          onKeyDown={handleKeyDown}
           placeholder="Type a note..."
           spellCheck={false}
         />
