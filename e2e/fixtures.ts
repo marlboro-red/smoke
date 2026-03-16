@@ -68,8 +68,16 @@ export const test = base.extend<TestFixtures>({
 
     await use(app)
 
-    // Teardown: close app and restore config
-    await app.close()
+    // Teardown: close app and restore config (with timeout fallback)
+    try {
+      await Promise.race([
+        app.close(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('close timeout')), 10000)),
+      ])
+    } catch {
+      // Force kill if close times out
+      try { process.kill(app.process().pid!) } catch { /* ignore */ }
+    }
 
     if (fs.existsSync(backupPath)) {
       fs.copyFileSync(backupPath, configPath)
