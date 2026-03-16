@@ -190,11 +190,15 @@ export function getAgentManager(): AgentManager | null {
   return agentManagerInstance
 }
 
+export interface IpcCleanup {
+  dispose: () => void
+}
+
 export async function registerIpcHandlers(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
   launchCwd: string
-): Promise<void> {
+): Promise<IpcCleanup> {
   // Instantiate the agent manager for multi-agent support
   const agentManager = new AgentManager(getMainWindow)
   await agentManager.setPtyManager(ptyManager)
@@ -1115,6 +1119,12 @@ export async function registerIpcHandlers(
   ipcMain.handle(PLUGIN_GET_DISABLED, (): string[] => {
     return configStore.get('disabledPlugins', [])
   })
+
+  return {
+    dispose(): void {
+      fileWatcher.dispose()
+    },
+  }
 }
 
 function toPluginInfo(p: LoadedPlugin): PluginInfo {

@@ -116,13 +116,14 @@ vi.mock('../../config/ConfigStore', () => ({
   },
 }))
 
-import { registerIpcHandlers } from '../ipcHandlers'
+import { registerIpcHandlers, type IpcCleanup } from '../ipcHandlers'
 import { PtyManager } from '../../pty/PtyManager'
 
 describe('registerIpcHandlers', () => {
   let ptyManager: PtyManager
   let mockWindow: any
   let getMainWindow: () => any
+  let cleanup: IpcCleanup
 
   beforeEach(async () => {
     // Reset handlers
@@ -197,7 +198,7 @@ describe('registerIpcHandlers', () => {
     mockStructureAnalyzer.getCached.mockReset()
     mockStructureAnalyzer.getModule.mockReset()
 
-    await registerIpcHandlers(ptyManager, getMainWindow, '/home/user/project')
+    cleanup = await registerIpcHandlers(ptyManager, getMainWindow, '/home/user/project')
   })
 
   describe('PTY_SPAWN', () => {
@@ -466,6 +467,17 @@ describe('registerIpcHandlers', () => {
       mockConfig.disabledPlugins = ['plugin-a', 'plugin-b']
       const result = handlers['plugin:get-disabled']()
       expect(result).toEqual(['plugin-a', 'plugin-b'])
+    })
+  })
+
+  describe('cleanup / dispose', () => {
+    it('returns an IpcCleanup object with a dispose method', () => {
+      expect(cleanup).toBeDefined()
+      expect(typeof cleanup.dispose).toBe('function')
+    })
+
+    it('dispose can be called without throwing', () => {
+      expect(() => cleanup.dispose()).not.toThrow()
     })
   })
 
