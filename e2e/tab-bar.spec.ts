@@ -1,10 +1,39 @@
 import { test, expect } from './fixtures'
 import { waitForAppReady, pressShortcut } from './helpers'
 
-test.describe('Tab Bar Switching and Management', () => {
-  test('tab bar shows default tab on launch', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
+/**
+ * Reset tab state to a single default tab via the store.
+ * Needed because tab state persists across test runs via electron-store.
+ */
+async function resetTabState(page: import('@playwright/test').Page): Promise<void> {
+  await page.evaluate(async () => {
+    const stores = (window as any).__SMOKE_STORES__
+    if (stores?.tabStore) {
+      // Reset in-memory Zustand state
+      stores.tabStore.setState({
+        tabs: [{ id: 'default', name: 'Canvas 1' }],
+        activeTabId: 'default',
+      })
+      // Persist to electron-store via IPC
+      await window.smokeAPI.tab.saveState({
+        tabs: [{ id: 'default', name: 'Canvas 1' }],
+        activeTabId: 'default',
+      })
+    }
+  })
+  // Wait for DOM to reflect the single tab
+  await page.waitForFunction(() => {
+    return document.querySelectorAll('.tab-item').length === 1
+  }, undefined, { timeout: 5000 })
+}
 
+test.describe('Tab Bar Switching and Management', () => {
+  test.beforeEach(async ({ mainWindow }) => {
+    await waitForAppReady(mainWindow)
+    await resetTabState(mainWindow)
+  })
+
+  test('tab bar shows default tab on launch', async ({ mainWindow }) => {
     const tabItems = mainWindow.locator('.tab-item')
     await expect(tabItems).toHaveCount(1, { timeout: 5000 })
 
@@ -15,29 +44,22 @@ test.describe('Tab Bar Switching and Management', () => {
   })
 
   test('new tab button creates additional tab', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-
     const tabItems = mainWindow.locator('.tab-item')
-    const countBefore = await tabItems.count()
+    await expect(tabItems).toHaveCount(1, { timeout: 5000 })
 
     // Click the "+" button to create a new tab
     const newTabBtn = mainWindow.locator('.tab-bar-new')
     await newTabBtn.click()
     await mainWindow.waitForTimeout(500)
 
-    await expect(tabItems).toHaveCount(countBefore + 1, { timeout: 5000 })
+    await expect(tabItems).toHaveCount(2, { timeout: 5000 })
 
     // The new tab should be active
     const activeTab = mainWindow.locator('.tab-item.active')
-    await expect(activeTab.locator('.tab-item-name')).toHaveText(`Canvas ${countBefore + 1}`)
+    await expect(activeTab.locator('.tab-item-name')).toHaveText('Canvas 2')
   })
 
   test('click tab to switch focus', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-
-    // Wait for tab bar to initialize
-    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
-
     // Create a terminal in the first tab so it has content
     await pressShortcut(mainWindow, 'n')
     await mainWindow.waitForTimeout(1000)
@@ -65,8 +87,6 @@ test.describe('Tab Bar Switching and Management', () => {
   })
 
   test('tab close button removes the tab', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
 
     // Create a second tab
     const newTabBtn = mainWindow.locator('.tab-bar-new')
@@ -91,9 +111,6 @@ test.describe('Tab Bar Switching and Management', () => {
   })
 
   test('cannot close the last remaining tab', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
-
     const tabItems = mainWindow.locator('.tab-item')
     await expect(tabItems).toHaveCount(1, { timeout: 5000 })
 
@@ -103,9 +120,6 @@ test.describe('Tab Bar Switching and Management', () => {
   })
 
   test('closing active tab switches to adjacent tab', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
-
     const newTabBtn = mainWindow.locator('.tab-bar-new')
 
     // Create two additional tabs (total: 3)
@@ -131,9 +145,6 @@ test.describe('Tab Bar Switching and Management', () => {
   })
 
   test('tab switching preserves sessions per tab', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
-
     // Create a terminal in the first tab
     await pressShortcut(mainWindow, 'n')
     await mainWindow.waitForTimeout(1000)
@@ -170,8 +181,6 @@ test.describe('Tab Bar Switching and Management', () => {
   })
 
   test('tab rename via double-click', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-
     const tabItems = mainWindow.locator('.tab-item')
     const firstTab = tabItems.first()
 
@@ -192,8 +201,6 @@ test.describe('Tab Bar Switching and Management', () => {
   })
 
   test('tab rename escape cancels without saving', async ({ mainWindow }) => {
-    await waitForAppReady(mainWindow)
-
     const tabItems = mainWindow.locator('.tab-item')
     const firstTab = tabItems.first()
     const originalName = await firstTab.locator('.tab-item-name').textContent()
