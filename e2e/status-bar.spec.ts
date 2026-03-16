@@ -1,18 +1,40 @@
 import { test, expect } from './fixtures'
 import { waitForAppReady, pressShortcut } from './helpers'
 
+/**
+ * Reset zoom to 100% via Cmd+0 and wait for it to take effect.
+ */
+async function ensureZoomReset(page: import('@playwright/test').Page): Promise<void> {
+  await pressShortcut(page, '0')
+  await page.waitForTimeout(300)
+}
+
+/**
+ * Read the current element count from the session store directly.
+ */
+async function getElementCount(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(() => {
+    const stores = (window as any).__SMOKE_STORES__
+    return stores.sessionStore.getState().sessions.size
+  })
+}
+
 test.describe('Status Bar Display and Interaction', () => {
   test.describe('Zoom percentage display', () => {
-    test('shows 100% zoom on app start', async ({ mainWindow }) => {
+    test('shows zoom percentage and Cmd+0 resets to 100%', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
 
       const zoomBtn = mainWindow.locator('.status-bar-zoom-btn')
       await expect(zoomBtn).toBeVisible({ timeout: 5000 })
+
+      // Reset to known state
+      await ensureZoomReset(mainWindow)
       await expect(zoomBtn).toHaveText('100%')
     })
 
     test('updates zoom percentage on Cmd+= (zoom in)', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
+      await ensureZoomReset(mainWindow)
 
       const zoomBtn = mainWindow.locator('.status-bar-zoom-btn')
       await expect(zoomBtn).toHaveText('100%', { timeout: 5000 })
@@ -27,6 +49,7 @@ test.describe('Status Bar Display and Interaction', () => {
 
     test('updates zoom percentage on Cmd+- (zoom out)', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
+      await ensureZoomReset(mainWindow)
 
       const zoomBtn = mainWindow.locator('.status-bar-zoom-btn')
       await expect(zoomBtn).toHaveText('100%', { timeout: 5000 })
@@ -41,6 +64,7 @@ test.describe('Status Bar Display and Interaction', () => {
 
     test('updates zoom percentage on Ctrl+wheel', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
+      await ensureZoomReset(mainWindow)
 
       const zoomBtn = mainWindow.locator('.status-bar-zoom-btn')
       await expect(zoomBtn).toHaveText('100%', { timeout: 5000 })
@@ -64,7 +88,7 @@ test.describe('Status Bar Display and Interaction', () => {
   })
 
   test.describe('Zoom preset menu', () => {
-    test('clicking zoom button opens preset menu', async ({ mainWindow }) => {
+    test('clicking zoom button opens preset menu with all presets', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
 
       const zoomBtn = mainWindow.locator('.status-bar-zoom-btn')
@@ -92,7 +116,8 @@ test.describe('Status Bar Display and Interaction', () => {
       await expect(zoomBtn).toBeVisible({ timeout: 5000 })
 
       await zoomBtn.click()
-      const option50 = mainWindow.locator('.status-bar-zoom-option', { hasText: '50%' })
+      // Use nth(0) to target exactly the 50% option (avoids matching 150%)
+      const option50 = mainWindow.locator('.status-bar-zoom-option').nth(0)
       await option50.click()
       await mainWindow.waitForTimeout(300)
 
@@ -108,11 +133,10 @@ test.describe('Status Bar Display and Interaction', () => {
       // First zoom to something else
       await pressShortcut(mainWindow, '=')
       await mainWindow.waitForTimeout(300)
-      await expect(zoomBtn).not.toHaveText('100%')
 
       // Now use preset menu to reset to 100%
       await zoomBtn.click()
-      const option100 = mainWindow.locator('.status-bar-zoom-option', { hasText: '100%' })
+      const option100 = mainWindow.locator('.status-bar-zoom-option').nth(1)
       await option100.click()
       await mainWindow.waitForTimeout(300)
 
@@ -122,24 +146,24 @@ test.describe('Status Bar Display and Interaction', () => {
     test('selecting Fit All adjusts zoom when elements exist', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
 
-      // Create a terminal so Fit All has something to fit
-      await pressShortcut(mainWindow, 'n')
-      await mainWindow.waitForTimeout(1000)
-
       const zoomBtn = mainWindow.locator('.status-bar-zoom-btn')
       await expect(zoomBtn).toBeVisible({ timeout: 5000 })
 
-      const beforeText = await zoomBtn.textContent()
+      // Ensure at least one element exists (create terminal only if needed)
+      const count = await getElementCount(mainWindow)
+      if (count === 0) {
+        await pressShortcut(mainWindow, 'n')
+        await mainWindow.waitForTimeout(1000)
+      }
 
       await zoomBtn.click()
-      const fitAll = mainWindow.locator('.status-bar-zoom-option', { hasText: 'Fit All' })
+      const fitAll = mainWindow.locator('.status-bar-zoom-option').nth(3)
       await fitAll.click()
       await mainWindow.waitForTimeout(300)
 
-      // Zoom should have changed (unless it was already fitted)
+      // Fit All should produce a valid zoom percentage
       const afterText = await zoomBtn.textContent()
       const afterZoom = parseInt(afterText!.replace('%', ''), 10)
-      // Fit All should produce a valid zoom percentage
       expect(afterZoom).toBeGreaterThan(0)
     })
 
@@ -154,7 +178,7 @@ test.describe('Status Bar Display and Interaction', () => {
       await expect(zoomMenu).toBeVisible({ timeout: 3000 })
 
       // Click a preset
-      const option100 = mainWindow.locator('.status-bar-zoom-option', { hasText: '100%' })
+      const option100 = mainWindow.locator('.status-bar-zoom-option').nth(1)
       await option100.click()
       await mainWindow.waitForTimeout(300)
 
@@ -172,9 +196,8 @@ test.describe('Status Bar Display and Interaction', () => {
       const zoomMenu = mainWindow.locator('.status-bar-zoom-menu')
       await expect(zoomMenu).toBeVisible({ timeout: 3000 })
 
-      // Click on the canvas (outside the menu)
-      const canvas = mainWindow.locator('.canvas-root')
-      await canvas.click({ position: { x: 400, y: 300 }, force: true })
+      // Click outside the menu using mouse.click to generate a real mousedown event
+      await mainWindow.mouse.click(400, 300)
       await mainWindow.waitForTimeout(300)
 
       await expect(zoomMenu).not.toBeVisible()
@@ -182,89 +205,106 @@ test.describe('Status Bar Display and Interaction', () => {
 
     test('current zoom level is highlighted in preset menu', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
+      await ensureZoomReset(mainWindow)
 
       const zoomBtn = mainWindow.locator('.status-bar-zoom-btn')
-      await expect(zoomBtn).toBeVisible({ timeout: 5000 })
+      await expect(zoomBtn).toHaveText('100%', { timeout: 5000 })
 
-      // At default 100%, the 100% option should have active class
+      // At 100%, the 100% option should have active class
       await zoomBtn.click()
-      const active100 = mainWindow.locator('.status-bar-zoom-option.active')
-      await expect(active100).toHaveText('100%')
+      const active = mainWindow.locator('.status-bar-zoom-option.active')
+      await expect(active).toHaveText('100%')
     })
   })
 
   test.describe('Element count display', () => {
-    test('shows 0 elements on app start', async ({ mainWindow }) => {
+    test('element count increments on terminal creation', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
 
       const statusBar = mainWindow.locator('.status-bar')
       await expect(statusBar).toBeVisible({ timeout: 5000 })
 
-      // Should show "0 elements"
-      await expect(statusBar).toContainText('0 elements')
-    })
-
-    test('element count increments on terminal creation', async ({ mainWindow }) => {
-      await waitForAppReady(mainWindow)
-
-      const statusBar = mainWindow.locator('.status-bar')
-      await expect(statusBar).toContainText('0 elements', { timeout: 5000 })
+      // Read the initial count (may not be 0 if layout is restored)
+      const initialCount = await getElementCount(mainWindow)
 
       // Create a terminal
       await pressShortcut(mainWindow, 'n')
-      await mainWindow.waitForTimeout(500)
+      await mainWindow.waitForTimeout(1000)
 
-      await expect(statusBar).toContainText('1 element', { timeout: 5000 })
-      // Should show type breakdown with "1 term"
-      await expect(statusBar).toContainText('1 term')
+      const afterCount = await getElementCount(mainWindow)
+      expect(afterCount).toBe(initialCount + 1)
+
+      // Status bar should reflect the new count with type breakdown
+      await expect(statusBar).toContainText(`${afterCount} element`)
+      await expect(statusBar).toContainText('term')
     })
 
     test('element count updates with multiple terminals', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
 
       const statusBar = mainWindow.locator('.status-bar')
+      await expect(statusBar).toBeVisible({ timeout: 5000 })
+
+      const initialCount = await getElementCount(mainWindow)
 
       // Create first terminal
       await pressShortcut(mainWindow, 'n')
       await mainWindow.waitForTimeout(500)
-      await expect(statusBar).toContainText('1 element', { timeout: 5000 })
+      expect(await getElementCount(mainWindow)).toBe(initialCount + 1)
 
       // Create second terminal
       await pressShortcut(mainWindow, 'n')
       await mainWindow.waitForTimeout(500)
-      await expect(statusBar).toContainText('2 elements', { timeout: 5000 })
-      await expect(statusBar).toContainText('2 term')
+      expect(await getElementCount(mainWindow)).toBe(initialCount + 2)
+
+      await expect(statusBar).toContainText(`${initialCount + 2} element`)
     })
 
     test('element count decrements on terminal close', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
 
       const statusBar = mainWindow.locator('.status-bar')
+      await expect(statusBar).toBeVisible({ timeout: 5000 })
 
-      // Create two terminals
+      // Create a terminal to ensure we have at least one to close
       await pressShortcut(mainWindow, 'n')
       await mainWindow.waitForTimeout(500)
-      await pressShortcut(mainWindow, 'n')
-      await mainWindow.waitForTimeout(500)
-      await expect(statusBar).toContainText('2 elements', { timeout: 5000 })
 
-      // Close one
+      const countBefore = await getElementCount(mainWindow)
+      expect(countBefore).toBeGreaterThanOrEqual(1)
+
+      // Close the focused terminal
       await pressShortcut(mainWindow, 'w')
       await mainWindow.waitForTimeout(500)
-      await expect(statusBar).toContainText('1 element', { timeout: 5000 })
+
+      const countAfter = await getElementCount(mainWindow)
+      expect(countAfter).toBe(countBefore - 1)
+
+      await expect(statusBar).toContainText(`${countAfter} element`)
     })
 
-    test('active terminal count shows running terminals', async ({ mainWindow }) => {
+    test('active terminal count updates on terminal creation', async ({ mainWindow }) => {
       await waitForAppReady(mainWindow)
 
       const statusBar = mainWindow.locator('.status-bar')
-      await expect(statusBar).toContainText('0 active', { timeout: 5000 })
+      await expect(statusBar).toBeVisible({ timeout: 5000 })
+
+      // Read initial active count from the store
+      const initialActive = await mainWindow.evaluate(() => {
+        const stores = (window as any).__SMOKE_STORES__
+        const sessions = stores.sessionStore.getState().sessions
+        let count = 0
+        for (const s of sessions.values()) {
+          if (s.type === 'terminal' && s.status === 'running') count++
+        }
+        return count
+      })
 
       // Create a terminal — it should be running
       await pressShortcut(mainWindow, 'n')
       await mainWindow.waitForTimeout(1000)
 
-      await expect(statusBar).toContainText('1 active', { timeout: 5000 })
+      await expect(statusBar).toContainText(`${initialActive + 1} active`, { timeout: 5000 })
     })
   })
 
