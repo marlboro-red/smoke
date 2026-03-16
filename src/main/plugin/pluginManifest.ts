@@ -4,6 +4,57 @@
  * A plugin is a directory containing a manifest.json that declares metadata,
  * entry point, permissions, default element sizing, and user-facing configuration.
  * Plugins become first-class canvas elements — draggable, resizable, snappable.
+ *
+ * ## manifest.json specification
+ *
+ * | Field          | Type                          | Required | Description |
+ * |----------------|-------------------------------|----------|-------------|
+ * | name           | string                        | yes      | Unique id: lowercase alphanumeric + hyphens, 1-64 chars (e.g. "docker-dashboard") |
+ * | version        | string                        | yes      | Semver (e.g. "1.0.0", "2.1.0-beta.3") |
+ * | description    | string                        | yes      | Human-readable summary |
+ * | author         | string                        | yes      | Author name, optionally with email ("Jane <jane@x.com>") |
+ * | icon           | string                        | no       | Relative path to a .png or .svg icon (≤64×64) |
+ * | defaultSize    | { width: number, height: number } | yes  | Default canvas element size in pixels |
+ * | entryPoint     | string                        | yes      | Relative path to entry file (.js, .ts, .tsx, .jsx) |
+ * | permissions    | PluginPermission[]            | yes      | API permissions (may be empty). See PluginPermission type |
+ * | configSchema   | Record<string, PluginConfigField> | no   | User-facing settings. Keys become config property names |
+ *
+ * ### Permissions
+ *
+ * `filesystem.read` | `filesystem.write` | `network` | `pty` | `clipboard` | `notifications` | `shell`
+ *
+ * ### Config field types
+ *
+ * - `string`  — free-text input
+ * - `number`  — numeric input, optional `min`/`max`
+ * - `boolean` — toggle
+ * - `select`  — dropdown, requires `options: string[]`
+ *
+ * Each field must have a `label` (display name) and may have `description` and `default`.
+ *
+ * ### Example manifest.json
+ *
+ * ```json
+ * {
+ *   "name": "docker-dashboard",
+ *   "version": "1.0.0",
+ *   "description": "Monitor Docker containers on your canvas",
+ *   "author": "Jane Smith <jane@example.com>",
+ *   "icon": "icon.png",
+ *   "defaultSize": { "width": 400, "height": 300 },
+ *   "entryPoint": "src/index.tsx",
+ *   "permissions": ["network", "shell"],
+ *   "configSchema": {
+ *     "refreshInterval": {
+ *       "type": "number",
+ *       "label": "Refresh interval (s)",
+ *       "default": 5,
+ *       "min": 1,
+ *       "max": 60
+ *     }
+ *   }
+ * }
+ * ```
  */
 
 // ---------------------------------------------------------------------------
