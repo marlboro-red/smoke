@@ -1,8 +1,10 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
-import * as fsSync from 'fs'
 import * as path from 'path'
-import { execSync } from 'child_process'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+
+const execFileAsync = promisify(execFile)
 import { PtyManager } from '../pty/PtyManager'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/ConfigStore'
@@ -725,16 +727,40 @@ export async function registerIpcHandlers(
     return launchCwd
   })
 
-  ipcMain.handle(APP_GET_GIT_BRANCH, (): string | null => {
+  // Git branch cache: return last-known value immediately, refresh in background
+  let gitBranchCache: { value: string | null; updatedAt: number } = { value: null, updatedAt: 0 }
+  const GIT_BRANCH_TTL = 10_000 // 10 seconds
+
+  async function fetchGitBranch(): Promise<string | null> {
     try {
-      return execSync('git rev-parse --abbrev-ref HEAD', {
+      const { stdout } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
         cwd: launchCwd,
-        encoding: 'utf-8',
         timeout: 3000,
-      }).trim()
+      })
+      return stdout.trim()
     } catch {
       return null
     }
+  }
+
+  ipcMain.handle(APP_GET_GIT_BRANCH, async (): Promise<string | null> => {
+    const now = Date.now()
+    if (now - gitBranchCache.updatedAt < GIT_BRANCH_TTL) {
+      return gitBranchCache.value
+    }
+
+    // Cache is stale — if we have a cached value, return it and refresh in background
+    if (gitBranchCache.updatedAt > 0) {
+      fetchGitBranch().then(branch => {
+        gitBranchCache = { value: branch, updatedAt: Date.now() }
+      })
+      return gitBranchCache.value
+    }
+
+    // First call — must await
+    const branch = await fetchGitBranch()
+    gitBranchCache = { value: branch, updatedAt: now }
+    return branch
   })
 
   // Window control handlers (for frameless window on Windows/Linux)
@@ -943,8 +969,11 @@ export async function registerIpcHandlers(
   // Plugin IPC bridge handlers
   registerPluginIpcHandlers(getMainWindow)
 
-  // Shell detection handler
-  ipcMain.handle(SHELL_LIST, (): ShellInfo[] => {
+  // Shell detection handler with TTL cache
+  let shellListCache: { value: ShellInfo[]; updatedAt: number } = { value: [], updatedAt: 0 }
+  const SHELL_LIST_TTL = 15_000 // 15 seconds
+
+  async function detectShells(): Promise<ShellInfo[]> {
     const shells: ShellInfo[] = []
     const seen = new Set<string>()
 
@@ -956,24 +985,28 @@ export async function registerIpcHandlers(
         { path: 'bash.exe', name: 'Bash (WSL)' },
         { path: 'wsl.exe', name: 'WSL' },
       ]
-      for (const c of candidates) {
+      const checks = candidates.map(async (c) => {
         try {
-          execSync(`where ${c.path}`, { timeout: 2000, stdio: 'ignore' })
-          shells.push(c)
+          await execFileAsync('where', [c.path], { timeout: 2000 })
+          return c
         } catch {
-          // not found
+          return null
         }
+      })
+      const results = await Promise.all(checks)
+      for (const r of results) {
+        if (r) shells.push(r)
       }
     } else {
       // Unix: read /etc/shells for known shell paths
       try {
-        const etcShells = fsSync.readFileSync('/etc/shells', 'utf-8')
+        const etcShells = await fs.readFile('/etc/shells', 'utf-8')
         for (const line of etcShells.split('\n')) {
           const trimmed = line.trim()
           if (!trimmed || trimmed.startsWith('#')) continue
           if (seen.has(trimmed)) continue
           try {
-            fsSync.accessSync(trimmed, fsSync.constants.X_OK)
+            await fs.access(trimmed, fs.constants.X_OK)
             seen.add(trimmed)
             const name = path.basename(trimmed)
             shells.push({ path: trimmed, name })
@@ -986,7 +1019,7 @@ export async function registerIpcHandlers(
         const fallbacks = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/fish']
         for (const p of fallbacks) {
           try {
-            fsSync.accessSync(p, fsSync.constants.X_OK)
+            await fs.access(p, fs.constants.X_OK)
             shells.push({ path: p, name: path.basename(p) })
           } catch {
             // not available
@@ -995,6 +1028,17 @@ export async function registerIpcHandlers(
       }
     }
 
+    return shells
+  }
+
+  ipcMain.handle(SHELL_LIST, async (): Promise<ShellInfo[]> => {
+    const now = Date.now()
+    if (now - shellListCache.updatedAt < SHELL_LIST_TTL) {
+      return shellListCache.value
+    }
+
+    const shells = await detectShells()
+    shellListCache = { value: shells, updatedAt: now }
     return shells
   })
 
