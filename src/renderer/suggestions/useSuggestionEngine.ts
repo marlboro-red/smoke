@@ -8,7 +8,7 @@ const DEBOUNCE_MS = 800
 const MAX_SUGGESTIONS = 5
 
 /** Generate a stable ID for a suggestion based on file path */
-function suggestionId(filePath: string): string {
+export function suggestionId(filePath: string): string {
   return `ghost-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
@@ -16,7 +16,7 @@ function suggestionId(filePath: string): string {
  * Compute positions for ghost suggestions around the source session.
  * Places them in a fan pattern to the right of the focused session.
  */
-function computeGhostPositions(
+export function computeGhostPositions(
   sourcePosition: { x: number; y: number },
   sourceSize: { width: number; height: number },
   count: number
