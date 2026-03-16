@@ -44,10 +44,18 @@ export interface FileViewerSession extends BaseSession {
   editing?: boolean
 }
 
+export interface SourceRef {
+  sourceSessionId: string
+  filePath?: string
+  lineStart?: number
+  lineEnd?: number
+}
+
 export interface NoteSession extends BaseSession {
   type: 'note'
   content: string
   color: string
+  sourceRef?: SourceRef
 }
 
 export interface WebviewSession extends BaseSession {

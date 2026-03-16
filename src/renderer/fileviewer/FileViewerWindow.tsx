@@ -22,6 +22,7 @@ import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import FileViewerWidget from './FileViewerWidget'
 import FileEditorWidget from './FileEditorWidget'
+import ExtractContextMenu from '../note/ExtractContextMenu'
 import '../styles/fileviewer.css'
 
 interface FileViewerWindowProps {
@@ -49,6 +50,7 @@ export default function FileViewerWindow({
   const editorViewRef = useRef<EditorView | null>(null)
   const viewerBodyRef = useRef<HTMLDivElement>(null)
   const goToLineInputRef = useRef<HTMLInputElement>(null)
+  const [extractMenu, setExtractMenu] = useState<{ x: number; y: number } | null>(null)
 
   const focusModeActiveIds = useFocusModeActiveIds()
 
@@ -248,6 +250,17 @@ export default function FileViewerWindow({
     [session.id, session.content]
   )
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      const selectedText = window.getSelection()?.toString()?.trim()
+      if (selectedText) {
+        e.preventDefault()
+        setExtractMenu({ x: e.clientX, y: e.clientY })
+      }
+    },
+    []
+  )
+
   const classNames = [
     'terminal-window',
     'file-viewer-window',
@@ -330,7 +343,15 @@ export default function FileViewerWindow({
         ref={viewerBodyRef}
         className="file-viewer-body"
         style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}
+        onContextMenu={handleContextMenu}
       >
+        {extractMenu && (
+          <ExtractContextMenu
+            x={extractMenu.x}
+            y={extractMenu.y}
+            onClose={() => setExtractMenu(null)}
+          />
+        )}
         {showGoToLine && (
           <form className="go-to-line-bar" onSubmit={handleGoToLineSubmit}>
             <label className="go-to-line-label">Go to Line:</label>

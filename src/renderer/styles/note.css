@@ -106,11 +106,14 @@
 .note-body {
   padding: var(--space-md) var(--space-lg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .note-textarea {
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   border: none;
   background: transparent;
   color: var(--text-primary);
@@ -124,6 +127,64 @@
 
 .note-textarea::placeholder {
   color: var(--text-placeholder);
+}
+
+/* Source reference link bar */
+.note-source-bar {
+  padding: 0 0 var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.note-source-link {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--accent-strong, #7aa2f7);
+  text-decoration: none;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast), color var(--duration-fast);
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-source-link:hover {
+  background: var(--bg-hover);
+  text-decoration: underline;
+}
+
+/* Extract context menu (right-click in file viewer) */
+.extract-context-menu {
+  position: fixed;
+  z-index: 10000;
+  background: var(--bg-window);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  padding: var(--space-xs) 0;
+  min-width: 160px;
+}
+
+.extract-context-menu .context-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-sm) var(--space-lg);
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.extract-context-menu .context-menu-item:hover {
+  background: var(--bg-hover);
 }
 
 /* Thumbnail status dot for note type */

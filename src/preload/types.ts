@@ -51,6 +51,12 @@ export interface LayoutSession {
   isPinned?: boolean
   pinnedViewportPos?: { x: number; y: number }
   pluginData?: Record<string, unknown>
+  sourceRef?: {
+    sourceSessionId: string
+    filePath?: string
+    lineStart?: number
+    lineEnd?: number
+  }
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }

@@ -41,7 +41,9 @@ function serializeCurrentLayout(name: string): Layout {
         return { ...base, filePath: s.filePath, language: s.language }
       }
       if (s.type === 'note') {
-        return { ...base, content: s.content, color: s.color }
+        const noteExtra: Record<string, unknown> = { content: s.content, color: s.color }
+        if (s.sourceRef) noteExtra.sourceRef = s.sourceRef
+        return { ...base, ...noteExtra }
       }
       if (s.type === 'webview') {
         return { ...base, url: s.url }
@@ -151,6 +153,7 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
           title: saved.title,
           content: saved.content ?? '',
           size: { ...saved.size, width: size.width, height: size.height },
+          ...(saved.sourceRef ? { sourceRef: saved.sourceRef } : {}),
         })
         break
       }
@@ -368,6 +371,7 @@ export function useLayoutRestore(): {
             content: saved.content ?? '',
             size: { ...saved.size, width: size.width, height: size.height },
             ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
+            ...(saved.sourceRef ? { sourceRef: saved.sourceRef } : {}),
           })
           break
         }

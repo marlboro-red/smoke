@@ -52,6 +52,7 @@ export type ShortcutAction =
   | 'groupSelected'
   | 'assembleWorkspace'
   | 'openWorkspace'
+  | 'extractToNote'
   | 'toggleSidebar'
   | 'escape'
 
@@ -118,6 +119,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   groupSelected: 'Group Selected',
   assembleWorkspace: 'Assemble Workspace',
   openWorkspace: 'Open Workspace',
+  extractToNote: 'Extract Selection to Note',
   toggleSidebar: 'Toggle Sidebar',
   escape: 'Unfocus Session',
 }
@@ -173,6 +175,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   groupSelected: { key: 'g', mod: true, shift: false, alt: true },
   assembleWorkspace: { key: 'a', mod: true, shift: true, alt: false },
   openWorkspace: { key: 'o', mod: true, shift: true, alt: false },
+  extractToNote: { key: 'n', mod: true, shift: false, alt: true },
   toggleSidebar: { key: '\\', mod: true, shift: false, alt: true },
   escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
@@ -201,7 +204,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Canvas',
-    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'groupSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit', 'goToLine', 'togglePin', 'toggleFocusMode'],
+    actions: ['zoomIn', 'zoomOut', 'resetZoom', 'autoLayout', 'canvasSearch', 'selectAll', 'deleteSelected', 'groupSelected', 'exportCanvasPng', 'showDepGraph', 'addBookmark', 'startPresentation', 'toggleFileViewerEdit', 'goToLine', 'togglePin', 'toggleFocusMode', 'extractToNote'],
   },
   {
     title: 'Groups',

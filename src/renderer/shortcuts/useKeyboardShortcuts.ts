@@ -24,6 +24,7 @@ import { terminalSearchStore } from '../terminal/terminalSearchStore'
 import { focusModeStore } from '../stores/focusModeStore'
 import { taskInputStore } from '../assembly/taskInputStore'
 import { openWorkspaceDialog } from '../workspace/openWorkspace'
+import { extractSelectionToNote } from '../note/extractToNote'
 
 function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
@@ -339,6 +340,10 @@ function executeShortcut(action: ShortcutAction): void {
 
     case 'openWorkspace':
       openWorkspaceDialog()
+      break
+
+    case 'extractToNote':
+      extractSelectionToNote()
       break
 
     case 'toggleSidebar': {
