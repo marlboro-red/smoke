@@ -38,7 +38,7 @@ interface CanvasSearchStore {
   toggleRegex: () => void
 }
 
-function searchContent(
+export function searchContent(
   lines: string[],
   query: string,
   sessionId: string,

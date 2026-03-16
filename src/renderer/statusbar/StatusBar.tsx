@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useCanvasStore } from '../stores/canvasStore'
 import { sessionStore, useSessionList } from '../stores/sessionStore'
-import { canvasStore } from '../stores/canvasStore'
-import { getCanvasRootElement, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
+import { getCanvasRootElement, getCurrentPan, getCurrentZoom, setZoomTo, setPanTo } from '../canvas/useCanvasControls'
 import { useIsIndexing, useSearchProgress, useStructureAnalyzing, indexingStore, computeSearchEta, formatEta } from '../stores/indexingStore'
 import type { ElementType, BuiltinElementType } from '../stores/sessionStore'
 import { isPluginElementType, getPluginElementRegistration } from '../plugin/pluginElementRegistry'
@@ -45,11 +44,11 @@ function fitAllZoom(): void {
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
 
-  canvasStore.getState().setZoom(zoom)
-  canvasStore.getState().setPan(
+  setPanTo(
     rect.width / 2 - centerX * zoom,
     rect.height / 2 - centerY * zoom,
   )
+  setZoomTo(zoom)
 }
 
 export default function StatusBar(): JSX.Element {
@@ -113,7 +112,7 @@ export default function StatusBar(): JSX.Element {
     if (value === -1) {
       fitAllZoom()
     } else {
-      canvasStore.getState().setZoom(value)
+      setZoomTo(value)
     }
     setShowZoomMenu(false)
   }, [])

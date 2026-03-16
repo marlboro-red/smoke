@@ -16,7 +16,7 @@ function getViewportCenter(): { x: number; y: number } {
   return { x: canvasX, y: canvasY }
 }
 
-function detectLanguage(filePath: string): string {
+export function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   const langMap: Record<string, string> = {
     ts: 'typescript',

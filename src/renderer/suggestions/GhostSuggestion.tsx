@@ -10,7 +10,7 @@ interface GhostSuggestionProps {
 }
 
 /** Map reason to a short label */
-function reasonLabel(reason: FileSuggestion['reason']): string {
+export function reasonLabel(reason: FileSuggestion['reason']): string {
   switch (reason) {
     case 'import':
       return 'imports'
@@ -22,7 +22,7 @@ function reasonLabel(reason: FileSuggestion['reason']): string {
 }
 
 /** File extension to language hint */
-function extToLanguage(filePath: string): string {
+export function extToLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   const map: Record<string, string> = {
     ts: 'typescript',
