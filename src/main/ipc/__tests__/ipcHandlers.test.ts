@@ -609,6 +609,40 @@ describe('registerIpcHandlers', () => {
         handlers['fs:readfile']({}, { path: path.join(tmpDir, 'nope.txt') })
       ).rejects.toThrow()
     })
+
+    it('rejects reading a file outside the home directory', async () => {
+      await expect(
+        handlers['fs:readfile']({}, { path: '/etc/passwd' })
+      ).rejects.toThrow('Access denied')
+    })
+  })
+
+  describe('FS_READFILE_BASE64', () => {
+    let tmpDir: string
+
+    beforeAll(async () => {
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-test-b64-'))
+      // Create a small PNG-like file for testing
+      await fs.writeFile(path.join(tmpDir, 'test.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+    })
+
+    afterAll(async () => {
+      await fs.rm(tmpDir, { recursive: true, force: true })
+    })
+
+    it('reads file as base64 data URL', async () => {
+      const filePath = path.join(tmpDir, 'test.png')
+      const result = await handlers['fs:readfile-base64']({}, { path: filePath })
+      expect(result.mimeType).toBe('image/png')
+      expect(result.dataUrl).toMatch(/^data:image\/png;base64,/)
+      expect(result.size).toBe(4)
+    })
+
+    it('rejects reading a file outside the home directory', async () => {
+      await expect(
+        handlers['fs:readfile-base64']({}, { path: '/etc/passwd' })
+      ).rejects.toThrow('Access denied')
+    })
   })
 
   describe('Recording handlers', () => {

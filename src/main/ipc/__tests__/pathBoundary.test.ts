@@ -128,13 +128,13 @@ describe('assertWithinHome', () => {
   it('rejects prefix-matching attack (home-malicious)', async () => {
     await expect(
       assertWithinHome(tmpHome + '-malicious/file.txt', tmpHome)
-    ).rejects.toThrow('Write denied')
+    ).rejects.toThrow('Access denied')
   })
 
   it('rejects .. traversal escaping home', async () => {
     await expect(
       assertWithinHome(path.join(tmpHome, '..', 'etc', 'passwd'), tmpHome)
-    ).rejects.toThrow('Write denied')
+    ).rejects.toThrow('Access denied')
   })
 
   it('rejects symlink escape from home', async () => {
@@ -143,12 +143,12 @@ describe('assertWithinHome', () => {
         path.join(tmpHome, 'escape-link', 'payload.sh'),
         tmpHome
       )
-    ).rejects.toThrow('Write denied')
+    ).rejects.toThrow('Access denied')
   })
 
   it('rejects absolute path completely outside home', async () => {
     await expect(
       assertWithinHome('/etc/shadow', tmpHome)
-    ).rejects.toThrow('Write denied')
+    ).rejects.toThrow('Access denied')
   })
 })
