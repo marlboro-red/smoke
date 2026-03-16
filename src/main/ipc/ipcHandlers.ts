@@ -185,6 +185,7 @@ import type { AgentInfo } from '../../preload/types'
 import { PluginLoader, type LoadedPlugin } from '../plugin/PluginLoader'
 import { PluginInstaller } from '../plugin/PluginInstaller'
 import { registerPluginIpcHandlers } from '../plugin/pluginIpcHandlers'
+import { memoizeAsyncWithTTL } from '../utils/memoizeWithTTL'
 
 let agentManagerInstance: AgentManager | null = null
 
@@ -727,40 +728,24 @@ export async function registerIpcHandlers(
     return launchCwd
   })
 
-  // Git branch cache: return last-known value immediately, refresh in background
-  let gitBranchCache: { value: string | null; updatedAt: number } = { value: null, updatedAt: 0 }
-  const GIT_BRANCH_TTL = 10_000 // 10 seconds
+  // Git branch: 10s TTL with stale-while-revalidate (returns stale value instantly, refreshes in background)
+  const gitBranchCache = memoizeAsyncWithTTL(
+    async (): Promise<string | null> => {
+      try {
+        const { stdout } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+          cwd: launchCwd,
+          timeout: 3000,
+        })
+        return stdout.trim()
+      } catch {
+        return null
+      }
+    },
+    { ttlMs: 10_000, staleWhileRevalidate: true }
+  )
 
-  async function fetchGitBranch(): Promise<string | null> {
-    try {
-      const { stdout } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-        cwd: launchCwd,
-        timeout: 3000,
-      })
-      return stdout.trim()
-    } catch {
-      return null
-    }
-  }
-
-  ipcMain.handle(APP_GET_GIT_BRANCH, async (): Promise<string | null> => {
-    const now = Date.now()
-    if (now - gitBranchCache.updatedAt < GIT_BRANCH_TTL) {
-      return gitBranchCache.value
-    }
-
-    // Cache is stale — if we have a cached value, return it and refresh in background
-    if (gitBranchCache.updatedAt > 0) {
-      fetchGitBranch().then(branch => {
-        gitBranchCache = { value: branch, updatedAt: Date.now() }
-      })
-      return gitBranchCache.value
-    }
-
-    // First call — must await
-    const branch = await fetchGitBranch()
-    gitBranchCache = { value: branch, updatedAt: now }
-    return branch
+  ipcMain.handle(APP_GET_GIT_BRANCH, (): Promise<string | null> => {
+    return gitBranchCache.get()
   })
 
   // Window control handlers (for frameless window on Windows/Linux)
@@ -969,77 +954,75 @@ export async function registerIpcHandlers(
   // Plugin IPC bridge handlers
   registerPluginIpcHandlers(getMainWindow)
 
-  // Shell detection handler with TTL cache
-  let shellListCache: { value: ShellInfo[]; updatedAt: number } = { value: [], updatedAt: 0 }
-  const SHELL_LIST_TTL = 15_000 // 15 seconds
+  // Shell detection: 5min TTL, invalidated on preferences change (shells rarely change at runtime)
+  const shellListCache = memoizeAsyncWithTTL(
+    async (): Promise<ShellInfo[]> => {
+      const shells: ShellInfo[] = []
+      const seen = new Set<string>()
 
-  async function detectShells(): Promise<ShellInfo[]> {
-    const shells: ShellInfo[] = []
-    const seen = new Set<string>()
-
-    if (process.platform === 'win32') {
-      const candidates = [
-        { path: 'powershell.exe', name: 'PowerShell' },
-        { path: 'pwsh.exe', name: 'PowerShell Core' },
-        { path: 'cmd.exe', name: 'Command Prompt' },
-        { path: 'bash.exe', name: 'Bash (WSL)' },
-        { path: 'wsl.exe', name: 'WSL' },
-      ]
-      const checks = candidates.map(async (c) => {
+      if (process.platform === 'win32') {
+        const candidates = [
+          { path: 'powershell.exe', name: 'PowerShell' },
+          { path: 'pwsh.exe', name: 'PowerShell Core' },
+          { path: 'cmd.exe', name: 'Command Prompt' },
+          { path: 'bash.exe', name: 'Bash (WSL)' },
+          { path: 'wsl.exe', name: 'WSL' },
+        ]
+        const checks = candidates.map(async (c) => {
+          try {
+            await execFileAsync('where', [c.path], { timeout: 2000 })
+            return c
+          } catch {
+            return null
+          }
+        })
+        const results = await Promise.all(checks)
+        for (const r of results) {
+          if (r) shells.push(r)
+        }
+      } else {
+        // Unix: read /etc/shells for known shell paths
         try {
-          await execFileAsync('where', [c.path], { timeout: 2000 })
-          return c
+          const etcShells = await fs.readFile('/etc/shells', 'utf-8')
+          for (const line of etcShells.split('\n')) {
+            const trimmed = line.trim()
+            if (!trimmed || trimmed.startsWith('#')) continue
+            if (seen.has(trimmed)) continue
+            try {
+              await fs.access(trimmed, fs.constants.X_OK)
+              seen.add(trimmed)
+              const name = path.basename(trimmed)
+              shells.push({ path: trimmed, name })
+            } catch {
+              // not executable or doesn't exist
+            }
+          }
         } catch {
-          return null
-        }
-      })
-      const results = await Promise.all(checks)
-      for (const r of results) {
-        if (r) shells.push(r)
-      }
-    } else {
-      // Unix: read /etc/shells for known shell paths
-      try {
-        const etcShells = await fs.readFile('/etc/shells', 'utf-8')
-        for (const line of etcShells.split('\n')) {
-          const trimmed = line.trim()
-          if (!trimmed || trimmed.startsWith('#')) continue
-          if (seen.has(trimmed)) continue
-          try {
-            await fs.access(trimmed, fs.constants.X_OK)
-            seen.add(trimmed)
-            const name = path.basename(trimmed)
-            shells.push({ path: trimmed, name })
-          } catch {
-            // not executable or doesn't exist
-          }
-        }
-      } catch {
-        // /etc/shells not readable — fall back to common paths
-        const fallbacks = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/fish']
-        for (const p of fallbacks) {
-          try {
-            await fs.access(p, fs.constants.X_OK)
-            shells.push({ path: p, name: path.basename(p) })
-          } catch {
-            // not available
+          // /etc/shells not readable — fall back to common paths
+          const fallbacks = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/fish']
+          for (const p of fallbacks) {
+            try {
+              await fs.access(p, fs.constants.X_OK)
+              shells.push({ path: p, name: path.basename(p) })
+            } catch {
+              // not available
+            }
           }
         }
       }
-    }
 
-    return shells
-  }
+      return shells
+    },
+    { ttlMs: 300_000 } // 5 minutes
+  )
 
-  ipcMain.handle(SHELL_LIST, async (): Promise<ShellInfo[]> => {
-    const now = Date.now()
-    if (now - shellListCache.updatedAt < SHELL_LIST_TTL) {
-      return shellListCache.value
-    }
+  // Invalidate shell cache when preferences change (e.g. defaultShell updated)
+  configStore.onDidChange('preferences', () => {
+    shellListCache.invalidate()
+  })
 
-    const shells = await detectShells()
-    shellListCache = { value: shells, updatedAt: now }
-    return shells
+  ipcMain.handle(SHELL_LIST, (): Promise<ShellInfo[]> => {
+    return shellListCache.get()
   })
 
   // ── Plugin loader ──────────────────────────────────────────────────────
@@ -1080,8 +1063,14 @@ export async function registerIpcHandlers(
     return plugin ? toPluginInfo(plugin) : null
   })
 
+  // Plugin reload: 2s TTL with in-flight dedup to coalesce rapid successive calls
+  const pluginReloadCache = memoizeAsyncWithTTL(
+    () => pluginLoader.loadAll(),
+    { ttlMs: 2_000 }
+  )
+
   ipcMain.handle(PLUGIN_RELOAD, async (): Promise<PluginReloadResponse> => {
-    const result = await pluginLoader.loadAll()
+    const result = await pluginReloadCache.get()
     return {
       plugins: result.plugins.map(toPluginInfo),
       errors: result.errors,
@@ -1107,7 +1096,8 @@ export async function registerIpcHandlers(
 
       if (result.success) {
         // Reload plugins so the new one is discovered
-        const loadResult = await pluginLoader.loadAll()
+        pluginReloadCache.invalidate()
+        const loadResult = await pluginReloadCache.get()
         const win = getMainWindow()
         if (win && !win.isDestroyed()) {
           win.webContents.send(PLUGIN_CHANGED, {
@@ -1128,7 +1118,8 @@ export async function registerIpcHandlers(
 
       if (result.success) {
         // Reload plugins so the removed one is dropped
-        const loadResult = await pluginLoader.loadAll()
+        pluginReloadCache.invalidate()
+        const loadResult = await pluginReloadCache.get()
         const win = getMainWindow()
         if (win && !win.isDestroyed()) {
           win.webContents.send(PLUGIN_CHANGED, {

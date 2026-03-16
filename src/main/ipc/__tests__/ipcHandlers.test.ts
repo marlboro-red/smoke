@@ -106,6 +106,7 @@ vi.mock('../../config/ConfigStore', () => ({
         obj[parts[parts.length - 1]] = value
       }
     }),
+    onDidChange: vi.fn(),
   },
   defaultPreferences: {
     defaultShell: '',
