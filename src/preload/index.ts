@@ -245,6 +245,11 @@ const smokeAPI: SmokeAPI = {
         ipcRenderer.removeListener('plugin:changed', listener)
       }
     },
+    // Plugin install/uninstall
+    install: (source) =>
+      ipcRenderer.invoke('plugin:install', { source }),
+    uninstall: (name, force?) =>
+      ipcRenderer.invoke('plugin:uninstall', { name, force }),
     // Plugin IPC bridge (permission-checked API calls)
     register: (pluginId, permissions, sandboxRoot) =>
       ipcRenderer.invoke('plugin:register', { pluginId, permissions, sandboxRoot }),

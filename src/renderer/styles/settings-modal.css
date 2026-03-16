@@ -250,6 +250,139 @@
   background: var(--accent);
 }
 
+/* ── Plugins ── */
+
+.plugin-install-row {
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.plugin-install-input {
+  width: 160px;
+}
+
+.plugin-install-btn {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-muted);
+  border-radius: var(--radius-sm);
+  color: var(--accent-text);
+  font-size: var(--font-size-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+
+.plugin-install-btn:hover:not(:disabled) {
+  background: var(--accent-muted);
+}
+
+.plugin-install-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.plugin-error {
+  margin: 4px 0 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(220, 50, 50, 0.12);
+  color: #e55;
+  font-size: var(--font-size-sm);
+}
+
+.plugin-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plugin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  gap: 10px;
+}
+
+.plugin-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plugin-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plugin-item-name {
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.plugin-item-version {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.plugin-source-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.plugin-source-npm {
+  background: rgba(203, 56, 55, 0.15);
+  color: #e66;
+}
+
+.plugin-source-url {
+  background: rgba(66, 133, 244, 0.15);
+  color: #69f;
+}
+
+.plugin-source-local {
+  background: rgba(100, 200, 100, 0.12);
+  color: #8c8;
+}
+
+.plugin-item-meta {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plugin-uninstall-btn {
+  background: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration-fast), border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.plugin-uninstall-btn:hover {
+  color: #e55;
+  border-color: rgba(220, 50, 50, 0.4);
+  background: rgba(220, 50, 50, 0.08);
+}
+
 /* ── Footer ── */
 
 .settings-footer {

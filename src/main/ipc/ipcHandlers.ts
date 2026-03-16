@@ -160,13 +160,20 @@ import {
   PLUGIN_GET,
   PLUGIN_RELOAD,
   PLUGIN_CHANGED,
+  PLUGIN_INSTALL,
+  PLUGIN_UNINSTALL,
   PluginGetRequest,
   PluginInfo,
   PluginListResponse,
   PluginReloadResponse,
+  PluginInstallRequest,
+  PluginInstallResponse,
+  PluginUninstallRequest,
+  PluginUninstallResponse,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 import { PluginLoader, type LoadedPlugin } from '../plugin/PluginLoader'
+import { PluginInstaller } from '../plugin/PluginInstaller'
 import { registerPluginIpcHandlers } from '../plugin/pluginIpcHandlers'
 
 let agentManagerInstance: AgentManager | null = null
@@ -1016,6 +1023,60 @@ export async function registerIpcHandlers(
       errors: result.errors,
     }
   })
+
+  // ── Plugin install/uninstall ─────────────────────────────────────────────
+
+  const pluginInstaller = new PluginInstaller()
+
+  ipcMain.handle(
+    PLUGIN_INSTALL,
+    async (_event, request: PluginInstallRequest): Promise<PluginInstallResponse> => {
+      const { source } = request
+
+      // Determine if this is a URL or an npm package name
+      let result
+      if (source.startsWith('http://') || source.startsWith('https://')) {
+        result = await pluginInstaller.installFromUrl(source)
+      } else {
+        result = await pluginInstaller.installFromNpm(source)
+      }
+
+      if (result.success) {
+        // Reload plugins so the new one is discovered
+        const loadResult = await pluginLoader.loadAll()
+        const win = getMainWindow()
+        if (win && !win.isDestroyed()) {
+          win.webContents.send(PLUGIN_CHANGED, {
+            plugins: loadResult.plugins.map(toPluginInfo),
+            errors: loadResult.errors,
+          })
+        }
+      }
+
+      return result
+    }
+  )
+
+  ipcMain.handle(
+    PLUGIN_UNINSTALL,
+    async (_event, request: PluginUninstallRequest): Promise<PluginUninstallResponse> => {
+      const result = await pluginInstaller.uninstall(request.name, request.force)
+
+      if (result.success) {
+        // Reload plugins so the removed one is dropped
+        const loadResult = await pluginLoader.loadAll()
+        const win = getMainWindow()
+        if (win && !win.isDestroyed()) {
+          win.webContents.send(PLUGIN_CHANGED, {
+            plugins: loadResult.plugins.map(toPluginInfo),
+            errors: loadResult.errors,
+          })
+        }
+      }
+
+      return result
+    }
+  )
 }
 
 function toPluginInfo(p: LoadedPlugin): PluginInfo {
@@ -1030,5 +1091,6 @@ function toPluginInfo(p: LoadedPlugin): PluginInfo {
     permissions: p.manifest.permissions,
     pluginDir: p.pluginDir,
     source: p.source,
+    installSource: p.installSource,
   }
 }

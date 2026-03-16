@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef, useState } from 'react'
 import type { Preferences } from '../../preload/types'
 import { preferencesStore, usePreferences } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
@@ -6,6 +6,7 @@ import { canvasStore } from '../stores/canvasStore'
 import { settingsModalStore, useSettingsModalOpen } from './settingsStore'
 import { themes, THEME_IDS } from '../themes/themes'
 import { applyFontSettings, applyTerminalOpacity } from '../themes/applyTheme'
+import { usePlugins, usePluginStore } from '../stores/pluginStore'
 import ShortcutSettings from './ShortcutSettings'
 import '../styles/settings-modal.css'
 
@@ -321,6 +322,9 @@ export default function SettingsModal(): JSX.Element | null {
             </div>
           </section>
 
+          {/* ── Plugins ── */}
+          <PluginsSection />
+
           {/* ── Keyboard Shortcuts ── */}
           <section className="settings-section">
             <h3 className="settings-section-title">Keyboard Shortcuts</h3>
@@ -336,5 +340,135 @@ export default function SettingsModal(): JSX.Element | null {
         </div>
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Plugins Section
+// ---------------------------------------------------------------------------
+
+function PluginsSection(): JSX.Element {
+  const plugins = usePlugins()
+  const installing = usePluginStore((s) => s.installing)
+  const [installInput, setInstallInput] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Load plugins when section mounts
+    import('../stores/pluginStore').then(({ pluginStore }) => {
+      pluginStore.getState().loadPlugins()
+    })
+  }, [])
+
+  const handleInstall = useCallback(async () => {
+    const source = installInput.trim()
+    if (!source) return
+
+    setError(null)
+    const { pluginStore } = await import('../stores/pluginStore')
+    const result = await pluginStore.getState().installPlugin(source)
+    if (result.success) {
+      setInstallInput('')
+    } else {
+      setError(result.error ?? 'Install failed')
+    }
+  }, [installInput])
+
+  const handleUninstall = useCallback(async (name: string) => {
+    const { pluginStore } = await import('../stores/pluginStore')
+    const result = await pluginStore.getState().uninstallPlugin(name)
+    if (!result.success) {
+      setError(result.error ?? 'Uninstall failed')
+    }
+  }, [])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleInstall()
+    }
+  }, [handleInstall])
+
+  const sourceLabel = (source?: string) => {
+    switch (source) {
+      case 'npm': return 'npm'
+      case 'url': return 'url'
+      default: return 'local'
+    }
+  }
+
+  return (
+    <section className="settings-section">
+      <h3 className="settings-section-title">Plugins</h3>
+
+      {/* Install input */}
+      <div className="settings-row">
+        <div className="settings-row-info">
+          <label className="settings-label">Install Plugin</label>
+          <p className="settings-help">
+            Enter an npm package name (e.g. smoke-plugin-clock) or a URL to a plugin tarball.
+          </p>
+        </div>
+        <div className="plugin-install-row">
+          <input
+            className="settings-input plugin-install-input"
+            type="text"
+            placeholder="smoke-plugin-* or https://..."
+            value={installInput}
+            onChange={(e) => { setInstallInput(e.target.value); setError(null) }}
+            onKeyDown={handleKeyDown}
+            disabled={installing}
+          />
+          <button
+            className="plugin-install-btn"
+            onClick={handleInstall}
+            disabled={installing || !installInput.trim()}
+          >
+            {installing ? 'Installing...' : 'Install'}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="plugin-error">{error}</div>
+      )}
+
+      {/* Plugin list */}
+      {plugins.length > 0 && (
+        <div className="plugin-list">
+          {plugins.map((plugin) => (
+            <div key={plugin.name} className="plugin-item">
+              <div className="plugin-item-info">
+                <div className="plugin-item-header">
+                  <span className="plugin-item-name">{plugin.name}</span>
+                  <span className="plugin-item-version">v{plugin.version}</span>
+                  <span className={`plugin-source-badge plugin-source-${plugin.installSource ?? 'local'}`}>
+                    {sourceLabel(plugin.installSource)}
+                  </span>
+                </div>
+                <div className="plugin-item-meta">
+                  {plugin.description} &mdash; {plugin.author}
+                </div>
+              </div>
+              {(plugin.installSource === 'npm' || plugin.installSource === 'url') && (
+                <button
+                  className="plugin-uninstall-btn"
+                  onClick={() => handleUninstall(plugin.name)}
+                  title="Uninstall plugin"
+                >
+                  Uninstall
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {plugins.length === 0 && (
+        <p className="settings-help" style={{ marginTop: 8 }}>
+          No plugins installed. Install from npm or a URL above.
+        </p>
+      )}
+    </section>
   )
 }
