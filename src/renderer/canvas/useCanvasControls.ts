@@ -207,9 +207,11 @@ export function useCanvasControls(
 
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.code === 'Space' && !e.repeat) {
-        // Only activate space-pan when no terminal is focused
+        // Don't intercept space when a text-editable element is focused
         const active = document.activeElement
         if (active && active.closest('.terminal-container')) return
+        if (active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement) return
+        if (active && active.closest('.cm-editor')) return
         e.preventDefault()
         spaceKeyDownRef.current = true
         root.classList.add('panning')
