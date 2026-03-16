@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { resolveShortcut, getSortedSessionIds, type ShortcutAction } from './shortcutMap'
+import { resolveShortcut, getSortedSessionIds, isMac, type ShortcutAction } from './shortcutMap'
 import { sessionStore } from '../stores/sessionStore'
 import { splitPaneStore } from '../stores/splitPaneStore'
 import { aiStore } from '../stores/aiStore'
@@ -368,9 +368,53 @@ function executeShortcut(action: ShortcutAction): void {
   }
 }
 
+/**
+ * Check if the active element is a text input that should receive
+ * standard editing shortcuts (Cmd+A/C/V/X/Z, arrows, etc.).
+ */
+function isTextInputFocused(): boolean {
+  const el = document.activeElement
+  if (!el) return false
+  if (el instanceof HTMLInputElement) {
+    const type = el.type
+    return type === 'text' || type === 'search' || type === 'url' || type === 'email' || type === 'number' || type === 'password' || type === ''
+  }
+  if (el instanceof HTMLTextAreaElement) return true
+  if (el instanceof HTMLElement && el.isContentEditable) return true
+  return false
+}
+
+/** Keys that are standard text-editing shortcuts (with Cmd/Ctrl held). */
+const TEXT_EDIT_MOD_KEYS = new Set(['a', 'c', 'v', 'x', 'z'])
+
+/**
+ * Returns true when a keyboard event is a standard text-editing action
+ * that should be handled by the focused input, not our shortcut system.
+ */
+function isTextEditingShortcut(e: KeyboardEvent): boolean {
+  const mod = isMac ? e.metaKey : e.ctrlKey
+
+  // Arrow keys (with or without Shift/Cmd/Alt for selection/word-nav)
+  if (e.key.startsWith('Arrow')) return true
+
+  // Home/End for line navigation
+  if (e.key === 'Home' || e.key === 'End') return true
+
+  // Cmd+A/C/V/X/Z (and Cmd+Shift+Z for redo)
+  if (mod && TEXT_EDIT_MOD_KEYS.has(e.key.toLowerCase())) return true
+
+  // Backspace / Delete
+  if (e.key === 'Backspace' || e.key === 'Delete') return true
+
+  return false
+}
+
 export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
+      // Let standard editing shortcuts pass through to focused text inputs
+      if (isTextInputFocused() && isTextEditingShortcut(e)) return
+
       const action = resolveShortcut(e)
       if (!action) return
 
