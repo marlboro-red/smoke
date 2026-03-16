@@ -170,8 +170,11 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
               hidden={!isVisible}
             />
           )
-        case 'file':
-          if (!isVisible) return null
+        case 'file': {
+          const fileSession = session as FileViewerSession
+          // When editing, keep mounted but hidden (like terminals) to preserve
+          // CodeMirror state (cursor, undo history) across viewport culling.
+          if (!isVisible && !fileSession.editing) return null
           return (
             <React.Fragment key={session.id}>
               <FileViewerThumbnail
@@ -179,13 +182,15 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
                 className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-active' : 'file-crossfade file-crossfade-inactive'}
               />
               <FileViewerWindow
-                session={session}
+                session={fileSession}
                 zoom={getZoom}
                 gridSize={gridSize}
+                hidden={!isVisible}
                 className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-inactive' : 'file-crossfade file-crossfade-active'}
               />
             </React.Fragment>
           )
+        }
         case 'note':
           if (!isVisible) return null
           if (isThumbnailMode && !session.isPinned) {
