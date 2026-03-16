@@ -15,9 +15,11 @@ import { focusModeStore } from './stores/focusModeStore'
 import { taskInputStore } from './assembly/taskInputStore'
 import { assemblyPreviewStore } from './assembly/assemblyPreviewStore'
 import { presentationStore } from './presentation/presentationStore'
+import { replayStore } from './replay/replayStore'
+import { canvasStore } from './stores/canvasStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore, replayStore, canvasStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
