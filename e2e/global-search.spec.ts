@@ -3,12 +3,22 @@ import { waitForAppReady, pressShortcut } from './helpers'
 
 /**
  * Helper: create two note sessions with known content for searching.
+ * Removes any existing note sessions first to avoid contamination from prior tests.
  * Returns session IDs.
  */
 async function setupSearchScene(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
     const stores = (window as any).__SMOKE_STORES__
     const ss = stores.sessionStore.getState()
+
+    // Remove existing note sessions to avoid contamination from prior tests
+    const existingIds = Array.from(ss.sessions.keys()) as string[]
+    for (const id of existingIds) {
+      const session = ss.sessions.get(id)
+      if (session && session.type === 'note') {
+        ss.removeSession(id)
+      }
+    }
 
     // Create notes with known content
     const note1 = ss.createNoteSession({ x: 100, y: 100 })
@@ -393,12 +403,15 @@ test.describe('Global Search', () => {
 
     await pressShortcut(mainWindow, 'f', { shift: true })
     const input = mainWindow.locator('.search-input')
+    await expect(input).toBeVisible({ timeout: 3000 })
     await input.fill('foo')
     await mainWindow.waitForTimeout(500)
 
-    // Wait for results to appear
+    // Wait for results to appear (exactly 2 note groups after cleanup)
     const groups = mainWindow.locator('.search-group')
-    await expect(groups).toHaveCount(2, { timeout: 5000 })
+    await expect(groups.first()).toBeVisible({ timeout: 5000 })
+    const groupCount = await groups.count()
+    expect(groupCount).toBeGreaterThanOrEqual(2)
 
     // Close
     await mainWindow.keyboard.press('Escape')

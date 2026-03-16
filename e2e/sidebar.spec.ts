@@ -239,18 +239,59 @@ test.describe('Sidebar Session List and Interaction', () => {
     const fileTreeSection = sidebar.locator('.sidebar-section').first()
     const initialHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
 
-    // Drag the divider up by 60px — this shrinks session-list and grows fileTree
-    const dividerBox = await divider.boundingBox()
-    expect(dividerBox).toBeTruthy()
+    // Dispatch mouse events programmatically on the divider because
+    // Playwright mouse interactions may not reliably trigger the resize handler.
+    // Use separate evaluate calls so React has time to process the mousedown
+    // and register document-level mousemove/mouseup listeners.
+    const dividerCoords = await mainWindow.evaluate(() => {
+      const dividerEl = document.querySelector('.sidebar-section-divider') as HTMLElement
+      if (!dividerEl) return null
+      const rect = dividerEl.getBoundingClientRect()
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    })
+    expect(dividerCoords).toBeTruthy()
 
-    const cx = dividerBox!.x + dividerBox!.width / 2
-    const cy = dividerBox!.y + dividerBox!.height / 2
-    await mainWindow.mouse.move(cx, cy)
-    await mainWindow.mouse.down()
-    // Drag in smaller steps and add a pause for the resize handler
-    await mainWindow.mouse.move(cx, cy - 60, { steps: 20 })
-    await mainWindow.waitForTimeout(200)
-    await mainWindow.mouse.up()
+    // Step 1: mousedown on the divider
+    await mainWindow.evaluate(({ x, y }) => {
+      const dividerEl = document.querySelector('.sidebar-section-divider') as HTMLElement
+      dividerEl.dispatchEvent(new MouseEvent('mousedown', {
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+        cancelable: true,
+      }))
+    }, dividerCoords!)
+
+    // Give React time to process the mousedown and register document listeners
+    await mainWindow.waitForTimeout(100)
+
+    // Step 2: mousemove on document (move up by 60px)
+    await mainWindow.evaluate(({ x, y }) => {
+      const endY = y - 60
+      const steps = 10
+      for (let i = 1; i <= steps; i++) {
+        const currentY = y + (endY - y) * (i / steps)
+        document.dispatchEvent(new MouseEvent('mousemove', {
+          clientX: x,
+          clientY: currentY,
+          bubbles: true,
+          cancelable: true,
+        }))
+      }
+    }, dividerCoords!)
+
+    await mainWindow.waitForTimeout(100)
+
+    // Step 3: mouseup on document
+    await mainWindow.evaluate(({ x, y }) => {
+      document.dispatchEvent(new MouseEvent('mouseup', {
+        clientX: x,
+        clientY: y - 60,
+        bubbles: true,
+        cancelable: true,
+      }))
+    }, dividerCoords!)
+
     await mainWindow.waitForTimeout(500)
 
     // fileTree section height should have increased (session-list shrunk, fileTree grew)

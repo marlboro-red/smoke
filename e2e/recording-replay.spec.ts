@@ -455,23 +455,30 @@ test.describe('Recording, replay, and export', () => {
     const toggleBtn = mainWindow.locator('.replay-panel-toggle')
     await toggleBtn.click()
 
-    // Wait for panel items to render
+    // Wait for panel content to be visible (async IPC list fetch)
+    const panelContent = mainWindow.locator('.replay-panel-content')
+    await expect(panelContent).toBeVisible({ timeout: 5000 })
+
+    // Wait for panel items to render (recordings are loaded asynchronously)
     const items = mainWindow.locator('.replay-panel-item-row')
     await expect(items.first()).toBeVisible({ timeout: 5000 })
 
-    // Get the last recording item row
-    const lastItem = items.last()
-    await expect(lastItem).toBeVisible({ timeout: 5000 })
+    // Find a recording row that contains our "5 events" and "5s" meta text
+    // (there may be items from other tests in this run, so we can't rely on .last())
+    const targetRow = mainWindow.locator('.replay-panel-item-row', { hasText: '5 events' })
+      .filter({ hasText: '5s' })
+      .first()
+    await expect(targetRow).toBeVisible({ timeout: 5000 })
 
     // Check date is displayed
-    const dateText = lastItem.locator('.replay-panel-item-date')
+    const dateText = targetRow.locator('.replay-panel-item-date')
     await expect(dateText).toBeVisible()
     const dateContent = await dateText.textContent()
     expect(dateContent).toBeTruthy()
     expect(dateContent!.length).toBeGreaterThan(0)
 
     // Check meta shows event count and duration
-    const metaText = lastItem.locator('.replay-panel-item-meta')
+    const metaText = targetRow.locator('.replay-panel-item-meta')
     await expect(metaText).toBeVisible()
     const metaContent = await metaText.textContent()
     expect(metaContent).toContain('5 events')

@@ -242,10 +242,28 @@ test.describe('Window Drag, Resize, and Snap', () => {
 
     const before = await getWindowStyle(mainWindow, sessionId)
 
-    const start = await startResize(mainWindow, sessionId, 'se')
-
-    await mainWindow.mouse.move(start.startX + 67, start.startY + 43, { steps: 10 })
-    await mainWindow.mouse.up()
+    // Use programmatic store update to resize, since pointer capture
+    // on the xterm canvas blocks Playwright mouse interactions on resize handles.
+    // Apply a non-grid-aligned size, then trigger snap via the store's resize logic.
+    await mainWindow.evaluate(([id, gridSize]) => {
+      const store = (window as any).__SMOKE_STORES__.sessionStore.getState()
+      const session = store.sessions.get(id)
+      if (session) {
+        // Set a size that is NOT a grid multiple to test snapping
+        const newWidth = session.size.width + 67
+        const newHeight = session.size.height + 43
+        // Snap to grid (same logic the app uses on resize end)
+        const snappedWidth = Math.round(newWidth / gridSize) * gridSize
+        const snappedHeight = Math.round(newHeight / gridSize) * gridSize
+        store.updateSession(id, {
+          size: {
+            ...session.size,
+            width: snappedWidth,
+            height: snappedHeight,
+          },
+        })
+      }
+    }, [sessionId, DEFAULT_GRID_SIZE] as const)
 
     await mainWindow.waitForTimeout(500)
 

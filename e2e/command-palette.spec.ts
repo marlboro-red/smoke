@@ -109,7 +109,9 @@ test.describe('Command Palette: Search and Filtering', () => {
     await openPaletteAndWaitForStability(mainWindow)
 
     // Should show palette items (actions at minimum)
+    // Wait for at least one item to appear (async file item loading)
     const items = mainWindow.locator('.palette-item')
+    await expect(items.first()).toBeVisible({ timeout: 5000 })
     const count = await items.count()
     expect(count).toBeGreaterThan(0)
   })
