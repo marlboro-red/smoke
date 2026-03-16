@@ -105,7 +105,8 @@ export default function BookmarkPanel(): JSX.Element {
         className="bookmark-toggle-btn"
         onClick={() => setExpanded(!expanded)}
       >
-        Bookmarks {expanded ? '\u25B4' : '\u25BE'}
+        <span className={`section-toggle-arrow${expanded ? ' expanded' : ''}`}>{'\u25B6'}</span>
+        Bookmarks
       </button>
       {expanded && (
         <div className="bookmark-panel-content">

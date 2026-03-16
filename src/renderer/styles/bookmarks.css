@@ -6,6 +6,9 @@
 }
 
 .bookmark-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   width: 100%;
   background: none;
   border: none;
@@ -14,7 +17,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  padding: 10px 14px;
+  padding: var(--space-md) 14px;
   cursor: pointer;
   text-align: left;
   flex-shrink: 0;

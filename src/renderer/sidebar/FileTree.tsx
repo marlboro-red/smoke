@@ -183,7 +183,7 @@ export default function FileTree({ onFileOpen }: { onFileOpen: (filePath: string
         className="ft-panel-header"
         onClick={() => setCollapsed(!collapsed)}
       >
-        <span className={`ft-arrow${!collapsed ? ' expanded' : ''}`}>▶</span>
+        <span className={`section-toggle-arrow${!collapsed ? ' expanded' : ''}`}>{'\u25B6'}</span>
         <span className="ft-panel-title">Files</span>
         <span className="ft-root-name" title={rootPath}>{rootDirName}</span>
       </div>
