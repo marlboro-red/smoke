@@ -135,3 +135,114 @@ select.config-input {
   appearance: auto;
   cursor: pointer;
 }
+
+/* Plugin settings */
+
+.plugin-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.plugin-settings-empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-placeholder);
+  padding: 4px 0;
+}
+
+.plugin-item {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.plugin-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.plugin-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plugin-item-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plugin-name {
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.plugin-name.disabled {
+  color: var(--text-placeholder);
+  text-decoration: line-through;
+}
+
+.plugin-version {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-placeholder);
+}
+
+.plugin-source {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-placeholder);
+  background: var(--bg-active);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.plugin-description {
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  padding-left: 20px;
+}
+
+.plugin-toggle {
+  cursor: pointer;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.plugin-toggle input[type='checkbox'] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.plugin-expand-btn {
+  background: none;
+  border: none;
+  color: var(--text-placeholder);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+  width: 14px;
+  text-align: center;
+  line-height: 1;
+}
+
+.plugin-expand-btn:hover {
+  color: var(--text-secondary);
+}
+
+.plugin-expand-spacer {
+  display: inline-block;
+  width: 14px;
+}
+
+.plugin-config-form {
+  border-top: 1px solid var(--border-subtle);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

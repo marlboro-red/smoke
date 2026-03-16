@@ -250,6 +250,15 @@ const smokeAPI: SmokeAPI = {
       ipcRenderer.invoke('plugin:install', { source }),
     uninstall: (name, force?) =>
       ipcRenderer.invoke('plugin:uninstall', { name, force }),
+    // Plugin config
+    getConfig: (pluginName) =>
+      ipcRenderer.invoke('plugin:config:get', { pluginName }),
+    setConfig: (pluginName, key, value) =>
+      ipcRenderer.invoke('plugin:config:set', { pluginName, key, value }),
+    setEnabled: (pluginName, enabled) =>
+      ipcRenderer.invoke('plugin:set-enabled', { pluginName, enabled }),
+    getDisabled: () =>
+      ipcRenderer.invoke('plugin:get-disabled'),
     // Plugin IPC bridge (permission-checked API calls)
     register: (pluginId, permissions, sandboxRoot) =>
       ipcRenderer.invoke('plugin:register', { pluginId, permissions, sandboxRoot }),

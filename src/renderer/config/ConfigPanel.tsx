@@ -4,6 +4,7 @@ import { preferencesStore, usePreferences } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
 import { applyTerminalOpacity, applyFontSettings } from '../themes/applyTheme'
+import PluginSettings from './PluginSettings'
 import '../styles/config.css'
 
 export default function ConfigPanel(): JSX.Element {
@@ -195,6 +196,10 @@ export default function ConfigPanel(): JSX.Element {
               onChange={(e) => updatePref('defaultCwd', e.target.value)}
             />
           </div>
+
+          <div className="config-section-divider" />
+          <div className="config-section-title">Plugins</div>
+          <PluginSettings />
 
         </div>
       )}
