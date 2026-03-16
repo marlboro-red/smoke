@@ -1,3 +1,7 @@
+// Window components
+export { default as PluginWindow } from './PluginWindow'
+export { default as PluginThumbnail } from './PluginThumbnail'
+
 // Sandbox components
 export { default as PluginSandbox } from './PluginSandbox'
 export { default as PluginErrorBoundary } from './PluginErrorBoundary'

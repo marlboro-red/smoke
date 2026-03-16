@@ -1,3 +1,21 @@
+/* ── Plugin window body ─────────────────────────────────────────── */
+.plugin-body {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 6px 6px;
+}
+
+/* ── Plugin thumbnail ───────────────────────────────────────────── */
+.plugin-thumbnail .thumbnail-status.plugin {
+  background: #7c6bc4;
+}
+
+.plugin-thumbnail .thumbnail-text {
+  color: var(--text-secondary, #888);
+  font-size: 10px;
+  padding: 4px 6px;
+}
+
 /* ── Plugin sandbox container ────────────────────────────────────── */
 .plugin-sandbox {
   width: 100%;
