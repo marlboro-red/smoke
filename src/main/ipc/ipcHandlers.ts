@@ -224,18 +224,26 @@ export async function registerIpcHandlers(
     })
 
     pty.on('data', (data: string) => {
-      terminalOutputBuffer.append(pty.id, data)
-      const win = getMainWindow()
-      if (win && !win.isDestroyed()) {
-        win.webContents.send(PTY_DATA_FROM_PTY, { id: pty.id, data })
+      try {
+        terminalOutputBuffer.append(pty.id, data)
+        const win = getMainWindow()
+        if (win && !win.isDestroyed()) {
+          win.webContents.send(PTY_DATA_FROM_PTY, { id: pty.id, data })
+        }
+      } catch (err) {
+        console.error(`[pty:data] Error forwarding data for ${pty.id}:`, err)
       }
     })
 
     pty.on('exit', (exitCode: number, signal?: number) => {
-      terminalOutputBuffer.delete(pty.id)
-      const win = getMainWindow()
-      if (win && !win.isDestroyed()) {
-        win.webContents.send(PTY_EXIT, { id: pty.id, exitCode, signal })
+      try {
+        terminalOutputBuffer.delete(pty.id)
+        const win = getMainWindow()
+        if (win && !win.isDestroyed()) {
+          win.webContents.send(PTY_EXIT, { id: pty.id, exitCode, signal })
+        }
+      } catch (err) {
+        console.error(`[pty:exit] Error handling exit for ${pty.id}:`, err)
       }
     })
 
@@ -272,15 +280,27 @@ export async function registerIpcHandlers(
   })
 
   ipcMain.on(PTY_DATA_TO_PTY, (_event, message: PtyDataToPty) => {
-    ptyManager.write(message.id, message.data)
+    try {
+      ptyManager.write(message.id, message.data)
+    } catch (err) {
+      console.error('[pty:data:to-pty] Error writing to PTY:', err)
+    }
   })
 
   ipcMain.on(PTY_RESIZE, (_event, message: PtyResizeMessage) => {
-    ptyManager.resize(message.id, message.cols, message.rows)
+    try {
+      ptyManager.resize(message.id, message.cols, message.rows)
+    } catch (err) {
+      console.error('[pty:resize] Error resizing PTY:', err)
+    }
   })
 
   ipcMain.on(PTY_KILL, (_event, message: PtyKillMessage) => {
-    ptyManager.kill(message.id)
+    try {
+      ptyManager.kill(message.id)
+    } catch (err) {
+      console.error('[pty:kill] Error killing PTY:', err)
+    }
   })
 
   // Layout persistence handlers

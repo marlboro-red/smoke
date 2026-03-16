@@ -341,6 +341,14 @@ describe('registerIpcHandlers', () => {
       listeners['pty:data:to-pty']({}, { id: 'sess-1', data: 'hello' })
       expect(ptyManager.write).toHaveBeenCalledWith('sess-1', 'hello')
     })
+
+    it('does not crash when ptyManager.write throws', () => {
+      ;(ptyManager.write as any).mockImplementationOnce(() => { throw new Error('PTY gone') })
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(() => listeners['pty:data:to-pty']({}, { id: 'sess-1', data: 'hello' })).not.toThrow()
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[pty:data:to-pty]'), expect.any(Error))
+      consoleSpy.mockRestore()
+    })
   })
 
   describe('PTY_RESIZE', () => {
@@ -348,12 +356,61 @@ describe('registerIpcHandlers', () => {
       listeners['pty:resize']({}, { id: 'sess-1', cols: 120, rows: 40 })
       expect(ptyManager.resize).toHaveBeenCalledWith('sess-1', 120, 40)
     })
+
+    it('does not crash when ptyManager.resize throws', () => {
+      ;(ptyManager.resize as any).mockImplementationOnce(() => { throw new Error('PTY gone') })
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(() => listeners['pty:resize']({}, { id: 'sess-1', cols: 120, rows: 40 })).not.toThrow()
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[pty:resize]'), expect.any(Error))
+      consoleSpy.mockRestore()
+    })
   })
 
   describe('PTY_KILL', () => {
     it('kills the correct PTY', () => {
       listeners['pty:kill']({}, { id: 'sess-1' })
       expect(ptyManager.kill).toHaveBeenCalledWith('sess-1')
+    })
+
+    it('does not crash when ptyManager.kill throws', () => {
+      ;(ptyManager.kill as any).mockImplementationOnce(() => { throw new Error('PTY gone') })
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(() => listeners['pty:kill']({}, { id: 'sess-1' })).not.toThrow()
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[pty:kill]'), expect.any(Error))
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('PTY event callback error handling', () => {
+    it('does not crash when data event callback throws', () => {
+      // Make terminalOutputBuffer.append throw by corrupting webContents.send
+      mockWindow.webContents.send = vi.fn(() => { throw new Error('Window destroyed') })
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      handlers['pty:spawn']({}, { id: 'sess-err-1', cwd: '/tmp' })
+      const pty = (ptyManager.spawn as any).mock.results[(ptyManager.spawn as any).mock.results.length - 1].value
+
+      // Trigger data event — should not throw
+      expect(() => pty.emit('data', 'some output')).not.toThrow()
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[pty:data]'), expect.any(Error))
+
+      consoleSpy.mockRestore()
+    })
+
+    it('does not crash when exit event callback throws', () => {
+      mockWindow.webContents.send = vi.fn(() => { throw new Error('Window destroyed') })
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      handlers['pty:spawn']({}, { id: 'sess-err-2', cwd: '/tmp' })
+      const pty = (ptyManager.spawn as any).mock.results[(ptyManager.spawn as any).mock.results.length - 1].value
+
+      // Trigger exit event — should not throw
+      expect(() => pty.emit('exit', 0, undefined)).not.toThrow()
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[pty:exit]'), expect.any(Error))
+
+      consoleSpy.mockRestore()
     })
   })
 
