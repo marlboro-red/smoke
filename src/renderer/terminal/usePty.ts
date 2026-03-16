@@ -39,22 +39,26 @@ export function usePty(
     const unsubExit = window.smokeAPI.pty.onExit((event) => {
       if (event.id !== sessionId) return
 
-      const terminal = terminalRef.current
-      if (terminal) {
-        terminal.write(`\r\n\x1b[90m[Process exited with code ${event.exitCode}]\x1b[0m\r\n`)
+      // Skip exit message and toast for user-initiated closes (X button, Cmd+W)
+      if (!event.userInitiated) {
+        const terminal = terminalRef.current
+        if (terminal) {
+          terminal.write(`\r\n\x1b[90m[Process exited with code ${event.exitCode}]\x1b[0m\r\n`)
+        }
+
+        const session = sessionStore.getState().sessions.get(sessionId)
+        const label = session?.title || sessionId
+        if (event.exitCode === 0) {
+          addToast(`"${label}" exited successfully`, 'success')
+        } else {
+          addToast(`"${label}" exited with code ${event.exitCode}`, 'error')
+        }
       }
+
       sessionStore.getState().updateSession(sessionId, {
         status: 'exited',
         exitCode: event.exitCode,
       })
-
-      const session = sessionStore.getState().sessions.get(sessionId)
-      const label = session?.title || sessionId
-      if (event.exitCode === 0) {
-        addToast(`"${label}" exited successfully`, 'success')
-      } else {
-        addToast(`"${label}" exited with code ${event.exitCode}`, 'error')
-      }
     })
 
     return () => {
