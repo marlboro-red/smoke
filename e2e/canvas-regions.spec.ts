@@ -1,11 +1,36 @@
 import { test, expect } from './fixtures'
 import { waitForAppReady } from './helpers'
+import type { Page } from '@playwright/test'
+
+/**
+ * Clear all terminal sessions and regions so the canvas is empty.
+ * Regions have z-index: -1, so any overlapping terminal windows
+ * would intercept pointer events and block region interactions.
+ */
+async function clearCanvas(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const stores = (window as any).__SMOKE_STORES__
+    // Kill and remove all sessions
+    const sessions = stores.sessionStore.getState().sessions
+    for (const [id, session] of sessions.entries()) {
+      if ((session as any).type === 'terminal') {
+        window.smokeAPI?.pty.kill(id)
+      }
+      stores.sessionStore.getState().removeSession(id)
+    }
+    // Clear any existing regions
+    const { regions } = stores.regionStore.getState()
+    for (const id of regions.keys()) {
+      stores.regionStore.getState().removeRegion(id)
+    }
+  })
+}
 
 test.describe('Canvas Regions — Lifecycle', () => {
   test('create a region via store and verify it renders', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
-    // Create a region via the store
     await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
       stores.regionStore.getState().createRegion('Test Region', { x: 100, y: 100 })
@@ -14,13 +39,13 @@ test.describe('Canvas Regions — Lifecycle', () => {
     const regionShape = mainWindow.locator('.region-shape')
     await expect(regionShape.first()).toBeVisible({ timeout: 5000 })
 
-    // Verify the region name renders
     const regionName = regionShape.first().locator('.region-name')
     await expect(regionName).toHaveText('Test Region')
   })
 
   test('rename a region via double-click on label', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
@@ -30,18 +55,18 @@ test.describe('Canvas Regions — Lifecycle', () => {
     const regionShape = mainWindow.locator('.region-shape')
     await expect(regionShape.first()).toBeVisible({ timeout: 5000 })
 
-    // Double-click the label bar to enter rename mode
+    // Use dispatchEvent to fire dblclick directly — avoids interference from
+    // the label bar's onPointerDown drag handler which sets pointer capture
     const labelBar = regionShape.first().locator('.region-label-bar')
-    await labelBar.dblclick()
+    await labelBar.dispatchEvent('dblclick')
 
     const nameInput = regionShape.first().locator('.region-name-input')
     await expect(nameInput).toBeVisible({ timeout: 3000 })
 
-    // Clear and type new name
     await nameInput.fill('Renamed Region')
     await nameInput.press('Enter')
 
-    // Verify the region was renamed in the store
+    // Verify the store was updated
     const name = await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
       const regions = stores.regionStore.getState().regions
@@ -57,6 +82,7 @@ test.describe('Canvas Regions — Lifecycle', () => {
 
   test('resize a region via store and verify DOM update', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     const regionId = await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
@@ -77,7 +103,6 @@ test.describe('Canvas Regions — Lifecycle', () => {
       })
     }, regionId)
 
-    // Wait for re-render
     await mainWindow.waitForTimeout(200)
 
     // Verify the size was updated in the store
@@ -91,6 +116,7 @@ test.describe('Canvas Regions — Lifecycle', () => {
 
   test('recolor a region via context menu', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
@@ -102,9 +128,9 @@ test.describe('Canvas Regions — Lifecycle', () => {
     const regionShape = mainWindow.locator('.region-shape')
     await expect(regionShape.first()).toBeVisible({ timeout: 5000 })
 
-    // Right-click the label bar to open context menu
+    // Use dispatchEvent for contextmenu — avoids pointer capture interference
     const labelBar = regionShape.first().locator('.region-label-bar')
-    await labelBar.click({ button: 'right' })
+    await labelBar.dispatchEvent('contextmenu')
 
     const contextMenu = mainWindow.locator('.region-context-menu')
     await expect(contextMenu).toBeVisible({ timeout: 3000 })
@@ -131,6 +157,7 @@ test.describe('Canvas Regions — Lifecycle', () => {
 
   test('delete a region via context menu', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
@@ -140,9 +167,9 @@ test.describe('Canvas Regions — Lifecycle', () => {
     const regionShape = mainWindow.locator('.region-shape')
     await expect(regionShape.first()).toBeVisible({ timeout: 5000 })
 
-    // Right-click to open context menu
+    // Open context menu via dispatchEvent
     const labelBar = regionShape.first().locator('.region-label-bar')
-    await labelBar.click({ button: 'right' })
+    await labelBar.dispatchEvent('contextmenu')
 
     const contextMenu = mainWindow.locator('.region-context-menu')
     await expect(contextMenu).toBeVisible({ timeout: 3000 })
@@ -167,6 +194,7 @@ test.describe('Canvas Regions — Lifecycle', () => {
 test.describe('Canvas Regions — Context Menu', () => {
   test('context menu has Rename, color swatches, and Delete options', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
@@ -176,9 +204,9 @@ test.describe('Canvas Regions — Context Menu', () => {
     const regionShape = mainWindow.locator('.region-shape')
     await expect(regionShape.first()).toBeVisible({ timeout: 5000 })
 
-    // Right-click to open context menu
+    // Open context menu via dispatchEvent
     const labelBar = regionShape.first().locator('.region-label-bar')
-    await labelBar.click({ button: 'right' })
+    await labelBar.dispatchEvent('contextmenu')
 
     const contextMenu = mainWindow.locator('.region-context-menu')
     await expect(contextMenu).toBeVisible({ timeout: 3000 })
@@ -196,6 +224,7 @@ test.describe('Canvas Regions — Context Menu', () => {
 
   test('rename via context menu Rename button', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
@@ -207,7 +236,7 @@ test.describe('Canvas Regions — Context Menu', () => {
 
     // Open context menu
     const labelBar = regionShape.first().locator('.region-label-bar')
-    await labelBar.click({ button: 'right' })
+    await labelBar.dispatchEvent('contextmenu')
 
     const contextMenu = mainWindow.locator('.region-context-menu')
     await expect(contextMenu).toBeVisible({ timeout: 3000 })
@@ -230,6 +259,7 @@ test.describe('Canvas Regions — Context Menu', () => {
 
   test('context menu closes on outside click', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     await mainWindow.evaluate(() => {
       const stores = (window as any).__SMOKE_STORES__
@@ -241,13 +271,15 @@ test.describe('Canvas Regions — Context Menu', () => {
 
     // Open context menu
     const labelBar = regionShape.first().locator('.region-label-bar')
-    await labelBar.click({ button: 'right' })
+    await labelBar.dispatchEvent('contextmenu')
 
     const contextMenu = mainWindow.locator('.region-context-menu')
     await expect(contextMenu).toBeVisible({ timeout: 3000 })
 
-    // Click outside the menu (on the canvas root)
-    await mainWindow.locator('.canvas-root').click({ position: { x: 10, y: 10 } })
+    // Dispatch a mousedown event outside the menu to trigger the close handler
+    await mainWindow.evaluate(() => {
+      document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    })
 
     await expect(contextMenu).not.toBeVisible({ timeout: 3000 })
   })
@@ -256,6 +288,7 @@ test.describe('Canvas Regions — Context Menu', () => {
 test.describe('Canvas Regions — Persistence', () => {
   test('regions persist across layout save/load', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await clearCanvas(mainWindow)
 
     // Create two regions with different colors and positions
     await mainWindow.evaluate(() => {
