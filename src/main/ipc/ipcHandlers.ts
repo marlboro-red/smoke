@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { execFile } from 'child_process'
@@ -182,6 +182,10 @@ import {
   PluginConfigGetRequest,
   PluginConfigSetRequest,
   PluginSetEnabledRequest,
+  WORKSPACE_OPEN_DIALOG,
+  WORKSPACE_SET_TITLE,
+  WORKSPACE_GET_RECENT,
+  WORKSPACE_ADD_RECENT,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 import { PluginLoader, type LoadedPlugin } from '../plugin/PluginLoader'
@@ -203,7 +207,8 @@ export interface IpcCleanup {
 export async function registerIpcHandlers(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
-  launchCwd: string
+  launchCwd: string,
+  onMenuRebuild?: () => void
 ): Promise<IpcCleanup> {
   // Instantiate the agent manager for multi-agent support
   const agentManager = new AgentManager(getMainWindow)
@@ -1208,6 +1213,39 @@ export async function registerIpcHandlers(
 
   ipcMain.handle(PLUGIN_GET_DISABLED, (): string[] => {
     return configStore.get('disabledPlugins', [])
+  })
+
+  // Workspace handlers
+
+  ipcMain.handle(WORKSPACE_OPEN_DIALOG, async (): Promise<string | null> => {
+    const win = getMainWindow()
+    if (!win) return null
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory'],
+      title: 'Open Workspace',
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle(WORKSPACE_SET_TITLE, (_event, title: string): void => {
+    const win = getMainWindow()
+    if (win) win.setTitle(title)
+  })
+
+  const MAX_RECENT_WORKSPACES = 10
+
+  ipcMain.handle(WORKSPACE_GET_RECENT, (): string[] => {
+    return configStore.get('recentWorkspaces', [])
+  })
+
+  ipcMain.handle(WORKSPACE_ADD_RECENT, (_event, workspacePath: string): string[] => {
+    const recent = configStore.get('recentWorkspaces', []) as string[]
+    const filtered = recent.filter((p) => p !== workspacePath)
+    const updated = [workspacePath, ...filtered].slice(0, MAX_RECENT_WORKSPACES)
+    configStore.set('recentWorkspaces', updated)
+    onMenuRebuild?.()
+    return updated
   })
 
   return {

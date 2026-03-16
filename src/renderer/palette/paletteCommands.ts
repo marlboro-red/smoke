@@ -14,6 +14,7 @@ import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import { getSortedSessionIds } from '../shortcuts/shortcutMap'
 import { presentationStore } from '../presentation/presentationStore'
 import { regionStore } from '../stores/regionStore'
+import { openWorkspaceDialog, openWorkspacePath } from '../workspace/openWorkspace'
 
 export interface PaletteItem {
   id: string
@@ -247,7 +248,29 @@ function getActionItems(): PaletteItem[] {
         bookmarks.forEach((b) => presentationStore.getState().removeBookmark(b.id))
       },
     },
+    {
+      id: 'action:open-workspace',
+      title: 'Open Workspace',
+      category: 'Workspace',
+      icon: 'W',
+      action: () => { openWorkspaceDialog() },
+    },
   ]
+}
+
+/**
+ * Build palette items for recent workspaces.
+ */
+export async function getRecentWorkspaceItems(): Promise<PaletteItem[]> {
+  const recent = await window.smokeAPI?.workspace.getRecent()
+  if (!recent || recent.length === 0) return []
+  return recent.map((ws) => ({
+    id: `workspace:${ws}`,
+    title: ws.split('/').pop() || ws,
+    category: 'Recent Workspace',
+    icon: 'W',
+    action: () => { openWorkspacePath(ws) },
+  }))
 }
 
 /**

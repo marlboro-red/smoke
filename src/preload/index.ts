@@ -221,6 +221,22 @@ const smokeAPI: SmokeAPI = {
       }),
   },
 
+  workspace: {
+    openDialog: () => ipcRenderer.invoke('workspace:open-dialog'),
+    setTitle: (title) => ipcRenderer.invoke('workspace:set-title', title),
+    getRecent: () => ipcRenderer.invoke('workspace:get-recent'),
+    addRecent: (workspacePath) => ipcRenderer.invoke('workspace:add-recent', workspacePath),
+    onOpened: (callback: (path: string) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, path: string): void => {
+        callback(path)
+      }
+      ipcRenderer.on('workspace:opened', listener)
+      return () => {
+        ipcRenderer.removeListener('workspace:opened', listener)
+      }
+    },
+  },
+
   window: {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     maximize: () => ipcRenderer.invoke('window:maximize'),

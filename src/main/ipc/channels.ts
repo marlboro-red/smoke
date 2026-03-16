@@ -75,6 +75,13 @@ export const TAB_SAVE_STATE = 'tab:save-state' as const
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 export const APP_GET_GIT_BRANCH = 'app:get-git-branch' as const
 
+// Workspace channels
+export const WORKSPACE_OPEN_DIALOG = 'workspace:open-dialog' as const
+export const WORKSPACE_SET_TITLE = 'workspace:set-title' as const
+export const WORKSPACE_GET_RECENT = 'workspace:get-recent' as const
+export const WORKSPACE_ADD_RECENT = 'workspace:add-recent' as const
+export const WORKSPACE_OPENED = 'workspace:opened' as const
+
 // Window control channels
 export const WINDOW_MINIMIZE = 'window:minimize' as const
 export const WINDOW_MAXIMIZE = 'window:maximize' as const

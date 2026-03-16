@@ -9,6 +9,7 @@ import {
   getAllItems,
   filterItems,
   buildFileItems,
+  getRecentWorkspaceItems,
   type PaletteItem,
 } from './paletteCommands'
 import { preferencesStore } from '../stores/preferencesStore'
@@ -22,23 +23,27 @@ export default function CommandPalette(): JSX.Element | null {
   const listRef = useRef<HTMLDivElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
   const [fileItems, setFileItems] = useState<PaletteItem[]>([])
+  const [workspaceItems, setWorkspaceItems] = useState<PaletteItem[]>([])
 
-  // Load project files when palette opens
+  // Load project files and recent workspaces when palette opens
   useEffect(() => {
     if (!isOpen) {
       setFileItems([])
+      setWorkspaceItems([])
       return
     }
     const cwd = preferencesStore.getState().launchCwd
-    if (!cwd || !window.smokeAPI?.fs?.readdir) return
+    if (cwd && window.smokeAPI?.fs?.readdir) {
+      window.smokeAPI.fs.readdir(cwd).then((entries) => {
+        if (entries && Array.isArray(entries)) {
+          setFileItems(buildFileItems(entries))
+        }
+      }).catch(() => {
+        // Ignore errors loading files
+      })
+    }
 
-    window.smokeAPI.fs.readdir(cwd).then((entries) => {
-      if (entries && Array.isArray(entries)) {
-        setFileItems(buildFileItems(entries))
-      }
-    }).catch(() => {
-      // Ignore errors loading files
-    })
+    getRecentWorkspaceItems().then(setWorkspaceItems).catch(() => {})
   }, [isOpen])
 
   // Auto-focus input when opening
@@ -64,8 +69,8 @@ export default function CommandPalette(): JSX.Element | null {
   }, [isOpen])
 
   const allItems = useMemo(
-    () => [...getAllItems(), ...fileItems],
-    [fileItems, isOpen] // eslint-disable-line react-hooks/exhaustive-deps
+    () => [...getAllItems(), ...workspaceItems, ...fileItems],
+    [fileItems, workspaceItems, isOpen] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   const filtered = useMemo(() => filterItems(allItems, query), [allItems, query])
