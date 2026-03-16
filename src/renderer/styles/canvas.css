@@ -74,6 +74,15 @@
 }
 
 /* Pinned elements layer — fixed in viewport, above canvas transforms */
+/* Smooth animation when grid size changes and elements re-snap */
+.canvas-viewport.grid-resnapping [data-session-id] {
+  transition: left 300ms ease, top 300ms ease, width 300ms ease, height 300ms ease;
+}
+
+.canvas-viewport.grid-resnapping .region-shape {
+  transition: left 300ms ease, top 300ms ease, width 300ms ease, height 300ms ease;
+}
+
 .pinned-layer {
   position: absolute;
   top: 0;
