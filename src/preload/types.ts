@@ -449,7 +449,7 @@ export interface WorkspaceLayoutResult {
   bounds: CodeGraphBounds
 }
 
-// Plugin types
+// Plugin loader types
 export interface PluginInfo {
   name: string
   version: string
@@ -471,6 +471,45 @@ export interface PluginLoadError {
 export interface PluginChangedEvent {
   plugins: PluginInfo[]
   errors: PluginLoadError[]
+}
+
+// Plugin IPC bridge types
+export type PluginContextPermission =
+  | 'fs:read'
+  | 'fs:write'
+  | 'shell:execute'
+  | 'terminal:spawn'
+  | 'canvas:modify'
+  | 'network:fetch'
+
+export type ManifestPermission =
+  | 'filesystem.read'
+  | 'filesystem.write'
+  | 'network'
+  | 'pty'
+  | 'clipboard'
+  | 'notifications'
+  | 'shell'
+
+export interface PluginFsReadResult {
+  content: string
+  size: number
+}
+
+export interface PluginFsWriteResult {
+  size: number
+}
+
+export interface PluginFsDirEntry {
+  name: string
+  type: 'file' | 'directory' | 'symlink' | 'other'
+  size: number
+}
+
+export interface PluginCommandResult {
+  exitCode: number
+  stdout: string
+  stderr: string
 }
 
 export interface SmokeAPI {
@@ -605,10 +644,21 @@ export interface SmokeAPI {
     list: () => Promise<ShellInfo[]>
   }
   plugin: {
+    // Plugin loader
     list: () => Promise<{ plugins: PluginInfo[] }>
     get: (name: string) => Promise<PluginInfo | null>
     reload: () => Promise<{ plugins: PluginInfo[]; errors: PluginLoadError[] }>
     onChanged: (callback: (event: PluginChangedEvent) => void) => () => void
+    // Plugin IPC bridge
+    register: (pluginId: string, permissions: ManifestPermission[], sandboxRoot: string) => Promise<void>
+    unregister: (pluginId: string) => Promise<void>
+    readFile: (pluginId: string, path: string) => Promise<PluginFsReadResult>
+    writeFile: (pluginId: string, path: string, content: string) => Promise<PluginFsWriteResult>
+    readDir: (pluginId: string, path: string) => Promise<PluginFsDirEntry[]>
+    executeCommand: (pluginId: string, command: string, args?: string[]) => Promise<PluginCommandResult>
+    getState: (pluginId: string, key: string) => Promise<unknown>
+    setState: (pluginId: string, key: string, value: unknown) => Promise<void>
+    requestPermission: (pluginId: string, permission: PluginContextPermission) => Promise<boolean>
   }
 }
 

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult, ShellInfo, PluginChangedEvent } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult, ShellInfo, PluginChangedEvent, ManifestPermission, PluginContextPermission, PluginFsReadResult, PluginFsWriteResult, PluginFsDirEntry, PluginCommandResult } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -232,6 +232,7 @@ const smokeAPI: SmokeAPI = {
   },
 
   plugin: {
+    // Plugin loader (discovery/listing)
     list: () => ipcRenderer.invoke('plugin:list'),
     get: (name) => ipcRenderer.invoke('plugin:get', { name }),
     reload: () => ipcRenderer.invoke('plugin:reload'),
@@ -244,6 +245,25 @@ const smokeAPI: SmokeAPI = {
         ipcRenderer.removeListener('plugin:changed', listener)
       }
     },
+    // Plugin IPC bridge (permission-checked API calls)
+    register: (pluginId, permissions, sandboxRoot) =>
+      ipcRenderer.invoke('plugin:register', { pluginId, permissions, sandboxRoot }),
+    unregister: (pluginId) =>
+      ipcRenderer.invoke('plugin:unregister', pluginId),
+    readFile: (pluginId, path) =>
+      ipcRenderer.invoke('plugin:fs:read-file', { pluginId, path }),
+    writeFile: (pluginId, path, content) =>
+      ipcRenderer.invoke('plugin:fs:write-file', { pluginId, path, content }),
+    readDir: (pluginId, path) =>
+      ipcRenderer.invoke('plugin:fs:read-dir', { pluginId, path }),
+    executeCommand: (pluginId, command, args?) =>
+      ipcRenderer.invoke('plugin:execute-command', { pluginId, command, args }),
+    getState: (pluginId, key) =>
+      ipcRenderer.invoke('plugin:get-state', { pluginId, key }),
+    setState: (pluginId, key, value) =>
+      ipcRenderer.invoke('plugin:set-state', { pluginId, key, value }),
+    requestPermission: (pluginId, permission) =>
+      ipcRenderer.invoke('plugin:request-permission', { pluginId, permission }),
   },
 }
 

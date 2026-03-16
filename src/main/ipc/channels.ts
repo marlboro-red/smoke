@@ -114,11 +114,22 @@ export const CONTEXT_COLLECT = 'context:collect' as const
 // Shell detection channels
 export const SHELL_LIST = 'shell:list' as const
 
-// Plugin channels
+// Plugin loader channels
 export const PLUGIN_LIST = 'plugin:list' as const
 export const PLUGIN_GET = 'plugin:get' as const
 export const PLUGIN_RELOAD = 'plugin:reload' as const
 export const PLUGIN_CHANGED = 'plugin:changed' as const
+
+// Plugin IPC bridge channels
+export const PLUGIN_REGISTER = 'plugin:register' as const
+export const PLUGIN_UNREGISTER = 'plugin:unregister' as const
+export const PLUGIN_FS_READ_FILE = 'plugin:fs:read-file' as const
+export const PLUGIN_FS_WRITE_FILE = 'plugin:fs:write-file' as const
+export const PLUGIN_FS_READ_DIR = 'plugin:fs:read-dir' as const
+export const PLUGIN_EXECUTE_COMMAND = 'plugin:execute-command' as const
+export const PLUGIN_GET_STATE = 'plugin:get-state' as const
+export const PLUGIN_SET_STATE = 'plugin:set-state' as const
+export const PLUGIN_REQUEST_PERMISSION = 'plugin:request-permission' as const
 
 // Message types
 
@@ -634,7 +645,7 @@ export interface ShellInfo {
   name: string
 }
 
-// Plugin message types
+// Plugin loader message types
 export interface PluginGetRequest {
   name: string
 }
@@ -664,6 +675,82 @@ export interface PluginReloadResponse {
 export interface PluginChangedEvent {
   plugins: PluginInfo[]
   errors: Array<{ pluginDir: string; error: string }>
+}
+
+// Plugin IPC bridge message types
+
+export interface PluginRegisterRequest {
+  pluginId: string
+  permissions: import('../plugin/pluginManifest').PluginPermission[]
+  sandboxRoot: string
+}
+
+export interface PluginFsReadFileRequest {
+  pluginId: string
+  path: string
+}
+
+export interface PluginFsReadFileResponse {
+  content: string
+  size: number
+}
+
+export interface PluginFsWriteFileRequest {
+  pluginId: string
+  path: string
+  content: string
+}
+
+export interface PluginFsWriteFileResponse {
+  size: number
+}
+
+export interface PluginFsReadDirRequest {
+  pluginId: string
+  path: string
+}
+
+export interface PluginFsReadDirEntry {
+  name: string
+  type: 'file' | 'directory' | 'symlink' | 'other'
+  size: number
+}
+
+export interface PluginExecuteCommandRequest {
+  pluginId: string
+  command: string
+  args?: string[]
+}
+
+export interface PluginExecuteCommandResponse {
+  exitCode: number
+  stdout: string
+  stderr: string
+}
+
+export interface PluginGetStateRequest {
+  pluginId: string
+  key: string
+}
+
+export interface PluginSetStateRequest {
+  pluginId: string
+  key: string
+  value: unknown
+}
+
+/** Context-level permission names (as used by PluginContext in the renderer). */
+export type PluginContextPermission =
+  | 'fs:read'
+  | 'fs:write'
+  | 'shell:execute'
+  | 'terminal:spawn'
+  | 'canvas:modify'
+  | 'network:fetch'
+
+export interface PluginRequestPermissionRequest {
+  pluginId: string
+  permission: PluginContextPermission
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

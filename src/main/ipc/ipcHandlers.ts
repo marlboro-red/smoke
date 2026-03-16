@@ -167,6 +167,7 @@ import {
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
 import { PluginLoader, type LoadedPlugin } from '../plugin/PluginLoader'
+import { registerPluginIpcHandlers } from '../plugin/pluginIpcHandlers'
 
 let agentManagerInstance: AgentManager | null = null
 
@@ -905,6 +906,9 @@ export async function registerIpcHandlers(
       return collectContext(request, searchIndex, structureAnalyzer)
     }
   )
+
+  // Plugin IPC bridge handlers
+  registerPluginIpcHandlers(getMainWindow)
 
   // Shell detection handler
   ipcMain.handle(SHELL_LIST, (): ShellInfo[] => {
