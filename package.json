@@ -15,7 +15,8 @@
     "test:e2e": "npm run build && npx playwright test",
     "test:e2e:headed": "npm run build && HEADED=1 npx playwright test",
     "test:e2e:only": "npx playwright test",
-    "create-plugin": "node scripts/create-plugin.js"
+    "create-plugin": "node scripts/create-plugin.js",
+    "bench": "vitest bench"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
