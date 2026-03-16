@@ -20,6 +20,7 @@ import { performAutoLayout } from '../layout/autoLayout'
 import FileTree from './FileTree'
 import { taskInputStore } from '../assembly/taskInputStore'
 import ShellSelector from './ShellSelector'
+import { useSectionResize } from './useSectionResize'
 import '../styles/sidebar.css'
 import '../styles/settings-modal.css'
 
@@ -34,6 +35,24 @@ export default function Sidebar(): JSX.Element {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [shellSelectorOpen, setShellSelectorOpen] = useState(false)
   const newBtnRef = useRef<HTMLButtonElement>(null)
+
+  const fileTreeRef = useRef<HTMLDivElement>(null)
+  const layoutsRef = useRef<HTMLDivElement>(null)
+  const bookmarksRef = useRef<HTMLDivElement>(null)
+  const recordingsRef = useRef<HTMLDivElement>(null)
+
+  const sectionRefs = useMemo(() => ({
+    fileTree: fileTreeRef,
+    layouts: layoutsRef,
+    bookmarks: bookmarksRef,
+    recordings: recordingsRef,
+  }), [])
+
+  const handleSizesChange = useCallback((sizes: Record<string, number | undefined>) => {
+    window.smokeAPI?.config.set('sidebarSectionSizes', sizes)
+  }, [])
+
+  const { handleDividerMouseDown } = useSectionResize(sectionRefs, handleSizesChange)
 
   const handleContextMenu = useCallback((sessionId: string, x: number, y: number) => {
     setContextMenu({ sessionId, x, y })
@@ -216,16 +235,32 @@ export default function Sidebar(): JSX.Element {
           />
         ))}
       </div>
-      <div className="sidebar-section">
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'sessions', 'fileTree')}
+      />
+      <div className="sidebar-section" ref={fileTreeRef}>
         <FileTree onFileOpen={handleFileOpen} />
       </div>
-      <div className="sidebar-section">
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'fileTree', 'layouts')}
+      />
+      <div className="sidebar-section" ref={layoutsRef}>
         <LayoutPanel />
       </div>
-      <div className="sidebar-section">
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'layouts', 'bookmarks')}
+      />
+      <div className="sidebar-section" ref={bookmarksRef}>
         <BookmarkPanel />
       </div>
-      <div className="sidebar-section">
+      <div
+        className="sidebar-section-divider"
+        onMouseDown={(e) => handleDividerMouseDown(e, 'bookmarks', 'recordings')}
+      />
+      <div className="sidebar-section" ref={recordingsRef}>
         <ReplayPanel />
       </div>
       {contextMenu && (

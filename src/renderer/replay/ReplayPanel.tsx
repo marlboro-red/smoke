@@ -91,7 +91,7 @@ export default function ReplayPanel(): JSX.Element {
         className="replay-panel-toggle"
         onClick={() => setExpanded(!expanded)}
       >
-        <span className="replay-panel-toggle-icon">{expanded ? '\u25BC' : '\u25B6'}</span>
+        <span className={`section-toggle-arrow${expanded ? ' expanded' : ''}`}>{'\u25B6'}</span>
         Recordings
       </button>
 

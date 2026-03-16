@@ -18,6 +18,10 @@
   width: 0;
 }
 
+.sidebar-region.collapsed .sidebar-collapse-btn {
+  opacity: 0.7;
+}
+
 /* Collapse toggle button — always visible at sidebar edge */
 
 .sidebar-collapse-btn {
@@ -33,14 +37,18 @@
   border-left: none;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: 7px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  opacity: 0;
+  transition: opacity var(--duration-normal), background var(--duration-fast), color var(--duration-fast);
+}
+
+.sidebar-region:hover .sidebar-collapse-btn {
   opacity: 0.7;
-  transition: opacity var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
 }
 
 .sidebar-collapse-btn:hover {
@@ -79,7 +87,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-lg) 14px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -94,14 +102,14 @@
 .sidebar-header-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-xs);
 }
 
 .sidebar-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
-  padding: var(--space-sm) 14px;
+  gap: var(--space-xs);
+  padding: var(--space-md) 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -112,8 +120,8 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: var(--font-size-md);
-  padding: var(--space-xs) 10px;
+  font-size: var(--font-size-sm);
+  padding: 5px 8px;
   cursor: pointer;
   white-space: nowrap;
   transition: background var(--duration-fast), color var(--duration-fast),
@@ -126,6 +134,11 @@
   color: var(--text-primary);
 }
 
+.sidebar-new-btn:active {
+  background: var(--accent-dim);
+  border-color: var(--accent-muted);
+}
+
 .session-list {
   flex: 1;
   overflow-y: auto;
@@ -133,20 +146,51 @@
   min-height: 40px;
 }
 
+/* ─── Section Dividers ─── */
+
+.sidebar-section-divider {
+  flex-shrink: 0;
+  height: 1px;
+  background: var(--border-subtle);
+  cursor: row-resize;
+  position: relative;
+  transition: background var(--duration-fast);
+}
+
+.sidebar-section-divider::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 7px;
+  z-index: 1;
+}
+
+.sidebar-section-divider:hover {
+  background: var(--accent-muted);
+}
+
+.sidebar-section-divider:active {
+  background: var(--accent);
+}
+
 /* Auto-sizing sidebar sections */
 
 .sidebar-section {
   flex: 0 1 auto;
   max-height: 300px;
+  min-height: 28px;
   overflow-y: auto;
-  border-top: 1px solid var(--border-subtle);
+  overflow-x: hidden;
 }
 
 .session-list-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: var(--space-md) 14px;
+  gap: var(--space-md);
+  padding: var(--space-sm) 14px;
+  padding-left: 11px;
   cursor: pointer;
   transition: background var(--duration-fast);
   border-left: 3px solid transparent;
@@ -154,6 +198,10 @@
 
 .session-list-item:hover {
   background: var(--bg-hover);
+}
+
+.session-list-item:active {
+  background: var(--bg-active);
 }
 
 .session-list-item.focused {
@@ -175,8 +223,8 @@
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -212,20 +260,20 @@
 }
 
 .session-title {
-  font-size: var(--font-size-lg);
-  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .session-title-input {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   color: var(--text-primary);
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
-  padding: 0 var(--space-xs);
+  padding: 1px var(--space-xs);
   outline: none;
   width: 100%;
   font-family: inherit;
@@ -353,12 +401,12 @@
 .sidebar-context-menu {
   position: fixed;
   z-index: 9999;
-  min-width: 140px;
-  background: var(--bg-elevated);
+  min-width: 160px;
+  background: var(--bg-sidebar);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: var(--space-xs) 0;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-dropdown);
 }
 
 .context-menu-item {
@@ -366,16 +414,17 @@
   width: 100%;
   background: none;
   border: none;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: var(--font-size-md);
   padding: var(--space-sm) var(--space-lg);
   cursor: pointer;
   text-align: left;
-  transition: background var(--duration-fast);
+  transition: background var(--duration-fast), color var(--duration-fast);
 }
 
 .context-menu-item:hover {
   background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .context-menu-item.destructive {
@@ -419,7 +468,7 @@
   position: fixed;
   z-index: 9999;
   min-width: 180px;
-  background: var(--bg-surface);
+  background: var(--bg-sidebar);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   padding: var(--space-xs) 0;
@@ -468,12 +517,28 @@
   left: 100%;
   top: -4px;
   min-width: 160px;
-  background: var(--bg-surface);
+  background: var(--bg-sidebar);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   padding: var(--space-xs) 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   z-index: 10000;
+}
+
+/* ─── Shared Section Toggle Arrow ─── */
+
+.section-toggle-arrow {
+  display: inline-block;
+  font-size: 8px;
+  width: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  transition: transform var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.section-toggle-arrow.expanded {
+  transform: rotate(90deg);
 }
 
 /* File Tree Panel */
@@ -491,11 +556,15 @@
   padding: var(--space-md) 14px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background var(--duration-fast);
+  transition: color var(--duration-fast), background var(--duration-fast);
 }
 
 .ft-panel-header:hover {
   background: var(--bg-hover);
+}
+
+.ft-panel-header:hover .ft-panel-title {
+  color: var(--text-secondary);
 }
 
 .ft-panel-title {

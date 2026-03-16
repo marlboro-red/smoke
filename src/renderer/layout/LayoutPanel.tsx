@@ -48,7 +48,8 @@ export default function LayoutPanel(): JSX.Element {
         className="layout-toggle-btn"
         onClick={() => setExpanded(!expanded)}
       >
-        Layouts {expanded ? '\u25B4' : '\u25BE'}
+        <span className={`section-toggle-arrow${expanded ? ' expanded' : ''}`}>{'\u25B6'}</span>
+        Layouts
       </button>
       {expanded && (
         <div className="layout-panel-content">
