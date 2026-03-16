@@ -120,6 +120,10 @@ export const PLUGIN_GET = 'plugin:get' as const
 export const PLUGIN_RELOAD = 'plugin:reload' as const
 export const PLUGIN_CHANGED = 'plugin:changed' as const
 
+// Plugin install/uninstall channels
+export const PLUGIN_INSTALL = 'plugin:install' as const
+export const PLUGIN_UNINSTALL = 'plugin:uninstall' as const
+
 // Plugin IPC bridge channels
 export const PLUGIN_REGISTER = 'plugin:register' as const
 export const PLUGIN_UNREGISTER = 'plugin:unregister' as const
@@ -661,6 +665,30 @@ export interface PluginInfo {
   permissions: string[]
   pluginDir: string
   source: 'global' | 'project'
+  /** How this plugin was installed (npm, url, or local/undefined for manually placed). */
+  installSource?: 'npm' | 'url' | 'local'
+}
+
+export interface PluginInstallRequest {
+  /** npm package name or URL */
+  source: string
+}
+
+export interface PluginInstallResponse {
+  success: boolean
+  pluginName?: string
+  pluginDir?: string
+  error?: string
+}
+
+export interface PluginUninstallRequest {
+  name: string
+  force?: boolean
+}
+
+export interface PluginUninstallResponse {
+  success: boolean
+  error?: string
 }
 
 export interface PluginListResponse {

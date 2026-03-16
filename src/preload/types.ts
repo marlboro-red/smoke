@@ -461,6 +461,8 @@ export interface PluginInfo {
   permissions: string[]
   pluginDir: string
   source: 'global' | 'project'
+  /** How this plugin was installed (npm, url, or local/undefined for manually placed). */
+  installSource?: 'npm' | 'url' | 'local'
 }
 
 export interface PluginLoadError {
@@ -649,6 +651,9 @@ export interface SmokeAPI {
     get: (name: string) => Promise<PluginInfo | null>
     reload: () => Promise<{ plugins: PluginInfo[]; errors: PluginLoadError[] }>
     onChanged: (callback: (event: PluginChangedEvent) => void) => () => void
+    // Plugin install/uninstall
+    install: (source: string) => Promise<{ success: boolean; pluginName?: string; error?: string }>
+    uninstall: (name: string, force?: boolean) => Promise<{ success: boolean; error?: string }>
     // Plugin IPC bridge
     register: (pluginId: string, permissions: ManifestPermission[], sandboxRoot: string) => Promise<void>
     unregister: (pluginId: string) => Promise<void>

@@ -6,6 +6,7 @@ import {
   validateManifest,
   type PluginManifest,
 } from './pluginManifest'
+import { readInstallMetadata, type InstallSource } from './installMetadata'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,6 +20,8 @@ export interface LoadedPlugin {
   entryPointPath: string
   /** Where the plugin was discovered. */
   source: 'global' | 'project'
+  /** How this plugin was installed (npm, url, or undefined for manually placed). */
+  installSource?: InstallSource
 }
 
 export interface PluginLoadError {
@@ -176,12 +179,16 @@ export class PluginLoader {
       }
     }
 
+    // Read install metadata if present
+    const metadata = await readInstallMetadata(pluginDir)
+
     return {
       plugin: {
         manifest,
         pluginDir,
         entryPointPath,
         source,
+        installSource: metadata?.source,
       },
     }
   }
