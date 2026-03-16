@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useSessionList, useFocusedId, useHighlightedId, useBroadcastGroupId, findFileSessionByPath, sessionStore } from '../stores/sessionStore'
+import { useSessionList, useFocusedId, useHighlightedId, useBroadcastGroupId, findFileSessionByPath } from '../stores/sessionStore'
 import type { Session } from '../stores/sessionStore'
 import { useGroupList } from '../stores/groupStore'
-import { createNewSession } from '../session/useSessionCreation'
 import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import { isImageFile, openImageOrPanToExisting } from '../image/useImageCreation'
 import SessionListItem from './SessionListItem'
@@ -16,10 +15,8 @@ import BookmarkPanel from '../bookmarks/BookmarkPanel'
 import ReplayPanel from '../replay/ReplayPanel'
 import { settingsModalStore } from '../config/settingsStore'
 import { shortcutsOverlayStore } from '../shortcuts/shortcutsOverlayStore'
-import { performAutoLayout } from '../layout/autoLayout'
 import FileTree from './FileTree'
-import { taskInputStore } from '../assembly/taskInputStore'
-import ShellSelector from './ShellSelector'
+import CreateMenu from './CreateMenu'
 import { useSectionResize } from './useSectionResize'
 import '../styles/sidebar.css'
 import '../styles/settings-modal.css'
@@ -33,8 +30,8 @@ export default function Sidebar(): JSX.Element {
   const panToSession = usePanToSession()
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [shellSelectorOpen, setShellSelectorOpen] = useState(false)
-  const newBtnRef = useRef<HTMLButtonElement>(null)
+  const [createMenuOpen, setCreateMenuOpen] = useState(false)
+  const createBtnRef = useRef<HTMLButtonElement>(null)
 
   const fileTreeRef = useRef<HTMLDivElement>(null)
   const layoutsRef = useRef<HTMLDivElement>(null)
@@ -102,23 +99,12 @@ export default function Sidebar(): JSX.Element {
     return { groupedSessions: groupSessionMap, ungrouped: ungroupedList }
   }, [sortedSessions, groups])
 
-  const handleNewSession = useCallback(() => {
-    createNewSession()
+  const handleToggleCreateMenu = useCallback(() => {
+    setCreateMenuOpen((v) => !v)
   }, [])
 
-  const handleNewNote = useCallback(() => {
-    const session = sessionStore.getState().createNoteSession()
-    sessionStore.getState().focusSession(session.id)
-  }, [])
-
-  const handleNewWebview = useCallback(() => {
-    const session = sessionStore.getState().createWebviewSession()
-    sessionStore.getState().focusSession(session.id)
-  }, [])
-
-  const handleNewSnippet = useCallback(() => {
-    const session = sessionStore.getState().createSnippetSession()
-    sessionStore.getState().focusSession(session.id)
+  const handleCloseCreateMenu = useCallback(() => {
+    setCreateMenuOpen(false)
   }, [])
 
   const handleFileOpen = useCallback((filePath: string) => {
@@ -134,10 +120,6 @@ export default function Sidebar(): JSX.Element {
     }
   }, [])
 
-  const handleAutoLayout = useCallback(() => {
-    performAutoLayout()
-  }, [])
-
   const handleOpenSettings = useCallback(() => {
     settingsModalStore.getState().open()
   }, [])
@@ -151,51 +133,25 @@ export default function Sidebar(): JSX.Element {
       <div className="sidebar-header">
         <span className="sidebar-title">Sessions</span>
         <div className="sidebar-header-actions">
-          <button className="sidebar-settings-btn" onClick={handleOpenShortcuts} title="Keyboard Shortcuts (⌘/)">
+          <button
+            ref={createBtnRef}
+            className={`sidebar-icon-btn sidebar-create-btn${createMenuOpen ? ' active' : ''}`}
+            onClick={handleToggleCreateMenu}
+            title="Create new item"
+          >
+            +
+          </button>
+          <button className="sidebar-icon-btn" onClick={handleOpenShortcuts} title="Keyboard Shortcuts (⌘/)">
             ?
           </button>
-          <button className="sidebar-settings-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
+          <button className="sidebar-icon-btn" onClick={handleOpenSettings} title="Settings (⌘,)">
             &#9881;
           </button>
         </div>
       </div>
-      <div className="sidebar-actions">
-        <span className="sidebar-new-btn-group">
-          <button className="sidebar-new-btn" onClick={handleNewSession} title="New terminal session">
-            + New
-          </button>
-          <button
-            ref={newBtnRef}
-            className="sidebar-new-btn sidebar-shell-dropdown-btn"
-            onClick={() => setShellSelectorOpen((v) => !v)}
-            title="Choose shell for new terminal"
-          >
-            &#9662;
-          </button>
-        </span>
-        {shellSelectorOpen && (
-          <ShellSelector
-            buttonRef={newBtnRef}
-            onSelect={(shell) => createNewSession(undefined, shell)}
-            onClose={() => setShellSelectorOpen(false)}
-          />
-        )}
-        <button className="sidebar-new-btn" onClick={handleNewNote} title="New note">
-          + Note
-        </button>
-        <button className="sidebar-new-btn" onClick={handleNewWebview} title="New web browser">
-          + Web
-        </button>
-        <button className="sidebar-new-btn" onClick={handleNewSnippet} title="New code snippet">
-          + Snippet
-        </button>
-        <button className="sidebar-new-btn" onClick={handleAutoLayout} title="Auto Layout">
-          Layout
-        </button>
-        <button className="sidebar-new-btn sidebar-assemble-btn" onClick={() => taskInputStore.getState().open()} title="Assemble Workspace (⌘⇧A)">
-          Assemble
-        </button>
-      </div>
+      {createMenuOpen && (
+        <CreateMenu anchorRef={createBtnRef} onClose={handleCloseCreateMenu} />
+      )}
       <div className="session-list">
         {groups.map((group) => {
           const groupSessions = groupedSessions.get(group.id)
