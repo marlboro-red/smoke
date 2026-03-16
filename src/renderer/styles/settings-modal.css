@@ -263,26 +263,3 @@
   color: var(--text-muted);
 }
 
-/* ── Sidebar settings button ── */
-
-.sidebar-settings-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  cursor: pointer;
-  padding: 0;
-  border-radius: var(--radius-sm);
-  line-height: 1;
-  transition: color var(--duration-fast), background var(--duration-fast);
-}
-
-.sidebar-settings-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
