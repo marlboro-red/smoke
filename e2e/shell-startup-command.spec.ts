@@ -35,13 +35,25 @@ async function getSessionProp(page: import('@playwright/test').Page, sessionId: 
   }, [sessionId, prop])
 }
 
+/**
+ * Helper: open the shell selector from the Create menu.
+ * Clicks the "+" sidebar button to open CreateMenu, then clicks the shell
+ * chevron (.create-menu-shell-btn) next to "Terminal" to open the ShellSelector.
+ */
+async function openShellSelector(page: import('@playwright/test').Page): Promise<void> {
+  const createBtn = page.locator('.sidebar-create-btn')
+  await createBtn.click()
+  await page.waitForTimeout(300)
+
+  const shellBtn = page.locator('.create-menu-shell-btn')
+  await shellBtn.click()
+}
+
 test.describe('Shell Selector Dropdown', () => {
   test('lists available shells when clicking dropdown', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await expect(dropdownBtn).toBeVisible({ timeout: 3000 })
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })
@@ -67,9 +79,7 @@ test.describe('Shell Selector Dropdown', () => {
   test('create terminal with specific shell via dropdown', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    // Open shell selector
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })
@@ -100,9 +110,7 @@ test.describe('Shell Selector Dropdown', () => {
   test('create terminal with default shell via dropdown', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    // Open shell selector and pick "Default Shell"
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })
@@ -131,9 +139,7 @@ test.describe('Shell Selector Dropdown', () => {
   test('specific shell is used by the spawned PTY', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    // Open shell selector and pick a specific shell
-    const dropdownBtn = mainWindow.locator('.sidebar-shell-dropdown-btn')
-    await dropdownBtn.click()
+    await openShellSelector(mainWindow)
 
     const menu = mainWindow.locator('.shell-selector-menu')
     await expect(menu).toBeVisible({ timeout: 3000 })

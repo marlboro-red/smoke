@@ -1,12 +1,11 @@
 import { test, expect } from './fixtures'
-import { waitForAppReady } from './helpers'
+import { waitForAppReady, clickCreateMenuItem } from './helpers'
 
 test.describe('Sticky Notes', () => {
   test('create a sticky note via sidebar button', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const noteBtn = mainWindow.locator('.sidebar-new-btn', { hasText: 'Note' })
-    await noteBtn.click()
+    await clickCreateMenuItem(mainWindow, 'Note')
 
     const noteWindow = mainWindow.locator('.note-window')
     await expect(noteWindow.first()).toBeVisible({ timeout: 5000 })
@@ -19,8 +18,7 @@ test.describe('Sticky Notes', () => {
   test('edit sticky note text', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const noteBtn = mainWindow.locator('.sidebar-new-btn', { hasText: 'Note' })
-    await noteBtn.click()
+    await clickCreateMenuItem(mainWindow, 'Note')
 
     const noteWindow = mainWindow.locator('.note-window')
     await expect(noteWindow.first()).toBeVisible({ timeout: 5000 })
@@ -38,8 +36,7 @@ test.describe('Sticky Notes', () => {
   test('change sticky note color', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const noteBtn = mainWindow.locator('.sidebar-new-btn', { hasText: 'Note' })
-    await noteBtn.click()
+    await clickCreateMenuItem(mainWindow, 'Note')
 
     const noteWindow = mainWindow.locator('.note-window')
     await expect(noteWindow.first()).toBeVisible({ timeout: 5000 })
@@ -73,8 +70,7 @@ test.describe('Sticky Notes', () => {
   test('delete a sticky note via close button', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
-    const noteBtn = mainWindow.locator('.sidebar-new-btn', { hasText: 'Note' })
-    await noteBtn.click()
+    await clickCreateMenuItem(mainWindow, 'Note')
 
     const noteWindow = mainWindow.locator('.note-window')
     await expect(noteWindow.first()).toBeVisible({ timeout: 5000 })

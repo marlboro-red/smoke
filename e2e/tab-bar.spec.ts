@@ -35,39 +35,43 @@ test.describe('Tab Bar Switching and Management', () => {
   test('click tab to switch focus', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
+    // Wait for tab bar to initialize
+    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
+
     // Create a terminal in the first tab so it has content
     await pressShortcut(mainWindow, 'n')
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
 
     // Create a second tab
     const newTabBtn = mainWindow.locator('.tab-bar-new')
     await newTabBtn.click()
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
 
     const tabItems = mainWindow.locator('.tab-item')
     await expect(tabItems).toHaveCount(2, { timeout: 5000 })
 
     // Second tab should be active now
     const secondTab = tabItems.nth(1)
-    await expect(secondTab).toHaveClass(/active/)
+    await expect(secondTab).toHaveClass(/active/, { timeout: 3000 })
 
     // Click the first tab to switch back
     const firstTab = tabItems.nth(0)
     await firstTab.click()
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
 
     // First tab should now be active
-    await expect(firstTab).toHaveClass(/active/)
+    await expect(firstTab).toHaveClass(/active/, { timeout: 3000 })
     await expect(secondTab).not.toHaveClass(/active/)
   })
 
   test('tab close button removes the tab', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
 
     // Create a second tab
     const newTabBtn = mainWindow.locator('.tab-bar-new')
     await newTabBtn.click()
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
 
     const tabItems = mainWindow.locator('.tab-item')
     await expect(tabItems).toHaveCount(2, { timeout: 5000 })
@@ -77,61 +81,62 @@ test.describe('Tab Bar Switching and Management', () => {
     const closeBtn = secondTab.locator('.tab-item-close')
     // Force click since close button is opacity:0 until hover
     await closeBtn.click({ force: true })
-    await mainWindow.waitForTimeout(500)
 
     // Should be back to one tab
     await expect(tabItems).toHaveCount(1, { timeout: 5000 })
 
     // The remaining tab should be active
     const activeTab = mainWindow.locator('.tab-item.active')
-    await expect(activeTab).toBeVisible()
+    await expect(activeTab).toBeVisible({ timeout: 3000 })
   })
 
   test('cannot close the last remaining tab', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
 
     const tabItems = mainWindow.locator('.tab-item')
     await expect(tabItems).toHaveCount(1, { timeout: 5000 })
 
-    // The single tab should not have a close button visible
+    // The single tab should not have a close button (conditionally not rendered)
     const closeBtn = tabItems.first().locator('.tab-item-close')
     await expect(closeBtn).toHaveCount(0)
   })
 
   test('closing active tab switches to adjacent tab', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
 
     const newTabBtn = mainWindow.locator('.tab-bar-new')
 
     // Create two additional tabs (total: 3)
     await newTabBtn.click()
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
     await newTabBtn.click()
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
 
     const tabItems = mainWindow.locator('.tab-item')
     await expect(tabItems).toHaveCount(3, { timeout: 5000 })
 
     // Third tab (index 2) should be active
-    await expect(tabItems.nth(2)).toHaveClass(/active/)
+    await expect(tabItems.nth(2)).toHaveClass(/active/, { timeout: 3000 })
 
     // Close the active (third) tab
     const closeBtn = tabItems.nth(2).locator('.tab-item-close')
     await closeBtn.click({ force: true })
-    await mainWindow.waitForTimeout(500)
 
     // Should now have 2 tabs, and one of them should be active
     await expect(tabItems).toHaveCount(2, { timeout: 5000 })
     const activeTab = mainWindow.locator('.tab-item.active')
-    await expect(activeTab).toBeVisible()
+    await expect(activeTab).toBeVisible({ timeout: 3000 })
   })
 
   test('tab switching preserves sessions per tab', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await expect(mainWindow.locator('.tab-item.active')).toBeVisible({ timeout: 5000 })
 
     // Create a terminal in the first tab
     await pressShortcut(mainWindow, 'n')
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
 
     const terminalWindows = mainWindow.locator('.terminal-window')
     await expect(terminalWindows.first()).toBeVisible({ timeout: 5000 })
@@ -140,23 +145,26 @@ test.describe('Tab Bar Switching and Management', () => {
     // Create a second tab (clears canvas)
     const newTabBtn = mainWindow.locator('.tab-bar-new')
     await newTabBtn.click()
-    await mainWindow.waitForTimeout(800)
 
-    // Second tab should start with no terminals
-    const terminalCountInTab2 = await terminalWindows.count()
-    expect(terminalCountInTab2).toBe(0)
+    // Wait for tab switch to complete and canvas to clear
+    await mainWindow.waitForFunction(() => {
+      return document.querySelectorAll('.terminal-window').length === 0
+    }, undefined, { timeout: 10000 })
 
     // Create a terminal in the second tab
     await pressShortcut(mainWindow, 'n')
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
     await expect(terminalWindows.first()).toBeVisible({ timeout: 5000 })
 
     // Switch back to the first tab
     const tabItems = mainWindow.locator('.tab-item')
     await tabItems.nth(0).click()
-    await mainWindow.waitForTimeout(800)
 
-    // First tab should have its terminal restored
+    // Wait for layout restoration — terminal should reappear
+    await mainWindow.waitForFunction((expectedCount) => {
+      return document.querySelectorAll('.terminal-window').length === expectedCount
+    }, tab1TerminalCount, { timeout: 10000 })
+
     const restoredCount = await terminalWindows.count()
     expect(restoredCount).toBe(tab1TerminalCount)
   })

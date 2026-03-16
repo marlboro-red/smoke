@@ -354,16 +354,16 @@ test.describe('Global Search', () => {
 
     await pressShortcut(mainWindow, 'f', { shift: true })
     const input = mainWindow.locator('.search-input')
+    await expect(input).toBeVisible({ timeout: 3000 })
     // Use a unique term that only appears in our test notes
     await input.fill('foo bar baz')
-    await mainWindow.waitForTimeout(500)
 
-    // Only note1 has "foo bar baz" (once), so one group with count 1
+    // Wait for search results to render
     const groups = mainWindow.locator('.search-group')
-    await expect(groups).toHaveCount(1, { timeout: 3000 })
+    await expect(groups).toHaveCount(1, { timeout: 5000 })
 
     const groupCount = mainWindow.locator('.search-group-count')
-    await expect(groupCount.first()).toHaveText('1', { timeout: 3000 })
+    await expect(groupCount.first()).toHaveText('1', { timeout: 5000 })
   })
 
   test('invalid regex does not crash and shows no results', async ({ mainWindow }) => {
@@ -396,9 +396,9 @@ test.describe('Global Search', () => {
     await input.fill('foo')
     await mainWindow.waitForTimeout(500)
 
-    // Verify results exist
+    // Wait for results to appear
     const groups = mainWindow.locator('.search-group')
-    await expect(groups).toHaveCount(2, { timeout: 3000 })
+    await expect(groups).toHaveCount(2, { timeout: 5000 })
 
     // Close
     await mainWindow.keyboard.press('Escape')
@@ -406,9 +406,10 @@ test.describe('Global Search', () => {
 
     // Reopen — should be empty
     await pressShortcut(mainWindow, 'f', { shift: true })
-    await expect(input).toHaveValue('', { timeout: 2000 })
+    await expect(input).toBeVisible({ timeout: 3000 })
+    await expect(input).toHaveValue('', { timeout: 3000 })
 
     const emptyMsg = mainWindow.locator('.search-empty')
-    await expect(emptyMsg).toContainText('Type to search', { timeout: 3000 })
+    await expect(emptyMsg).toContainText('Type to search', { timeout: 5000 })
   })
 })

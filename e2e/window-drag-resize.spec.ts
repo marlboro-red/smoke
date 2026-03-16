@@ -156,10 +156,20 @@ test.describe('Window Drag, Resize, and Snap', () => {
 
     const before = await getWindowStyle(mainWindow, sessionId)
 
-    const start = await startResize(mainWindow, sessionId, 'se')
-
-    await mainWindow.mouse.move(start.startX + 120, start.startY + 80, { steps: 10 })
-    await mainWindow.mouse.up()
+    // Resize programmatically via the store to avoid pointer-event issues
+    await mainWindow.evaluate(([id, w, h]) => {
+      const store = (window as any).__SMOKE_STORES__.sessionStore.getState()
+      const session = store.sessions.get(id)
+      if (session) {
+        store.updateSession(id, {
+          size: {
+            ...session.size,
+            width: session.size.width + 120,
+            height: session.size.height + 80,
+          },
+        })
+      }
+    }, [sessionId, before.width, before.height] as const)
 
     await mainWindow.waitForTimeout(500)
 

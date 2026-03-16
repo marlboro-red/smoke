@@ -298,7 +298,12 @@ test.describe('Split Panes: Focus Navigation', () => {
 
     // Navigate left: Cmd+Alt+Left
     await pressModShortcut(mainWindow, 'ArrowLeft', { alt: true })
-    await mainWindow.waitForTimeout(500)
+
+    // Wait for store to update
+    await mainWindow.waitForFunction(([id, prevFocused]) => {
+      const focused = (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
+      return focused !== prevFocused
+    }, [sessionId, focusedAfterSplit] as [string, string], { timeout: 5000 })
 
     const focusedAfterLeft = await mainWindow.evaluate((id) => {
       return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
@@ -309,7 +314,11 @@ test.describe('Split Panes: Focus Navigation', () => {
 
     // Navigate right: Cmd+Alt+Right
     await pressModShortcut(mainWindow, 'ArrowRight', { alt: true })
-    await mainWindow.waitForTimeout(500)
+
+    await mainWindow.waitForFunction(([id, prevFocused]) => {
+      const focused = (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
+      return focused !== prevFocused
+    }, [sessionId, focusedAfterLeft] as [string, string], { timeout: 5000 })
 
     const focusedAfterRight = await mainWindow.evaluate((id) => {
       return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
@@ -340,7 +349,12 @@ test.describe('Split Panes: Focus Navigation', () => {
 
     // Navigate up: Cmd+Alt+Up
     await pressModShortcut(mainWindow, 'ArrowUp', { alt: true })
-    await mainWindow.waitForTimeout(500)
+
+    // Wait for store to update
+    await mainWindow.waitForFunction(([id, prevFocused]) => {
+      const focused = (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
+      return focused !== prevFocused
+    }, [sessionId, focusedAfterSplit] as [string, string], { timeout: 5000 })
 
     const focusedAfterUp = await mainWindow.evaluate((id) => {
       return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
@@ -351,7 +365,11 @@ test.describe('Split Panes: Focus Navigation', () => {
 
     // Navigate down: Cmd+Alt+Down
     await pressModShortcut(mainWindow, 'ArrowDown', { alt: true })
-    await mainWindow.waitForTimeout(500)
+
+    await mainWindow.waitForFunction(([id, prevFocused]) => {
+      const focused = (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
+      return focused !== prevFocused
+    }, [sessionId, focusedAfterUp] as [string, string], { timeout: 5000 })
 
     const focusedAfterDown = await mainWindow.evaluate((id) => {
       return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
@@ -387,7 +405,12 @@ test.describe('Split Panes: Focus Navigation', () => {
 
     // Navigate to the other pane and verify focus indicator moved
     await pressModShortcut(mainWindow, 'ArrowLeft', { alt: true })
-    await mainWindow.waitForTimeout(500)
+
+    // Wait for store to update
+    await mainWindow.waitForFunction(([id, prevFocused]) => {
+      const focused = (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
+      return focused !== prevFocused
+    }, [sessionId, focusedPaneId] as [string, string], { timeout: 5000 })
 
     const newFocusedPaneId = await mainWindow.evaluate((id) => {
       return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)

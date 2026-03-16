@@ -454,12 +454,14 @@ test.describe('Recording, replay, and export', () => {
     // Open panel
     const toggleBtn = mainWindow.locator('.replay-panel-toggle')
     await toggleBtn.click()
-    await mainWindow.waitForTimeout(500)
+
+    // Wait for panel items to render
+    const items = mainWindow.locator('.replay-panel-item-row')
+    await expect(items.first()).toBeVisible({ timeout: 5000 })
 
     // Get the last recording item row
-    const items = mainWindow.locator('.replay-panel-item-row')
     const lastItem = items.last()
-    await expect(lastItem).toBeVisible({ timeout: 3000 })
+    await expect(lastItem).toBeVisible({ timeout: 5000 })
 
     // Check date is displayed
     const dateText = lastItem.locator('.replay-panel-item-date')

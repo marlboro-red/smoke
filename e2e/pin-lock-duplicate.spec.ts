@@ -378,12 +378,12 @@ test.describe('Element Locking', () => {
       const store = (window as any).__SMOKE_STORES__.sessionStore.getState()
       store.toggleLock(id) // lock
     }, sessionId)
-    await mainWindow.waitForTimeout(200)
+    await mainWindow.waitForTimeout(500)
     await mainWindow.evaluate((id) => {
       const store = (window as any).__SMOKE_STORES__.sessionStore.getState()
       store.toggleLock(id) // unlock
     }, sessionId)
-    await mainWindow.waitForTimeout(300)
+    await mainWindow.waitForTimeout(500)
 
     // Verify unlocked
     const isLocked = await mainWindow.evaluate((id) => {

@@ -24,7 +24,7 @@ const GROUP_ACTION_COUNTS: Record<string, number> = {
   'Split Panes': 7,
   'Canvas': 16,
   'Groups': 2,
-  'Layout & Settings': 4,
+  'Layout & Settings': 5,
   'AI & Tools': 2,
   'General': 2,
   'Other': 1,

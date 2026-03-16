@@ -241,12 +241,17 @@ test.describe('Sidebar Session List and Interaction', () => {
 
     // Drag the divider up by 60px — this shrinks session-list and grows fileTree
     const dividerBox = await divider.boundingBox()
-    if (dividerBox) {
-      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2)
-      await mainWindow.mouse.down()
-      await mainWindow.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2 - 60, { steps: 10 })
-      await mainWindow.mouse.up()
-    }
+    expect(dividerBox).toBeTruthy()
+
+    const cx = dividerBox!.x + dividerBox!.width / 2
+    const cy = dividerBox!.y + dividerBox!.height / 2
+    await mainWindow.mouse.move(cx, cy)
+    await mainWindow.mouse.down()
+    // Drag in smaller steps and add a pause for the resize handler
+    await mainWindow.mouse.move(cx, cy - 60, { steps: 20 })
+    await mainWindow.waitForTimeout(200)
+    await mainWindow.mouse.up()
+    await mainWindow.waitForTimeout(500)
 
     // fileTree section height should have increased (session-list shrunk, fileTree grew)
     const newHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
@@ -259,7 +264,7 @@ test.describe('Sidebar Session List and Interaction', () => {
     const appLayout = mainWindow.locator('.app-layout')
 
     // Open settings modal via the gear button
-    const settingsBtn = mainWindow.locator('.sidebar-settings-btn[title*="Settings"]')
+    const settingsBtn = mainWindow.locator('.sidebar-icon-btn[title*="Settings"]')
     await settingsBtn.click()
 
     const settingsModal = mainWindow.locator('.settings-modal')

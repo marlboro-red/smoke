@@ -70,7 +70,12 @@ test.describe('Command Palette: Open and Dismiss', () => {
     await pressShortcut(mainWindow, 'p')
     await expect(mainWindow.locator('.palette-modal')).toBeVisible({ timeout: 3000 })
 
-    // Input should be focused
+    // Wait for requestAnimationFrame focus to complete
+    await mainWindow.waitForFunction(() => {
+      const input = document.querySelector('.palette-input')
+      return input && document.activeElement === input
+    }, undefined, { timeout: 3000 })
+
     const isFocused = await mainWindow.locator('.palette-input').evaluate(
       (el: HTMLElement) => document.activeElement === el
     )
@@ -165,11 +170,17 @@ test.describe('Command Palette: Search and Filtering', () => {
 
     // Navigate down
     await mainWindow.keyboard.press('ArrowDown')
+    await mainWindow.waitForTimeout(200)
     await mainWindow.keyboard.press('ArrowDown')
+    await mainWindow.waitForTimeout(200)
 
     // Type to filter — selected index should reset
     await mainWindow.locator('.palette-input').fill('new')
-    await mainWindow.waitForTimeout(200)
+
+    // Wait for store to process the query change and reset selectedIndex
+    await mainWindow.waitForFunction(() =>
+      (window as any).__SMOKE_STORES__.commandPaletteStore.getState().selectedIndex === 0
+    , undefined, { timeout: 3000 })
 
     const selectedIndex = await evaluate(mainWindow, () =>
       (window as any).__SMOKE_STORES__.commandPaletteStore.getState().selectedIndex
@@ -190,17 +201,15 @@ test.describe('Command Palette: Arrow Key Navigation', () => {
 
     // Press ArrowDown
     await mainWindow.keyboard.press('ArrowDown')
-    await mainWindow.waitForTimeout(100)
 
-    // Verify store index moved to 1
-    const selectedIndex = await evaluate(mainWindow, () =>
-      (window as any).__SMOKE_STORES__.commandPaletteStore.getState().selectedIndex
-    )
-    expect(selectedIndex).toBe(1)
+    // Wait for store to update and React to re-render
+    await mainWindow.waitForFunction(() =>
+      (window as any).__SMOKE_STORES__.commandPaletteStore.getState().selectedIndex === 1
+    , undefined, { timeout: 3000 })
 
     // The selected item in DOM should have the selected class
     const selectedItem = mainWindow.locator('.palette-item--selected')
-    await expect(selectedItem).toHaveCount(1)
+    await expect(selectedItem).toHaveCount(1, { timeout: 3000 })
 
     // First item should no longer be selected
     await expect(firstItem).not.toHaveClass(/palette-item--selected/)
