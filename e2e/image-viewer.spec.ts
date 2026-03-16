@@ -48,15 +48,23 @@ function cleanupDir(dir: string): void {
   }
 }
 
-/** Close all sessions (terminal, image, file-viewer, etc.) */
+/** Close all sessions by removing them from the store directly.
+ *  This is safer than clicking close buttons which can crash the app
+ *  when PTY processes from worktrees are being killed. */
 async function closeAllSessions(page: import('@playwright/test').Page): Promise<void> {
-  let count = await page.locator('.terminal-window').count()
-  while (count > 0) {
-    const closeBtn = page.locator('.terminal-window .window-chrome-close').first()
-    await closeBtn.click({ force: true })
-    await page.waitForTimeout(300)
-    count = await page.locator('.terminal-window').count()
-  }
+  await page.evaluate(() => {
+    const store = (window as any).__SMOKE_STORES__?.sessionStore
+    if (!store) return
+    const sessions = store.getState().sessions
+    for (const [id, session] of sessions) {
+      // Kill PTY for terminal sessions
+      if ((session as any).type === 'terminal' && window.smokeAPI?.pty?.kill) {
+        try { window.smokeAPI.pty.kill(id) } catch { /* ignore */ }
+      }
+      store.getState().removeSession(id)
+    }
+  })
+  await page.waitForTimeout(300)
 }
 
 /**
