@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { sessionStore } from '../../stores/sessionStore'
 import { canvasStore } from '../../stores/canvasStore'
 import { gridStore } from '../../stores/gridStore'
-import { serializeCurrentLayout } from '../useLayoutPersistence'
+import { regionStore } from '../../stores/regionStore'
+import { serializeCurrentLayout, restoreTabLayout } from '../useLayoutPersistence'
+import type { PluginElementType } from '../../stores/sessionStore'
+import { registerPluginElementType } from '../../plugin/pluginElementRegistry'
 
 describe('serializeCurrentLayout', () => {
   beforeEach(() => {
@@ -172,5 +175,97 @@ describe('layout data model', () => {
     expect(session).not.toHaveProperty('status')
     expect(session).not.toHaveProperty('exitCode')
     expect(session).not.toHaveProperty('createdAt')
+  })
+})
+
+describe('plugin session serialization round-trip (smoke-o4c)', () => {
+  let unregister: () => void
+
+  beforeEach(() => {
+    sessionStore.setState({
+      sessions: new Map(),
+      focusedId: null,
+      highlightedId: null,
+      selectedIds: new Set(),
+      nextZIndex: 1,
+    })
+    canvasStore.setState({ panX: 0, panY: 0, zoom: 1.0, gridSize: 20 })
+    gridStore.setState({ gridSize: 20, snapEnabled: true, showGrid: true })
+    regionStore.setState({ regions: new Map(), nextRegionZIndex: 1 })
+
+    unregister = registerPluginElementType({
+      type: 'plugin:test-widget',
+      displayName: 'Test Widget',
+      WindowComponent: (() => null) as never,
+      ThumbnailComponent: (() => null) as never,
+      defaultSize: { width: 400, height: 300 },
+    })
+  })
+
+  afterEach(() => {
+    unregister()
+  })
+
+  it('serializes pluginId, pluginSource, and pluginManifest for plugin sessions', () => {
+    const manifest = {
+      name: 'test-widget',
+      version: '1.0.0',
+      entryPoint: '/plugins/test-widget/index.js',
+      defaultSize: { width: 400, height: 300 },
+    }
+    sessionStore.getState().createPluginSession(
+      'plugin:test-widget' as PluginElementType,
+      'test-widget',
+      'local',
+      manifest,
+      { foo: 'bar' },
+      { x: 100, y: 200 }
+    )
+
+    const layout = serializeCurrentLayout('plugin-test')
+    expect(layout.sessions).toHaveLength(1)
+    const saved = layout.sessions[0]
+    expect(saved.pluginId).toBe('test-widget')
+    expect(saved.pluginSource).toBe('local')
+    expect(saved.pluginManifest).toEqual(manifest)
+    expect(saved.pluginData).toEqual({ foo: 'bar' })
+  })
+
+  it('restores plugin session with correct createPluginSession parameter order', async () => {
+    const manifest = {
+      name: 'test-widget',
+      version: '1.0.0',
+      entryPoint: '/plugins/test-widget/index.js',
+      defaultSize: { width: 400, height: 300 },
+    }
+    const layout = {
+      name: 'plugin-restore-test',
+      sessions: [{
+        type: 'plugin:test-widget',
+        title: 'My Widget',
+        cwd: '',
+        position: { x: 100, y: 200 },
+        size: { width: 400, height: 300, cols: 0, rows: 0 },
+        pluginId: 'test-widget',
+        pluginSource: 'local',
+        pluginManifest: manifest,
+        pluginData: { foo: 'bar' },
+      }],
+      viewport: { panX: 0, panY: 0, zoom: 1.0 },
+      gridSize: 20,
+      regions: [],
+    }
+
+    await restoreTabLayout(layout)
+
+    const sessions = Array.from(sessionStore.getState().sessions.values())
+    expect(sessions).toHaveLength(1)
+    const restored = sessions[0]
+    expect(restored.type).toBe('plugin:test-widget')
+    expect((restored as { pluginId: string }).pluginId).toBe('test-widget')
+    expect((restored as { pluginSource: string }).pluginSource).toBe('local')
+    expect((restored as { pluginManifest: typeof manifest }).pluginManifest).toEqual(manifest)
+    expect((restored as { pluginData: Record<string, unknown> }).pluginData).toEqual({ foo: 'bar' })
+    expect(restored.position).toEqual({ x: 100, y: 200 })
   })
 })
