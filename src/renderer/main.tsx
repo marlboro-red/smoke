@@ -12,9 +12,11 @@ import { indexingStore } from './stores/indexingStore'
 import { agentStore } from './stores/agentStore'
 import { groupStore } from './stores/groupStore'
 import { focusModeStore } from './stores/focusModeStore'
+import { taskInputStore } from './assembly/taskInputStore'
+import { assemblyPreviewStore } from './assembly/assemblyPreviewStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
