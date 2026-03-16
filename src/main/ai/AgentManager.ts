@@ -14,7 +14,7 @@ import type { BrowserWindow } from 'electron'
 import { ClaudeCodeManager } from './ClaudeCodeManager'
 import { McpBridge, type ToolExecutor } from './McpBridge'
 import type { PtyManager } from '../pty/PtyManager'
-import { createExecutors, type AgentScopeProvider, type CodegraphDeps } from './tools'
+import { createExecutors, type AgentScopeProvider, type CodegraphDeps, type PluginDeps } from './tools'
 
 export const AGENT_COLORS = [
   '#61afef', '#e06c75', '#98c379', '#e5c07b', '#c678dd', '#56b6c2',
@@ -43,6 +43,7 @@ export class AgentManager {
   private getMainWindow: () => BrowserWindow | null
   private ptyManager: PtyManager | null = null
   private codegraphDeps: CodegraphDeps | undefined
+  private pluginDeps: PluginDeps | undefined
   private mcpBridge: McpBridge
 
   constructor(getMainWindow: () => BrowserWindow | null) {
@@ -65,6 +66,22 @@ export class AgentManager {
   /** Set codegraph dependencies so assemble_workspace is available to agents. */
   setCodegraphDeps(deps: CodegraphDeps): void {
     this.codegraphDeps = deps
+  }
+
+  /** Set plugin dependencies so plugin-aware tools are available to agents. */
+  setPluginDeps(deps: PluginDeps): void {
+    this.pluginDeps = deps
+    // Re-register global executors with plugin support
+    if (this.ptyManager) {
+      const executors = createExecutors(
+        this.ptyManager,
+        this.getMainWindow,
+        undefined,
+        this.codegraphDeps,
+        this.pluginDeps
+      )
+      this.mcpBridge.registerExecutors(executors)
+    }
   }
 
   /** Create a new agent with the given name. Returns the agent ID. */
@@ -102,7 +119,7 @@ export class AgentManager {
       }
       // The MCP bridge uses global executors; scope filtering happens
       // inside the executors themselves based on the agent context.
-      void createExecutors(this.ptyManager, this.getMainWindow, scopeProvider, this.codegraphDeps)
+      void createExecutors(this.ptyManager, this.getMainWindow, scopeProvider, this.codegraphDeps, this.pluginDeps)
     }
 
     this.agents.set(agent.agentId, agent)

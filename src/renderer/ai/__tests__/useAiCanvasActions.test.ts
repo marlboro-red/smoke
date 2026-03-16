@@ -170,6 +170,39 @@ describe('AI canvas action: note_created', () => {
   })
 })
 
+describe('AI canvas action: plugin_session_created', () => {
+  beforeEach(() => {
+    sessionStore.setState({ sessions: new Map(), focusedId: null, nextZIndex: 1 })
+  })
+
+  it('creates a plugin session in the store', async () => {
+    const { handleCanvasAction } = await import('../useAiCanvasActions')
+
+    handleCanvasAction(makeEvent('plugin_session_created', {
+      sessionId: 'ai-plugin-1',
+      pluginType: 'plugin:docker-dashboard',
+      pluginId: 'docker-dashboard',
+      pluginSource: 'global',
+      pluginManifest: {
+        name: 'docker-dashboard',
+        version: '1.0.0',
+        entryPoint: 'index.tsx',
+        defaultSize: { width: 480, height: 360 },
+      },
+      pluginData: { containerFilter: 'running' },
+      position: { x: 300, y: 400 },
+    }))
+
+    // The createPluginSession generates its own ID, so check by type
+    const sessions = Array.from(sessionStore.getState().sessions.values())
+    const pluginSession = sessions.find((s) => s.type === 'plugin:docker-dashboard')
+    expect(pluginSession).toBeDefined()
+    expect(pluginSession!.position).toEqual({ x: 300, y: 400 })
+    expect((pluginSession as { pluginId: string }).pluginId).toBe('docker-dashboard')
+    expect((pluginSession as { pluginData: Record<string, unknown> }).pluginData).toEqual({ containerFilter: 'running' })
+  })
+})
+
 describe('AI canvas action: connector_created', () => {
   beforeEach(() => {
     connectorStore.setState({ connectors: new Map() })

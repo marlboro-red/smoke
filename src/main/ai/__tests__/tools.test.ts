@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
-import { createExecutors, type CodegraphDeps } from '../tools'
+import { createExecutors, type CodegraphDeps, type PluginDeps } from '../tools'
 import { terminalOutputBuffer } from '../TerminalOutputBuffer'
 import { PtyManager } from '../../pty/PtyManager'
 import { AI_CANVAS_ACTION } from '../../ipc/channels'
@@ -26,6 +26,13 @@ vi.mock('../../config/ConfigStore', () => ({
 // Mock uuid
 vi.mock('uuid', () => ({
   v4: vi.fn().mockReturnValue('mock-session-id'),
+}))
+
+// Mock electron app
+vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn().mockReturnValue('/mock-user-data'),
+  },
 }))
 
 // Mock codegraph buildCodeGraph, collectContext, computeWorkspaceLayout
@@ -144,7 +151,7 @@ describe('AI Tools', () => {
   })
 
   describe('createExecutors', () => {
-    it('creates all 19 tool executors', () => {
+    it('creates all 22 tool executors', () => {
       const toolNames = Array.from(executors.keys())
       expect(toolNames).toEqual([
         'get_canvas_state',
@@ -165,6 +172,9 @@ describe('AI Tools', () => {
         'add_to_group',
         'broadcast_to_group',
         'assemble_workspace',
+        'list_plugins',
+        'create_plugin_element',
+        'read_plugin_state',
         'explore_imports',
       ])
     })
@@ -598,6 +608,194 @@ describe('AI Tools', () => {
       expect(result.fileList[0].source).toBe('search')
       expect(result.fileList[1].file).toBe('src/utils.ts')
       expect(result.fileList[1].relevance).toBe(0.6)
+    })
+  })
+
+  describe('list_plugins', () => {
+    function createMockPluginDeps(): PluginDeps {
+      return {
+        getPlugins: vi.fn().mockReturnValue([
+          {
+            manifest: {
+              name: 'docker-dashboard',
+              version: '1.0.0',
+              description: 'Docker container dashboard',
+              author: 'Test Author',
+              defaultSize: { width: 480, height: 360 },
+              entryPoint: 'index.tsx',
+              permissions: ['network', 'shell'],
+            },
+            pluginDir: '/home/user/.smoke/plugins/docker-dashboard',
+            entryPointPath: '/home/user/.smoke/plugins/docker-dashboard/index.tsx',
+            source: 'global' as const,
+          },
+        ]),
+        getPlugin: vi.fn(),
+      }
+    }
+
+    it('returns empty list when plugin deps not configured', async () => {
+      const executor = executors.get('list_plugins')!
+      const result = JSON.parse(await executor({}))
+      expect(result.plugins).toEqual([])
+    })
+
+    it('returns plugin list when plugins are available', async () => {
+      const deps = createMockPluginDeps()
+      const execs = createExecutors(ptyManager, () => mockWindow, undefined, undefined, deps)
+      const executor = execs.get('list_plugins')!
+      const result = JSON.parse(await executor({}))
+
+      expect(result).toHaveLength(1)
+      expect(result[0].name).toBe('docker-dashboard')
+      expect(result[0].description).toBe('Docker container dashboard')
+      expect(result[0].permissions).toEqual(['network', 'shell'])
+    })
+
+    it('returns message when no plugins installed', async () => {
+      const deps: PluginDeps = {
+        getPlugins: vi.fn().mockReturnValue([]),
+        getPlugin: vi.fn(),
+      }
+      const execs = createExecutors(ptyManager, () => mockWindow, undefined, undefined, deps)
+      const executor = execs.get('list_plugins')!
+      const result = await executor({})
+      expect(result).toContain('No plugins installed')
+    })
+  })
+
+  describe('create_plugin_element', () => {
+    const mockPlugin = {
+      manifest: {
+        name: 'docker-dashboard',
+        version: '1.0.0',
+        description: 'Docker container dashboard',
+        author: 'Test Author',
+        defaultSize: { width: 480, height: 360 },
+        entryPoint: 'index.tsx',
+        permissions: ['network', 'shell'],
+      },
+      pluginDir: '/home/user/.smoke/plugins/docker-dashboard',
+      entryPointPath: '/home/user/.smoke/plugins/docker-dashboard/index.tsx',
+      source: 'global' as const,
+    }
+
+    function createPluginExecutors() {
+      const deps: PluginDeps = {
+        getPlugins: vi.fn().mockReturnValue([mockPlugin]),
+        getPlugin: vi.fn().mockImplementation((name: string) =>
+          name === 'docker-dashboard' ? mockPlugin : undefined
+        ),
+      }
+      return createExecutors(ptyManager, () => mockWindow, undefined, undefined, deps)
+    }
+
+    it('throws when plugin deps not configured', async () => {
+      const executor = executors.get('create_plugin_element')!
+      await expect(executor({ plugin_name: 'docker-dashboard' })).rejects.toThrow(
+        'Plugin system not available'
+      )
+    })
+
+    it('throws when plugin not found', async () => {
+      const execs = createPluginExecutors()
+      const executor = execs.get('create_plugin_element')!
+      await expect(executor({ plugin_name: 'nonexistent' })).rejects.toThrow(
+        'Plugin "nonexistent" not found'
+      )
+    })
+
+    it('creates a plugin element and emits canvas action', async () => {
+      const execs = createPluginExecutors()
+      // Re-setup send tracking
+      sendCalls = []
+      const send = mockWindow.webContents.send as ReturnType<typeof vi.fn>
+      send.mockImplementation((channel: string, data: unknown) => {
+        sendCalls.push([channel, data])
+      })
+
+      const executor = execs.get('create_plugin_element')!
+      const result = JSON.parse(await executor({
+        plugin_name: 'docker-dashboard',
+        position: { x: 300, y: 400 },
+      }))
+
+      expect(result.sessionId).toBe('mock-session-id')
+      expect(result.pluginName).toBe('docker-dashboard')
+      expect(result.pluginType).toBe('plugin:docker-dashboard')
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      expect(canvasActions).toHaveLength(1)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.action).toBe('plugin_session_created')
+      expect(action.payload.pluginId).toBe('docker-dashboard')
+      expect(action.payload.position).toEqual({ x: 300, y: 400 })
+    })
+
+    it('uses default position when not specified', async () => {
+      const execs = createPluginExecutors()
+      sendCalls = []
+      const send = mockWindow.webContents.send as ReturnType<typeof vi.fn>
+      send.mockImplementation((channel: string, data: unknown) => {
+        sendCalls.push([channel, data])
+      })
+
+      const executor = execs.get('create_plugin_element')!
+      await executor({ plugin_name: 'docker-dashboard' })
+
+      const canvasActions = sendCalls.filter(([ch]) => ch === AI_CANVAS_ACTION)
+      const action = canvasActions[0][1] as { action: string; payload: Record<string, unknown> }
+      expect(action.payload.position).toEqual({ x: 100, y: 100 })
+    })
+  })
+
+  describe('read_plugin_state', () => {
+    it('lists state keys when no key specified', async () => {
+      const { readdir } = await import('fs/promises')
+      ;(readdir as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+        'settings.json',
+        'cache.json',
+      ])
+
+      const executor = executors.get('read_plugin_state')!
+      const result = JSON.parse(await executor({ plugin_id: 'docker-dashboard' }))
+      expect(result.pluginId).toBe('docker-dashboard')
+      expect(result.keys).toEqual(['settings', 'cache'])
+    })
+
+    it('returns message when no state exists', async () => {
+      const { readdir } = await import('fs/promises')
+      ;(readdir as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('ENOENT'))
+
+      const executor = executors.get('read_plugin_state')!
+      const result = await executor({ plugin_id: 'nonexistent' })
+      expect(result).toContain('No persisted state')
+    })
+
+    it('reads a specific state key', async () => {
+      const { readFile } = await import('fs/promises')
+      ;(readFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce('{"containers": []}')
+
+      const executor = executors.get('read_plugin_state')!
+      const result = JSON.parse(await executor({
+        plugin_id: 'docker-dashboard',
+        key: 'containers',
+      }))
+      expect(result.pluginId).toBe('docker-dashboard')
+      expect(result.key).toBe('containers')
+      expect(result.value).toEqual({ containers: [] })
+    })
+
+    it('returns message for missing state key', async () => {
+      const { readFile } = await import('fs/promises')
+      ;(readFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('ENOENT'))
+
+      const executor = executors.get('read_plugin_state')!
+      const result = await executor({
+        plugin_id: 'docker-dashboard',
+        key: 'nonexistent',
+      })
+      expect(result).toContain('State key "nonexistent" not found')
     })
   })
 
