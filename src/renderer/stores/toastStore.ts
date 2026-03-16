@@ -20,6 +20,8 @@ interface ToastState {
 
 let nextId = 0
 
+export const MAX_VISIBLE_TOASTS = 5
+
 const DEFAULT_DURATIONS: Record<ToastSeverity, number> = {
   info: 4000,
   success: 3000,
@@ -39,7 +41,11 @@ export const toastStore = createStore<ToastState>((set) => ({
       createdAt: Date.now(),
       duration: duration ?? DEFAULT_DURATIONS[severity],
     }
-    set((state) => ({ toasts: [...state.toasts, toast] }))
+    set((state) => {
+      const updated = [...state.toasts, toast]
+      // Drop oldest toasts when exceeding the visible limit
+      return { toasts: updated.length > MAX_VISIBLE_TOASTS ? updated.slice(-MAX_VISIBLE_TOASTS) : updated }
+    })
     return id
   },
 
