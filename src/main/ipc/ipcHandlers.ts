@@ -12,7 +12,7 @@ import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/Confi
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
-import { assertWithinHome } from './pathBoundary'
+import { assertWithinHome, isWithinBoundary } from './pathBoundary'
 import { FilenameIndex } from '../index/FilenameIndex'
 import { buildCodeGraph, expandCodeGraph, buildDependentsGraph, getDependents, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask, collectContext } from '../codegraph'
 import { SearchIndex } from '../codegraph/SearchIndex'
@@ -629,8 +629,12 @@ export async function registerIpcHandlers(
   ipcMain.handle(RECORDING_LOAD, async (_event, request: RecordingLoadRequest): Promise<RecordingFlushRequest | null> => {
     const { app } = await import('electron')
     const recordingsDir = path.join(app.getPath('userData'), 'recordings')
+    const safeName = path.basename(request.filename)
+    if (safeName !== request.filename) return null
+    const targetPath = path.join(recordingsDir, safeName)
+    if (!isWithinBoundary(targetPath, recordingsDir)) return null
     try {
-      const content = await fs.readFile(path.join(recordingsDir, request.filename), 'utf-8')
+      const content = await fs.readFile(targetPath, 'utf-8')
       return JSON.parse(content) as RecordingFlushRequest
     } catch {
       return null
@@ -642,8 +646,15 @@ export async function registerIpcHandlers(
     const { app, dialog } = await import('electron')
     const recordingsDir = path.join(app.getPath('userData'), 'recordings')
 
-    // Read the source recording
-    const sourcePath = path.join(recordingsDir, request.filename)
+    // Read the source recording (sanitize filename to prevent path traversal)
+    const safeName = path.basename(request.filename)
+    if (safeName !== request.filename) {
+      throw new Error(`Invalid recording filename: ${request.filename}`)
+    }
+    const sourcePath = path.join(recordingsDir, safeName)
+    if (!isWithinBoundary(sourcePath, recordingsDir)) {
+      throw new Error(`Invalid recording filename: ${request.filename}`)
+    }
     let log: RecordingFlushRequest
     try {
       const content = await fs.readFile(sourcePath, 'utf-8')
