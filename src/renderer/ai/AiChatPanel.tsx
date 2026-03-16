@@ -11,6 +11,7 @@ import MessageList from './MessageList'
 import ChatInput from './ChatInput'
 import StopButton from './StopButton'
 import { taskInputStore } from '../assembly/taskInputStore'
+import { addToast } from '../stores/toastStore'
 import '../styles/ai-chat.css'
 
 export default function AiChatPanel(): JSX.Element {
@@ -32,6 +33,9 @@ export default function AiChatPanel(): JSX.Element {
     if (agents.length === 0) {
       window.smokeAPI?.agent.create('Agent 1').then(({ agentId, color }) => {
         agentStore.getState().addAgent(agentId, 'Agent 1', color)
+      }).catch((err) => {
+        console.error('Failed to create default agent:', err)
+        addToast('Failed to create AI agent', 'error')
       })
     }
   }, [agents.length])
@@ -40,7 +44,10 @@ export default function AiChatPanel(): JSX.Element {
     (text: string) => {
       if (!activeAgentId) return
       agentStore.getState().addUserMessage(activeAgentId, text)
-      window.smokeAPI?.ai.send(activeAgentId, text)
+      window.smokeAPI?.ai.send(activeAgentId, text).catch((err) => {
+        console.error('AI send failed:', err)
+        agentStore.getState().setError(activeAgentId, 'Failed to send message')
+      })
     },
     [activeAgentId]
   )
@@ -62,6 +69,9 @@ export default function AiChatPanel(): JSX.Element {
     window.smokeAPI?.agent.create(name).then(({ agentId, color }) => {
       agentStore.getState().addAgent(agentId, name, color)
       agentStore.getState().setActiveAgent(agentId)
+    }).catch((err) => {
+      console.error('Failed to create agent:', err)
+      addToast('Failed to create AI agent', 'error')
     })
   }, [agents.length])
 

@@ -26,6 +26,7 @@ import StatusBar from './statusbar/StatusBar'
 import { useIndexingProgress } from './statusbar/useIndexingProgress'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 import { pluginStore } from './stores/pluginStore'
+import { addToast } from './stores/toastStore'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -76,14 +77,21 @@ function App(): JSX.Element {
           )
         }
       }
+    }).catch((err) => {
+      console.error('Failed to load preferences:', err)
+      addToast('Failed to load preferences', 'error')
     })
     window.smokeAPI?.app.getLaunchCwd().then((cwd) => {
       if (cwd) {
         preferencesStore.getState().setLaunchCwd(cwd)
       }
+    }).catch((err) => {
+      console.error('Failed to get launch cwd:', err)
     })
     // Load available plugins
-    pluginStore.getState().loadPlugins()
+    pluginStore.getState().loadPlugins().catch((err) => {
+      console.error('Failed to load plugins:', err)
+    })
     // Listen for plugin hot-reload changes (dev mode)
     const unsubPlugins = window.smokeAPI?.plugin.onChanged?.((event) => {
       pluginStore.setState({ plugins: event.plugins })
