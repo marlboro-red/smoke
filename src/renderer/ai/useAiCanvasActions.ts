@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { AiStreamCanvasAction } from '../../preload/types'
-import type { FileViewerSession, NoteSession, TerminalSession } from '../stores/sessionStore'
+import type { FileViewerSession, NoteSession, PluginElementType, TerminalSession } from '../stores/sessionStore'
 import { findFileSessionByPath, sessionStore } from '../stores/sessionStore'
 import { connectorStore } from '../stores/connectorStore'
 import { groupStore } from '../stores/groupStore'
@@ -72,6 +72,21 @@ interface GroupMemberAddedPayload {
 interface GroupBroadcastPayload {
   groupId: string
   command: string
+}
+
+interface PluginSessionCreatedPayload {
+  sessionId: string
+  pluginType: string
+  pluginId: string
+  pluginSource: string
+  pluginManifest: {
+    name: string
+    version: string
+    entryPoint: string
+    defaultSize: { width: number; height: number }
+  }
+  pluginData: Record<string, unknown>
+  position: { x: number; y: number }
 }
 
 export function handleCanvasAction(event: AiStreamCanvasAction): void {
@@ -227,6 +242,29 @@ export function handleCanvasAction(event: AiStreamCanvasAction): void {
         sessionStore.getState().focusSession(session.id)
         sessionStore.getState().bringToFront(session.id)
       }
+      break
+    }
+
+    case 'plugin_session_created': {
+      const {
+        pluginType,
+        pluginId,
+        pluginSource,
+        pluginManifest,
+        pluginData,
+        position,
+      } = event.payload as unknown as PluginSessionCreatedPayload
+
+      const session = sessionStore.getState().createPluginSession(
+        pluginType as PluginElementType,
+        pluginId,
+        pluginSource,
+        pluginManifest,
+        pluginData,
+        position
+      )
+      sessionStore.getState().focusSession(session.id)
+      sessionStore.getState().bringToFront(session.id)
       break
     }
   }

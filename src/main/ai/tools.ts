@@ -14,6 +14,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { v4 as uuid } from 'uuid'
 import type { BrowserWindow } from 'electron'
+import { app } from 'electron'
 import { terminalOutputBuffer } from './TerminalOutputBuffer'
 import type { PtyManager } from '../pty/PtyManager'
 import { AI_CANVAS_ACTION, PTY_DATA_FROM_PTY, PTY_EXIT } from '../ipc/channels'
@@ -22,6 +23,7 @@ import type { AiStreamCanvasAction } from '../../preload/types'
 import { buildCodeGraph, collectContext, computeWorkspaceLayout } from '../codegraph'
 import type { SearchIndex } from '../codegraph/SearchIndex'
 import type { StructureAnalyzer } from '../codegraph/StructureAnalyzer'
+import type { PluginManifest } from '../plugin/pluginManifest'
 
 export type ToolExecutor = (input: Record<string, unknown>) => Promise<string>
 
@@ -48,6 +50,22 @@ export interface CodegraphDeps {
   structureAnalyzer: StructureAnalyzer
 }
 
+/** Optional plugin dependencies for plugin-aware tools. */
+export interface PluginDeps {
+  getPlugins: () => Array<{
+    manifest: PluginManifest
+    pluginDir: string
+    entryPointPath: string
+    source: 'global' | 'project'
+  }>
+  getPlugin: (name: string) => {
+    manifest: PluginManifest
+    pluginDir: string
+    entryPointPath: string
+    source: 'global' | 'project'
+  } | undefined
+}
+
 /**
  * Create the full set of tool executors.
  * Exported for use by AgentManager + MCP bridge.
@@ -56,7 +74,8 @@ export function createExecutors(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
   scope?: AgentScopeProvider,
-  codegraphDeps?: CodegraphDeps
+  codegraphDeps?: CodegraphDeps,
+  pluginDeps?: PluginDeps
 ): Map<string, ToolExecutor> {
   /** Send a canvas action event to the renderer. */
   function emitCanvasAction(
@@ -709,6 +728,113 @@ export function createExecutors(
     }
 
     return JSON.stringify(summary)
+  })
+
+  // ── list_plugins ─────────────────────────────────────────────
+
+  executors.set('list_plugins', async () => {
+    if (!pluginDeps) {
+      return JSON.stringify({ plugins: [], message: 'Plugin system not available.' })
+    }
+
+    const plugins = pluginDeps.getPlugins()
+    if (plugins.length === 0) {
+      return 'No plugins installed. Install plugins to ~/.smoke/plugins/ or .smoke/plugins/ in the project.'
+    }
+
+    const list = plugins.map((p) => ({
+      name: p.manifest.name,
+      version: p.manifest.version,
+      description: p.manifest.description,
+      author: p.manifest.author,
+      defaultSize: p.manifest.defaultSize,
+      permissions: p.manifest.permissions,
+      source: p.source,
+    }))
+
+    return JSON.stringify(list)
+  })
+
+  // ── create_plugin_element ───────────────────────────────────
+
+  executors.set('create_plugin_element', async (input) => {
+    const pluginName = input.plugin_name as string
+    const position = (input.position as { x: number; y: number }) ?? { x: 100, y: 100 }
+    const pluginData = (input.plugin_data as Record<string, unknown>) ?? {}
+
+    if (!pluginDeps) {
+      throw new Error('Plugin system not available.')
+    }
+
+    const plugin = pluginDeps.getPlugin(pluginName)
+    if (!plugin) {
+      const available = pluginDeps.getPlugins().map((p) => p.manifest.name)
+      throw new Error(
+        `Plugin "${pluginName}" not found. Available plugins: ${available.length > 0 ? available.join(', ') : 'none'}`
+      )
+    }
+
+    const sessionId = uuid()
+    const pluginType = `plugin:${plugin.manifest.name}`
+
+    emitCanvasAction('plugin_session_created', {
+      sessionId,
+      pluginType,
+      pluginId: plugin.manifest.name,
+      pluginSource: plugin.source,
+      pluginManifest: {
+        name: plugin.manifest.name,
+        version: plugin.manifest.version,
+        entryPoint: plugin.manifest.entryPoint,
+        defaultSize: plugin.manifest.defaultSize,
+      },
+      pluginData,
+      position,
+    })
+
+    return JSON.stringify({
+      sessionId,
+      pluginName: plugin.manifest.name,
+      pluginType,
+      position,
+    })
+  })
+
+  // ── read_plugin_state ───────────────────────────────────────
+
+  executors.set('read_plugin_state', async (input) => {
+    const pluginId = input.plugin_id as string
+    const key = input.key as string | undefined
+
+    const stateDir = path.join(app.getPath('userData'), 'plugin-state', pluginId)
+
+    if (!key) {
+      // List all available state keys
+      try {
+        const entries = await fs.readdir(stateDir)
+        const keys = entries
+          .filter((e) => e.endsWith('.json'))
+          .map((e) => e.replace(/\.json$/, ''))
+
+        if (keys.length === 0) {
+          return `No persisted state found for plugin "${pluginId}".`
+        }
+
+        return JSON.stringify({ pluginId, keys })
+      } catch {
+        return `No persisted state found for plugin "${pluginId}".`
+      }
+    }
+
+    // Read a specific state key
+    const filePath = path.join(stateDir, `${key}.json`)
+    try {
+      const content = await fs.readFile(filePath, 'utf-8')
+      const value = JSON.parse(content)
+      return JSON.stringify({ pluginId, key, value })
+    } catch {
+      return `State key "${key}" not found for plugin "${pluginId}".`
+    }
   })
 
   // ── explore_imports ──────────────────────────────────────────

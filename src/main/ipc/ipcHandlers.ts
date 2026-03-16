@@ -473,6 +473,12 @@ export async function registerIpcHandlers(
   // Wire codegraph deps to the agent manager so assemble_workspace is available
   agentManager.setCodegraphDeps({ searchIndex, structureAnalyzer })
 
+  // Wire plugin deps to the agent manager so plugin-aware tools are available
+  agentManager.setPluginDeps({
+    getPlugins: () => pluginLoader.getPlugins(),
+    getPlugin: (name: string) => pluginLoader.getPlugin(name),
+  })
+
   ipcMain.handle(STRUCTURE_ANALYZE, async (_event, request: StructureAnalyzeRequest): Promise<StructureAnalyzeResponse> => {
     return structureAnalyzer.analyze(request.rootPath)
   })

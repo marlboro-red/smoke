@@ -267,4 +267,45 @@ export const toolDefs: ToolDef[] = [
       required: ['task_description'],
     },
   },
+  {
+    name: 'list_plugins',
+    description:
+      'List all installed plugins with their names, descriptions, permissions, and default sizes. Use this to discover what plugin types are available before creating plugin elements.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'create_plugin_element',
+    description:
+      'Create a new plugin element on the canvas. The plugin must be installed (use list_plugins to check). Returns the session ID of the created plugin instance.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plugin_name: { type: 'string', description: 'The name of the installed plugin to instantiate.' },
+        position: {
+          type: 'object',
+          description: 'Canvas position {x, y}. Defaults to {x: 100, y: 100}.',
+          properties: { x: { type: 'number' }, y: { type: 'number' } },
+          required: ['x', 'y'],
+        },
+        plugin_data: {
+          type: 'object',
+          description: 'Optional initial data to pass to the plugin instance.',
+        },
+      },
+      required: ['plugin_name'],
+    },
+  },
+  {
+    name: 'read_plugin_state',
+    description:
+      'Read persisted state from a plugin instance. Plugins store key-value state that persists across sessions. Use this to inspect plugin data such as query results, container status, or any plugin-specific state.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plugin_id: { type: 'string', description: 'The plugin name/ID whose state to read.' },
+        key: { type: 'string', description: 'The state key to read. If omitted, lists all available state keys.' },
+      },
+      required: ['plugin_id'],
+    },
+  },
 ]
