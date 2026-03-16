@@ -21,6 +21,19 @@ export function stripAnsi(text: string): string {
   return text.replace(ANSI_RE, '')
 }
 
+/**
+ * Fast UTF-8 byte length: for ASCII-only strings (the common case for
+ * terminal output), string.length === byte length — skip the Buffer allocation.
+ */
+export function fastByteLength(str: string): number {
+  for (let i = 0; i < str.length; i++) {
+    if (str.charCodeAt(i) > 127) {
+      return Buffer.byteLength(str, 'utf8')
+    }
+  }
+  return str.length
+}
+
 interface ChunkedBuffer {
   chunks: string[]
   totalBytes: number
@@ -39,7 +52,7 @@ export class TerminalOutputBuffer {
     const clean = stripAnsi(rawData)
     if (clean.length === 0) return
 
-    const cleanBytes = Buffer.byteLength(clean, 'utf8')
+    const cleanBytes = fastByteLength(clean)
 
     let buf = this.buffers.get(sessionId)
     if (!buf) {
@@ -62,7 +75,7 @@ export class TerminalOutputBuffer {
     // Evict oldest chunks until we're within capacity
     while (buf.totalBytes > this.maxBytes) {
       const oldest = buf.chunks[0]
-      const oldestBytes = Buffer.byteLength(oldest, 'utf8')
+      const oldestBytes = fastByteLength(oldest)
 
       if (buf.totalBytes - oldestBytes <= this.maxBytes) {
         // Partial trim of the first chunk
