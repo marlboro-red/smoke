@@ -14,6 +14,11 @@ export interface PtySpawnResult {
   pid: number
 }
 
+export interface ShellInfo {
+  path: string
+  name: string
+}
+
 export interface PtyDataEvent {
   id: string
   data: string
@@ -31,6 +36,7 @@ export interface LayoutSession {
   type?: LayoutElementType
   title: string
   cwd: string
+  shell?: string
   filePath?: string
   language?: string
   content?: string
@@ -560,6 +566,9 @@ export interface SmokeAPI {
       useAi?: boolean,
       graphDepth?: number,
     ) => Promise<ContextCollectResult>
+  }
+  shell: {
+    list: () => Promise<ShellInfo[]>
   }
 }
 

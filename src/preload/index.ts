@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult, ShellInfo } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -217,6 +217,10 @@ const smokeAPI: SmokeAPI = {
       ipcRenderer.invoke('context:collect', {
         taskDescription, projectRoot, maxFiles, useAi, graphDepth,
       }),
+  },
+
+  shell: {
+    list: () => ipcRenderer.invoke('shell:list') as Promise<ShellInfo[]>,
   },
 }
 

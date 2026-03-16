@@ -27,6 +27,7 @@ export interface BaseSession {
 export interface TerminalSession extends BaseSession {
   type: 'terminal'
   cwd: string
+  shell?: string
   startupCommand?: string
   status: 'running' | 'exited'
   exitCode?: number
@@ -79,7 +80,7 @@ interface SessionStore {
   nextZIndex: number
   broadcastGroupId: string | null
 
-  createSession: (cwd: string, position?: { x: number; y: number }) => Session
+  createSession: (cwd: string, position?: { x: number; y: number }, shell?: string) => Session
   createFileSession: (filePath: string, content: string, language: string, position?: { x: number; y: number }) => FileViewerSession
   createImageSession: (filePath: string, dataUrl: string, naturalWidth: number, naturalHeight: number, position?: { x: number; y: number }) => ImageSession
   createNoteSession: (position?: { x: number; y: number }, color?: string) => NoteSession
@@ -106,13 +107,14 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
   nextZIndex: 1,
   broadcastGroupId: null,
 
-  createSession: (cwd: string, position?: { x: number; y: number }): Session => {
+  createSession: (cwd: string, position?: { x: number; y: number }, shell?: string): Session => {
     const { nextZIndex } = get()
     const session: Session = {
       id: uuidv4(),
       type: 'terminal',
       title: cwd.split('/').pop() || cwd,
       cwd,
+      ...(shell ? { shell } : {}),
       position: position ?? { x: 0, y: 0 },
       size: { cols: 80, rows: 24, width: 640, height: 480 },
       zIndex: nextZIndex,
