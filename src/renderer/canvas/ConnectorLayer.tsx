@@ -42,14 +42,12 @@ const SVG_SIZE = 20000
 
 interface ConnectorPathProps {
   connector: Connector
-  sessions: Map<string, Session>
+  source: Session
+  target: Session
   dimmed?: boolean
 }
 
-const ConnectorPath: React.FC<ConnectorPathProps> = React.memo(({ connector, sessions, dimmed }) => {
-  const source = sessions.get(connector.sourceId)
-  const target = sessions.get(connector.targetId)
-  if (!source || !target) return null
+const ConnectorPath: React.FC<ConnectorPathProps> = React.memo(({ connector, source, target, dimmed }) => {
 
   const sourceCx = source.position.x + source.size.width / 2
   const sourceCy = source.position.y + source.size.height / 2
@@ -127,14 +125,20 @@ const ConnectorLayer: React.FC = React.memo(() => {
           <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
         </marker>
       </defs>
-      {connectors.map((c) => (
-        <ConnectorPath
-          key={c.id}
-          connector={c}
-          sessions={sessionMap}
-          dimmed={focusModeActiveIds !== null && (!focusModeActiveIds.has(c.sourceId) || !focusModeActiveIds.has(c.targetId))}
-        />
-      ))}
+      {connectors.map((c) => {
+        const source = sessionMap.get(c.sourceId)
+        const target = sessionMap.get(c.targetId)
+        if (!source || !target) return null
+        return (
+          <ConnectorPath
+            key={c.id}
+            connector={c}
+            source={source}
+            target={target}
+            dimmed={focusModeActiveIds !== null && (!focusModeActiveIds.has(c.sourceId) || !focusModeActiveIds.has(c.targetId))}
+          />
+        )
+      })}
     </svg>
   )
 })
