@@ -4,6 +4,8 @@ import {
   useCanvasSearchOpen,
   useCanvasSearchQuery,
   useCanvasSearchResults,
+  useCanvasSearchCaseSensitive,
+  useCanvasSearchRegex,
   type SearchMatch,
 } from './searchStore'
 import { panToSession } from '../sidebar/useSidebarSync'
@@ -70,6 +72,8 @@ export default function SearchModal(): JSX.Element | null {
   const isOpen = useCanvasSearchOpen()
   const query = useCanvasSearchQuery()
   const results = useCanvasSearchResults()
+  const caseSensitive = useCanvasSearchCaseSensitive()
+  const regex = useCanvasSearchRegex()
   const backdropRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -149,6 +153,20 @@ export default function SearchModal(): JSX.Element | null {
                 {totalMatches} {totalMatches === 1 ? 'match' : 'matches'}
               </span>
             )}
+            <button
+              className={`search-toggle-btn${caseSensitive ? ' active' : ''}`}
+              title="Case Sensitive"
+              onClick={() => canvasSearchStore.getState().toggleCaseSensitive()}
+            >
+              Aa
+            </button>
+            <button
+              className={`search-toggle-btn${regex ? ' active' : ''}`}
+              title="Regex"
+              onClick={() => canvasSearchStore.getState().toggleRegex()}
+            >
+              .*
+            </button>
           </div>
         </div>
 
