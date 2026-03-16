@@ -158,6 +158,35 @@
   text-decoration: underline;
 }
 
+/* Extract context menu (right-click in file viewer) */
+.extract-context-menu {
+  position: fixed;
+  z-index: 10000;
+  background: var(--bg-window);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  padding: var(--space-xs) 0;
+  min-width: 160px;
+}
+
+.extract-context-menu .context-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-sm) var(--space-lg);
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.extract-context-menu .context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
 /* Thumbnail status dot for note type */
 .thumbnail-status.note {
   background: var(--color-warning);
