@@ -3,6 +3,7 @@ import { _electron as electron } from 'playwright'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
+import { execSync } from 'child_process'
 
 /** Path to the built Electron main entry point */
 const MAIN_JS = path.join(__dirname, '..', 'out', 'main', 'index.js')
@@ -56,6 +57,11 @@ export const test = base.extend<TestFixtures>({
       fs.unlinkSync(configPath)
     }
 
+    // Kill any stale Electron processes from prior test teardown failures
+    try {
+      execSync(`pkill -f "${MAIN_JS}" 2>/dev/null || true`, { stdio: 'ignore' })
+    } catch { /* ignore */ }
+
     const app = await electron.launch({
       args: [MAIN_JS],
       env: {
@@ -75,8 +81,9 @@ export const test = base.extend<TestFixtures>({
         new Promise((_, reject) => setTimeout(() => reject(new Error('close timeout')), 10000)),
       ])
     } catch {
-      // Force kill if close times out
+      // Force kill if close times out, wait for resources to be released
       try { process.kill(app.process().pid!) } catch { /* ignore */ }
+      await new Promise((r) => setTimeout(r, 2000))
     }
 
     if (fs.existsSync(backupPath)) {
@@ -86,8 +93,8 @@ export const test = base.extend<TestFixtures>({
   },
 
   mainWindow: async ({ electronApp }, use) => {
-    // Wait for the first BrowserWindow to open
-    const window = await electronApp.firstWindow()
+    // Wait for the first BrowserWindow to open (increase timeout for CI/slow machines)
+    const window = await electronApp.firstWindow({ timeout: 60000 })
 
     // Wait for the app to be fully loaded (renderer DOM ready)
     await window.waitForLoadState('domcontentloaded')
