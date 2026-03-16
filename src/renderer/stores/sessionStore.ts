@@ -7,7 +7,7 @@ import { preferencesStore } from './preferencesStore'
 import { snap } from '../window/useSnapping'
 import { gridStore } from './gridStore'
 
-export type ElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
+export type ElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet' | 'plugin'
 
 export interface BaseSession {
   id: string
@@ -70,7 +70,19 @@ export interface SnippetSession extends BaseSession {
   language: string
 }
 
-export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession | ImageSession | SnippetSession
+export interface PluginSession extends BaseSession {
+  type: 'plugin'
+  pluginId: string
+  pluginSource: string
+  pluginManifest: {
+    name: string
+    version: string
+    entryPoint: string
+    defaultSize: { width: number; height: number }
+  }
+}
+
+export type Session = TerminalSession | FileViewerSession | NoteSession | WebviewSession | ImageSession | SnippetSession | PluginSession
 
 interface SessionStore {
   sessions: Map<string, Session>
@@ -86,6 +98,7 @@ interface SessionStore {
   createNoteSession: (position?: { x: number; y: number }, color?: string) => NoteSession
   createWebviewSession: (url?: string, position?: { x: number; y: number }) => WebviewSession
   createSnippetSession: (language?: string, content?: string, position?: { x: number; y: number }) => SnippetSession
+  createPluginSession: (pluginId: string, pluginSource: string, manifest: PluginSession['pluginManifest'], position?: { x: number; y: number }) => PluginSession
   removeSession: (id: string) => void
   updateSession: (id: string, patch: Partial<Session>) => void
   focusSession: (id: string | null) => void
@@ -255,6 +268,30 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
       language: lang,
       position: position ?? { x: 0, y: 0 },
       size: { cols: 0, rows: 0, width: 480, height: 360 },
+      zIndex: nextZIndex,
+      createdAt: Date.now(),
+    }
+    set((state) => {
+      const sessions = new Map(state.sessions)
+      sessions.set(session.id, session)
+      return { sessions, nextZIndex: nextZIndex + 1 }
+    })
+    return session
+  },
+
+  createPluginSession: (pluginId: string, pluginSource: string, manifest: PluginSession['pluginManifest'], position?: { x: number; y: number }): PluginSession => {
+    const { nextZIndex } = get()
+    const defaultWidth = manifest.defaultSize?.width ?? 480
+    const defaultHeight = manifest.defaultSize?.height ?? 360
+    const session: PluginSession = {
+      id: uuidv4(),
+      type: 'plugin',
+      title: manifest.name,
+      pluginId,
+      pluginSource,
+      pluginManifest: manifest,
+      position: position ?? { x: 0, y: 0 },
+      size: { cols: 0, rows: 0, width: defaultWidth, height: defaultHeight },
       zIndex: nextZIndex,
       createdAt: Date.now(),
     }

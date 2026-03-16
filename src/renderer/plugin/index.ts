@@ -1,3 +1,19 @@
+// Sandbox components
+export { default as PluginSandbox } from './PluginSandbox'
+export { default as PluginErrorBoundary } from './PluginErrorBoundary'
+export { createHostBridge, buildSandboxHtml, getPluginBootstrapSource } from './pluginBridge'
+
+// Sandbox-specific types
+export type {
+  PluginManifest,
+  PluginPermission,
+  PluginConfigField,
+  PluginBridgeContext,
+  PluginSandboxState,
+  PluginError,
+} from './pluginTypes'
+
+// PluginContext API (from smoke-6csh.3)
 export type {
   PluginContext,
   SessionType,
@@ -14,7 +30,6 @@ export type {
   FileWriteResult,
   CommandResult,
   SpawnTerminalOptions,
-  PluginPermission,
   Disposable,
 } from './pluginContext'
 
