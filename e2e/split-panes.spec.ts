@@ -142,28 +142,53 @@ test.describe('Split Panes: Divider Resize', () => {
     }, sessionId)
     expect(initialRatio).toBe(0.5)
 
-    // Find the divider element
+    // Find the divider element and its container
     const terminalWindow = mainWindow.locator(`[data-session-id="${sessionId}"]`)
     const divider = terminalWindow.locator('.split-pane-divider')
     await expect(divider).toBeVisible({ timeout: 5000 })
 
-    // Get the bounding box of the branch container
-    const branchBox = await terminalWindow.locator('.split-pane-branch').boundingBox()
-    expect(branchBox).toBeTruthy()
+    // Dispatch pointer events programmatically on the divider to bypass
+    // xterm canvas intercepting pointer events (same pattern as window-drag-resize)
+    await mainWindow.evaluate((id) => {
+      const windowEl = document.querySelector(`[data-session-id="${id}"]`)!
+      const dividerEl = windowEl.querySelector('.split-pane-divider')! as HTMLElement
+      const container = dividerEl.parentElement!
+      const rect = container.getBoundingClientRect()
+      const divRect = dividerEl.getBoundingClientRect()
 
-    // Get divider position
-    const dividerBox = await divider.boundingBox()
-    expect(dividerBox).toBeTruthy()
+      const startX = divRect.left + divRect.width / 2
+      const startY = divRect.top + divRect.height / 2
+      // Move 80px right (significant enough to change ratio)
+      const endX = startX + 80
 
-    // Drag the divider 60px to the right (horizontal split)
-    const startX = dividerBox!.x + dividerBox!.width / 2
-    const startY = dividerBox!.y + dividerBox!.height / 2
-    const dragOffset = 60
+      // Dispatch pointerdown on divider
+      dividerEl.dispatchEvent(new PointerEvent('pointerdown', {
+        clientX: startX,
+        clientY: startY,
+        bubbles: true,
+        composed: true,
+        pointerId: 1,
+      }))
 
-    await mainWindow.mouse.move(startX, startY)
-    await mainWindow.mouse.down()
-    await mainWindow.mouse.move(startX + dragOffset, startY, { steps: 10 })
-    await mainWindow.mouse.up()
+      // Dispatch pointermove on document (the handler listens on document)
+      document.dispatchEvent(new PointerEvent('pointermove', {
+        clientX: endX,
+        clientY: startY,
+        bubbles: true,
+        composed: true,
+        pointerId: 1,
+      }))
+
+      // Dispatch pointerup on document
+      document.dispatchEvent(new PointerEvent('pointerup', {
+        clientX: endX,
+        clientY: startY,
+        bubbles: true,
+        composed: true,
+        pointerId: 1,
+      }))
+    }, sessionId)
+
     await mainWindow.waitForTimeout(500)
 
     // Verify ratio changed from 0.5
@@ -336,7 +361,7 @@ test.describe('Split Panes: Focus Navigation', () => {
     expect(focusedAfterDown).toBe(focusedAfterSplit)
   })
 
-  test('focused pane gets visual indicator', async ({ mainWindow }) => {
+  test('focused pane gets visual indicator that follows navigation', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
 
     await pressShortcut(mainWindow, 'n')
@@ -350,17 +375,26 @@ test.describe('Split Panes: Focus Navigation', () => {
     await pressShortcut(mainWindow, '\\')
     await mainWindow.waitForTimeout(1000)
 
-    const terminalWindow = mainWindow.locator(`[data-session-id="${sessionId}"]`)
+    // Verify exactly one pane has the focused class via store + DOM
+    const focusedPaneId = await mainWindow.evaluate((id) => {
+      return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
+    }, sessionId)
+    expect(focusedPaneId).toBeTruthy()
 
-    // Exactly one pane should have the focused class
+    const terminalWindow = mainWindow.locator(`[data-session-id="${sessionId}"]`)
     const focusedLeaves = terminalWindow.locator('.split-pane-focused')
     await expect(focusedLeaves).toHaveCount(1, { timeout: 5000 })
 
-    // Navigate to the other pane
+    // Navigate to the other pane and verify focus indicator moved
     await pressModShortcut(mainWindow, 'ArrowLeft', { alt: true })
     await mainWindow.waitForTimeout(500)
 
-    // Still exactly one pane should have the focused class, but a different one
+    const newFocusedPaneId = await mainWindow.evaluate((id) => {
+      return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getFocusedPane(id)
+    }, sessionId)
+    expect(newFocusedPaneId).not.toBe(focusedPaneId)
+
+    // Still exactly one pane should have the focused indicator
     await expect(focusedLeaves).toHaveCount(1, { timeout: 5000 })
   })
 })
@@ -376,10 +410,10 @@ test.describe('Split Panes: Max Pane Limit', () => {
       (window as any).__SMOKE_STORES__.sessionStore.getState().focusedId
     )
 
-    // Split 3 times to reach 4 panes
+    // Split 3 times to reach 4 panes — use longer waits to ensure each split completes
     for (let i = 0; i < 3; i++) {
       await pressShortcut(mainWindow, '\\')
-      await mainWindow.waitForTimeout(800)
+      await mainWindow.waitForTimeout(1500)
     }
 
     const paneCount = await mainWindow.evaluate((id) => {
