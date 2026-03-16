@@ -114,6 +114,12 @@ export const CONTEXT_COLLECT = 'context:collect' as const
 // Shell detection channels
 export const SHELL_LIST = 'shell:list' as const
 
+// Plugin channels
+export const PLUGIN_LIST = 'plugin:list' as const
+export const PLUGIN_GET = 'plugin:get' as const
+export const PLUGIN_RELOAD = 'plugin:reload' as const
+export const PLUGIN_CHANGED = 'plugin:changed' as const
+
 // Message types
 
 export interface PtySpawnRequest {
@@ -626,6 +632,38 @@ export interface ContextCollectResponse {
 export interface ShellInfo {
   path: string
   name: string
+}
+
+// Plugin message types
+export interface PluginGetRequest {
+  name: string
+}
+
+export interface PluginInfo {
+  name: string
+  version: string
+  description: string
+  author: string
+  icon?: string
+  defaultSize: { width: number; height: number }
+  entryPointPath: string
+  permissions: string[]
+  pluginDir: string
+  source: 'global' | 'project'
+}
+
+export interface PluginListResponse {
+  plugins: PluginInfo[]
+}
+
+export interface PluginReloadResponse {
+  plugins: PluginInfo[]
+  errors: Array<{ pluginDir: string; error: string }>
+}
+
+export interface PluginChangedEvent {
+  plugins: PluginInfo[]
+  errors: Array<{ pluginDir: string; error: string }>
 }
 
 // AI stream event types — defined in preload/types.ts for cross-process sharing

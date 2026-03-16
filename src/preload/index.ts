@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult, ShellInfo } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult, ShellInfo, PluginChangedEvent } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -229,6 +229,21 @@ const smokeAPI: SmokeAPI = {
 
   shell: {
     list: () => ipcRenderer.invoke('shell:list') as Promise<ShellInfo[]>,
+  },
+
+  plugin: {
+    list: () => ipcRenderer.invoke('plugin:list'),
+    get: (name) => ipcRenderer.invoke('plugin:get', { name }),
+    reload: () => ipcRenderer.invoke('plugin:reload'),
+    onChanged: (callback: (event: PluginChangedEvent) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: PluginChangedEvent): void => {
+        callback(data)
+      }
+      ipcRenderer.on('plugin:changed', listener)
+      return () => {
+        ipcRenderer.removeListener('plugin:changed', listener)
+      }
+    },
   },
 }
 

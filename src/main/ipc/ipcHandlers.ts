@@ -156,8 +156,17 @@ import {
   ContextCollectResponse,
   SHELL_LIST,
   ShellInfo,
+  PLUGIN_LIST,
+  PLUGIN_GET,
+  PLUGIN_RELOAD,
+  PLUGIN_CHANGED,
+  PluginGetRequest,
+  PluginInfo,
+  PluginListResponse,
+  PluginReloadResponse,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
+import { PluginLoader, type LoadedPlugin } from '../plugin/PluginLoader'
 
 let agentManagerInstance: AgentManager | null = null
 
@@ -951,4 +960,65 @@ export async function registerIpcHandlers(
 
     return shells
   })
+
+  // ── Plugin loader ──────────────────────────────────────────────────────
+
+  const pluginLoader = new PluginLoader(launchCwd)
+  const initialLoad = await pluginLoader.loadAll()
+
+  // Log plugin load errors as warnings
+  for (const err of initialLoad.errors) {
+    console.warn(`[plugin] Skipped ${err.pluginDir}: ${err.error}`)
+  }
+  if (initialLoad.plugins.length > 0) {
+    console.log(`[plugin] Loaded ${initialLoad.plugins.length} plugin(s): ${initialLoad.plugins.map((p) => p.manifest.name).join(', ')}`)
+  }
+
+  // Dev mode: watch for changes and push updates to renderer
+  if (process.env.NODE_ENV !== 'production') {
+    pluginLoader.startWatching((result) => {
+      for (const err of result.errors) {
+        console.warn(`[plugin] Skipped ${err.pluginDir}: ${err.error}`)
+      }
+      const win = getMainWindow()
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(PLUGIN_CHANGED, {
+          plugins: result.plugins.map(toPluginInfo),
+          errors: result.errors,
+        })
+      }
+    })
+  }
+
+  ipcMain.handle(PLUGIN_LIST, (): PluginListResponse => {
+    return { plugins: pluginLoader.getPlugins().map(toPluginInfo) }
+  })
+
+  ipcMain.handle(PLUGIN_GET, (_event, request: PluginGetRequest): PluginInfo | null => {
+    const plugin = pluginLoader.getPlugin(request.name)
+    return plugin ? toPluginInfo(plugin) : null
+  })
+
+  ipcMain.handle(PLUGIN_RELOAD, async (): Promise<PluginReloadResponse> => {
+    const result = await pluginLoader.loadAll()
+    return {
+      plugins: result.plugins.map(toPluginInfo),
+      errors: result.errors,
+    }
+  })
+}
+
+function toPluginInfo(p: LoadedPlugin): PluginInfo {
+  return {
+    name: p.manifest.name,
+    version: p.manifest.version,
+    description: p.manifest.description,
+    author: p.manifest.author,
+    icon: p.manifest.icon,
+    defaultSize: p.manifest.defaultSize,
+    entryPointPath: p.entryPointPath,
+    permissions: p.manifest.permissions,
+    pluginDir: p.pluginDir,
+    source: p.source,
+  }
 }
