@@ -532,6 +532,8 @@ export interface SmokeAPI {
     write: (id: string, data: string) => void
     resize: (id: string, cols: number, rows: number) => void
     kill: (id: string) => void
+    /** Acknowledge receipt of a batched PTY data message (backpressure). */
+    ack: (id: string) => void
     onData: (callback: (event: PtyDataEvent) => void) => () => void
     onExit: (callback: (event: PtyExitEvent) => void) => () => void
   }

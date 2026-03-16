@@ -3,6 +3,7 @@
 export const PTY_SPAWN = 'pty:spawn' as const
 export const PTY_DATA_TO_PTY = 'pty:data:to-pty' as const
 export const PTY_DATA_FROM_PTY = 'pty:data:from-pty' as const
+export const PTY_DATA_ACK = 'pty:data:ack' as const
 export const PTY_RESIZE = 'pty:resize' as const
 export const PTY_KILL = 'pty:kill' as const
 export const PTY_EXIT = 'pty:exit' as const

@@ -30,6 +30,9 @@ export function usePty(
       } else {
         pendingData.push(event.data)
       }
+
+      // Acknowledge receipt so the main process can manage backpressure
+      window.smokeAPI.pty.ack(event.id)
     })
 
     // PTY exit -> display message + update session status
