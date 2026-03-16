@@ -3,7 +3,7 @@ import { useCanvasControls, getCurrentPan, getCurrentZoom } from './useCanvasCon
 import { useRubberBandSelect } from './useRubberBandSelect'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
-import type { Session, TerminalSession, FileViewerSession, NoteSession, WebviewSession, ImageSession, SnippetSession, PluginSession } from '../stores/sessionStore'
+import type { Session, TerminalSession, FileViewerSession } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
@@ -47,6 +47,149 @@ function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Eleme
   const textSnapshot = useSnapshot(session.id)
   return <TerminalThumbnail session={session} textSnapshot={textSnapshot} />
 }
+
+interface SessionElementProps {
+  session: Session
+  isVisible: boolean
+  isThumbnailMode: boolean
+  getZoom: () => number
+  gridSize: number
+}
+
+const SessionElement = React.memo(function SessionElement({
+  session,
+  isVisible,
+  isThumbnailMode,
+  getZoom,
+  gridSize,
+}: SessionElementProps): JSX.Element | null {
+  let element: React.ReactNode = null
+
+  switch (session.type) {
+    case 'terminal':
+      if (isThumbnailMode && !session.isPinned) {
+        element = isVisible ? <ThumbnailRenderer session={session} /> : null
+      } else {
+        element = (
+          <TerminalWindow
+            session={session}
+            zoom={getZoom}
+            gridSize={gridSize}
+            hidden={!isVisible}
+          />
+        )
+      }
+      break
+    case 'file': {
+      const fileSession = session as FileViewerSession
+      // When editing, keep mounted but hidden (like terminals) to preserve
+      // CodeMirror state (cursor, undo history) across viewport culling.
+      if (!isVisible && !fileSession.editing) return null
+      element = (
+        <>
+          <FileViewerThumbnail
+            session={session}
+            className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-active' : 'file-crossfade file-crossfade-inactive'}
+          />
+          <FileViewerWindow
+            session={fileSession}
+            zoom={getZoom}
+            gridSize={gridSize}
+            hidden={!isVisible}
+            className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-inactive' : 'file-crossfade file-crossfade-active'}
+          />
+        </>
+      )
+      break
+    }
+    case 'note':
+      if (!isVisible) return null
+      if (isThumbnailMode && !session.isPinned) {
+        element = <NoteThumbnail session={session} />
+      } else {
+        element = (
+          <NoteWindow
+            session={session}
+            zoom={getZoom}
+            gridSize={gridSize}
+          />
+        )
+      }
+      break
+    case 'webview':
+      if (!isVisible) return null
+      if (isThumbnailMode && !session.isPinned) {
+        element = <WebviewThumbnail session={session} />
+      } else {
+        element = (
+          <WebviewWindow
+            session={session}
+            zoom={getZoom}
+            gridSize={gridSize}
+          />
+        )
+      }
+      break
+    case 'image':
+      if (!isVisible) return null
+      if (isThumbnailMode && !session.isPinned) {
+        element = <ImageThumbnail session={session} />
+      } else {
+        element = (
+          <ImageWindow
+            session={session}
+            zoom={getZoom}
+            gridSize={gridSize}
+          />
+        )
+      }
+      break
+    case 'snippet':
+      if (!isVisible) return null
+      if (isThumbnailMode && !session.isPinned) {
+        element = <SnippetThumbnail session={session} />
+      } else {
+        element = (
+          <SnippetWindow
+            session={session}
+            zoom={getZoom}
+            gridSize={gridSize}
+          />
+        )
+      }
+      break
+    default: {
+      if (isPluginElementType(session.type)) {
+        const reg = getPluginElementRegistration(session.type)
+        if (!reg) return null
+        const pluginSession = session as PluginSessionType
+        if (!isVisible) return null
+        if (isThumbnailMode && !session.isPinned) {
+          const Thumb = reg.ThumbnailComponent
+          element = <Thumb session={pluginSession} />
+        } else {
+          const Win = reg.WindowComponent
+          element = (
+            <Win
+              session={pluginSession}
+              zoom={getZoom}
+              gridSize={gridSize}
+            />
+          )
+        }
+      }
+      break
+    }
+  }
+
+  if (!element) return null
+
+  return (
+    <ComponentErrorBoundary name={`${session.type} session`}>
+      {element}
+    </ComponentErrorBoundary>
+  )
+})
 
 /**
  * Compute the viewport (screen) position for a pinned element.
@@ -123,6 +266,20 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
 
   const getZoom = useCallback(() => zoomRef.current, [zoomRef])
 
+  const renderSessionElement = useCallback(
+    (session: Session, isVisible: boolean) => (
+      <SessionElement
+        key={session.id}
+        session={session}
+        isVisible={isVisible}
+        isThumbnailMode={isThumbnailMode}
+        getZoom={getZoom}
+        gridSize={gridSize}
+      />
+    ),
+    [isThumbnailMode, getZoom, gridSize]
+  )
+
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       if (readOnly) return
@@ -153,138 +310,6 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
       sessionStore.getState().clearSelection()
     },
     [readOnly]
-  )
-
-  const renderSessionElement = useCallback(
-    (session: Session, isVisible: boolean) => {
-      let element: React.ReactNode = null
-
-      switch (session.type) {
-        case 'terminal':
-          if (isThumbnailMode && !session.isPinned) {
-            element = isVisible ? <ThumbnailRenderer session={session} /> : null
-          } else {
-            element = (
-              <TerminalWindow
-                session={session}
-                zoom={getZoom}
-                gridSize={gridSize}
-                hidden={!isVisible}
-              />
-            )
-          }
-          break
-        case 'file': {
-          const fileSession = session as FileViewerSession
-          // When editing, keep mounted but hidden (like terminals) to preserve
-          // CodeMirror state (cursor, undo history) across viewport culling.
-          if (!isVisible && !fileSession.editing) return null
-          element = (
-            <>
-              <FileViewerThumbnail
-                session={session}
-                className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-active' : 'file-crossfade file-crossfade-inactive'}
-              />
-              <FileViewerWindow
-                session={fileSession}
-                zoom={getZoom}
-                gridSize={gridSize}
-                hidden={!isVisible}
-                className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-inactive' : 'file-crossfade file-crossfade-active'}
-              />
-            </>
-          )
-          break
-        }
-        case 'note':
-          if (!isVisible) return null
-          if (isThumbnailMode && !session.isPinned) {
-            element = <NoteThumbnail session={session} />
-          } else {
-            element = (
-              <NoteWindow
-                session={session}
-                zoom={getZoom}
-                gridSize={gridSize}
-              />
-            )
-          }
-          break
-        case 'webview':
-          if (!isVisible) return null
-          if (isThumbnailMode && !session.isPinned) {
-            element = <WebviewThumbnail session={session} />
-          } else {
-            element = (
-              <WebviewWindow
-                session={session}
-                zoom={getZoom}
-                gridSize={gridSize}
-              />
-            )
-          }
-          break
-        case 'image':
-          if (!isVisible) return null
-          if (isThumbnailMode && !session.isPinned) {
-            element = <ImageThumbnail session={session} />
-          } else {
-            element = (
-              <ImageWindow
-                session={session}
-                zoom={getZoom}
-                gridSize={gridSize}
-              />
-            )
-          }
-          break
-        case 'snippet':
-          if (!isVisible) return null
-          if (isThumbnailMode && !session.isPinned) {
-            element = <SnippetThumbnail session={session} />
-          } else {
-            element = (
-              <SnippetWindow
-                session={session}
-                zoom={getZoom}
-                gridSize={gridSize}
-              />
-            )
-          }
-          break
-        default: {
-          if (isPluginElementType(session.type)) {
-            const reg = getPluginElementRegistration(session.type)
-            if (!reg) return null
-            const pluginSession = session as PluginSessionType
-            if (!isVisible) return null
-            if (isThumbnailMode && !session.isPinned) {
-              const Thumb = reg.ThumbnailComponent
-              element = <Thumb session={pluginSession} />
-            } else {
-              const Win = reg.WindowComponent
-              element = (
-                <Win
-                  session={pluginSession}
-                  zoom={getZoom}
-                  gridSize={gridSize}
-                />
-              )
-            }
-          }
-          break
-        }
-      }
-
-      if (!element) return null
-
-      return (
-        <ComponentErrorBoundary key={session.id} name={`${session.type} session`}>
-          {element}
-        </ComponentErrorBoundary>
-      )
-    },
-    [isThumbnailMode, getZoom, gridSize]
   )
 
   // Separate pinned and unpinned sessions
