@@ -141,8 +141,8 @@ test.describe('Code Snippet Editing', () => {
     await expect(cmContent).toBeVisible({ timeout: 5000 })
     await cmContent.click()
 
-    // Type some code
-    await mainWindow.keyboard.type('const hello = "world";')
+    // Type code using insertText to avoid CodeMirror eating spaces from keyboard.type
+    await mainWindow.keyboard.insertText('const hello = "world";')
 
     // Verify the content in the store
     const content = await mainWindow.evaluate((id) => {
@@ -457,13 +457,15 @@ test.describe('Code Snippet Persistence', () => {
     await waitForAppReady(mainWindow)
     await closeAllSessions(mainWindow)
 
-    await createSnippet(mainWindow)
+    const sessionId = await createSnippet(mainWindow)
 
     const snippetWindows = mainWindow.locator('.snippet-window')
     await expect(snippetWindows).toHaveCount(1, { timeout: 5000 })
 
-    // Close via X button
-    const closeBtn = snippetWindows.first().locator('.window-chrome-close')
+    // Close via the X button on the window chrome
+    const closeBtn = mainWindow.locator(
+      `.snippet-window[data-session-id="${sessionId}"] .window-chrome-close`
+    )
     await closeBtn.click({ force: true })
 
     await expect(snippetWindows).toHaveCount(0, { timeout: 5000 })
