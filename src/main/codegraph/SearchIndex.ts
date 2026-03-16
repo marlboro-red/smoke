@@ -223,7 +223,8 @@ export class SearchIndex {
     let entries: import('fs').Dirent[]
     try {
       entries = await fs.readdir(dir, { withFileTypes: true })
-    } catch {
+    } catch (err) {
+      console.warn(`[SearchIndex] Failed to read directory ${dir}:`, err)
       return
     }
 
@@ -371,7 +372,8 @@ export class SearchIndex {
       if (stat.size > MAX_FILE_SIZE) return
 
       content = await fs.readFile(filePath, 'utf-8')
-    } catch {
+    } catch (err) {
+      console.warn(`[SearchIndex] Failed to read file ${filePath}:`, err)
       return
     }
 
@@ -461,14 +463,15 @@ export class SearchIndex {
         }
       )
 
-      this.watcher.on('error', () => {
+      this.watcher.on('error', (err) => {
+        console.warn(`[SearchIndex] Watcher error for ${this.projectRoot}:`, err)
         if (this.watcher) {
           this.watcher.close()
           this.watcher = null
         }
       })
-    } catch {
-      // Directory may not support watching
+    } catch (err) {
+      console.warn(`[SearchIndex] Failed to start watcher for ${this.projectRoot}:`, err)
     }
   }
 

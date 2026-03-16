@@ -91,8 +91,9 @@ export class FilenameIndex {
     let entries: import('fs').Dirent[]
     try {
       entries = await fs.readdir(dir, { withFileTypes: true })
-    } catch {
-      return // permission denied, etc.
+    } catch (err) {
+      console.warn(`[FilenameIndex] Failed to read directory ${dir}:`, err)
+      return
     }
 
     for (const entry of entries) {

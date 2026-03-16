@@ -365,8 +365,8 @@ export async function registerIpcHandlers(
         try {
           const stat = await fs.stat(path.join(dirPath, entry.name))
           size = stat.size
-        } catch {
-          // stat may fail for broken symlinks, etc.
+        } catch (err) {
+          console.warn(`[ipc] Failed to stat ${path.join(dirPath, entry.name)}:`, err)
         }
       } else if (entry.isDirectory()) {
         type = 'directory'
@@ -563,12 +563,13 @@ export async function registerIpcHandlers(
             eventCount: events.length,
             durationMs: duration,
           })
-        } catch {
-          // Skip malformed files
+        } catch (err) {
+          console.warn(`[ipc] Skipping malformed recording file: ${file}`, err)
         }
       }
       return entries.sort((a, b) => b.startedAt - a.startedAt)
-    } catch {
+    } catch (err) {
+      console.warn('[ipc] Failed to list recordings:', err)
       return []
     }
   })
@@ -737,7 +738,8 @@ export async function registerIpcHandlers(
           timeout: 3000,
         })
         return stdout.trim()
-      } catch {
+      } catch (err) {
+        console.warn('[ipc] Failed to detect git branch:', err)
         return null
       }
     },
@@ -972,7 +974,8 @@ export async function registerIpcHandlers(
           try {
             await execFileAsync('where', [c.path], { timeout: 2000 })
             return c
-          } catch {
+          } catch (err) {
+            console.warn(`[ipc] Shell not found: ${c.path}`, err)
             return null
           }
         })
@@ -993,19 +996,19 @@ export async function registerIpcHandlers(
               seen.add(trimmed)
               const name = path.basename(trimmed)
               shells.push({ path: trimmed, name })
-            } catch {
-              // not executable or doesn't exist
+            } catch (err) {
+              console.warn(`[ipc] Shell not accessible: ${trimmed}`, err)
             }
           }
-        } catch {
-          // /etc/shells not readable — fall back to common paths
+        } catch (err) {
+          console.warn('[ipc] Could not read /etc/shells, falling back to common paths:', err)
           const fallbacks = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/fish']
           for (const p of fallbacks) {
             try {
               await fs.access(p, fs.constants.X_OK)
               shells.push({ path: p, name: path.basename(p) })
-            } catch {
-              // not available
+            } catch (err2) {
+              console.warn(`[ipc] Fallback shell not accessible: ${p}`, err2)
             }
           }
         }
