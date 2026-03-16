@@ -15,6 +15,7 @@ import { closeSession } from '../session/useSessionClose'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import NoteColorPicker, { resolveNoteColors } from './NoteColorPicker'
+import SourceRefLink from './SourceRefLink'
 import '../styles/note.css'
 
 interface NoteWindowProps {
@@ -186,6 +187,11 @@ export default function NoteWindow({
         className="note-body"
         style={{ height: `calc(100% - ${CHROME_HEIGHT}px)` }}
       >
+        {session.sourceRef && (
+          <div className="note-source-bar">
+            <SourceRefLink sourceRef={session.sourceRef} />
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           className="note-textarea"
