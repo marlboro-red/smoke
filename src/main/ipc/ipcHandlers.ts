@@ -346,9 +346,9 @@ export async function registerIpcHandlers(
   ipcMain.handle(FS_READDIR, async (_event, request: FsReaddirRequest): Promise<FsReaddirEntry[]> => {
     const dirPath = path.resolve(request.path)
     const entries = await fs.readdir(dirPath, { withFileTypes: true })
-    const results: FsReaddirEntry[] = []
+    const CONCURRENCY = 16
 
-    for (const entry of entries) {
+    const mapEntry = async (entry: import('fs').Dirent): Promise<FsReaddirEntry> => {
       let type: FsReaddirEntry['type'] = 'other'
       let size = 0
 
@@ -366,7 +366,17 @@ export async function registerIpcHandlers(
         type = 'symlink'
       }
 
-      results.push({ name: entry.name, type, size })
+      return { name: entry.name, type, size }
+    }
+
+    // Process entries with bounded concurrency
+    const results: FsReaddirEntry[] = new Array(entries.length)
+    for (let i = 0; i < entries.length; i += CONCURRENCY) {
+      const batch = entries.slice(i, i + CONCURRENCY)
+      const batchResults = await Promise.all(batch.map(mapEntry))
+      for (let j = 0; j < batchResults.length; j++) {
+        results[i + j] = batchResults[j]
+      }
     }
 
     return results
