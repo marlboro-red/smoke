@@ -424,7 +424,7 @@ export const useBroadcastGroupId = (): string | null =>
   useStore(sessionStore, (state) => state.broadcastGroupId)
 
 export const useSelectedIds = (): Set<string> =>
-  useStore(sessionStore, (state) => state.selectedIds)
+  useStore(sessionStore, useShallow((state) => state.selectedIds))
 
 export function getGroupSessionIds(groupId: string): string[] {
   const sessions = sessionStore.getState().sessions

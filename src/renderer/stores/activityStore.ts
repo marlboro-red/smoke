@@ -1,5 +1,6 @@
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 
 interface ActivityStore {
   /** Session IDs that have unread terminal output while off-screen */
@@ -37,7 +38,7 @@ export const activityStore = createStore<ActivityStore>((set) => ({
 }))
 
 export const useActiveIds = (): Set<string> =>
-  useStore(activityStore, (state) => state.activeIds)
+  useStore(activityStore, useShallow((state) => state.activeIds))
 
 export const useHasActivity = (sessionId: string): boolean =>
   useStore(activityStore, (state) => state.activeIds.has(sessionId))

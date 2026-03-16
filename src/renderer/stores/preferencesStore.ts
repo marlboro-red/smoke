@@ -1,5 +1,6 @@
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import type { Preferences } from '../../preload/types'
 import { shortcutBindingsStore } from '../shortcuts/shortcutMap'
 
@@ -57,7 +58,7 @@ export const preferencesStore = createStore<PreferencesStore>((set) => ({
 }))
 
 export const usePreferences = (): Preferences =>
-  useStore(preferencesStore, (state) => state.preferences)
+  useStore(preferencesStore, useShallow((state) => state.preferences))
 
 export const usePreference = <K extends keyof Preferences>(key: K): Preferences[K] =>
   useStore(preferencesStore, (state) => state.preferences[key])
