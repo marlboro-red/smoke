@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { TerminalOutputBuffer, stripAnsi } from '../TerminalOutputBuffer'
+import { TerminalOutputBuffer, stripAnsi, fastByteLength } from '../TerminalOutputBuffer'
 
 describe('stripAnsi', () => {
   it('removes CSI sequences (colors, cursor movement)', () => {
@@ -165,6 +165,30 @@ describe('TerminalOutputBuffer', () => {
       buffer.append('s1', 'line3\nline4\n')
       expect(buffer.readLines('s1', 3)).toBe('line3\nline4\n')
     })
+  })
+})
+
+describe('fastByteLength', () => {
+  it('returns string.length for ASCII-only strings', () => {
+    expect(fastByteLength('hello world')).toBe(11)
+    expect(fastByteLength('abcdef')).toBe(6)
+    expect(fastByteLength('')).toBe(0)
+  })
+
+  it('returns correct byte length for multibyte strings', () => {
+    // '€' is 3 bytes in UTF-8
+    expect(fastByteLength('€')).toBe(3)
+    // '😀' is 4 bytes in UTF-8
+    expect(fastByteLength('😀')).toBe(4)
+    // Mixed ASCII and multibyte
+    expect(fastByteLength('hello€')).toBe(8) // 5 + 3
+  })
+
+  it('matches Buffer.byteLength for all inputs', () => {
+    const cases = ['ascii', '€€€', '你好世界', 'mix€d', '😀🚀', 'a€b😀c']
+    for (const s of cases) {
+      expect(fastByteLength(s)).toBe(Buffer.byteLength(s, 'utf8'))
+    }
   })
 })
 

@@ -204,7 +204,7 @@ export class SearchIndex {
       await this.indexFile(files[i])
       indexed++
 
-      if (indexed % 50 === 0) {
+      if (indexed % 10 === 0) {
         await new Promise(resolve => setImmediate(resolve))
         this.sendProgress(indexed, files.length)
       }
