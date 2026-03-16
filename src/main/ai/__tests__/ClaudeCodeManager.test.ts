@@ -142,6 +142,30 @@ describe('ClaudeCodeManager', () => {
     })
   })
 
+  describe('dispose', () => {
+    it('clears conversations and removes temp MCP config file', async () => {
+      const fs = await import('fs')
+      const unlinkSyncMock = vi.fn()
+      ;(fs as any).unlinkSync = unlinkSyncMock
+
+      // Force creation of the MCP config file by accessing the private method
+      const configPath = (manager as any).ensureMcpConfig()
+      expect(configPath).toBeTruthy()
+      expect((manager as any).mcpConfigPath).toBeTruthy()
+
+      manager.dispose()
+
+      // Should have attempted to delete the temp file
+      expect(unlinkSyncMock).toHaveBeenCalledWith(configPath)
+      // Internal state should be cleaned up
+      expect((manager as any).mcpConfigPath).toBeNull()
+    })
+
+    it('does not throw when no MCP config exists', () => {
+      expect(() => manager.dispose()).not.toThrow()
+    })
+  })
+
   describe('sendMessage', () => {
     it('emits error when claude is not found', async () => {
       // The spawn mock returns a process that emits 'error'

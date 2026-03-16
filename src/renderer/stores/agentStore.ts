@@ -6,6 +6,12 @@ import { v4 as uuidv4 } from 'uuid'
 
 // --- Per-agent state ---
 
+/**
+ * Maximum number of messages to keep per agent. Older messages are
+ * dropped to prevent unbounded memory growth in long-running sessions.
+ */
+const MAX_MESSAGES_PER_AGENT = 500
+
 export const AGENT_COLORS = [
   '#61afef', '#e06c75', '#98c379', '#e5c07b', '#c678dd', '#56b6c2',
   '#d19a66', '#be5046', '#7ec699', '#a9b1d6',
@@ -56,6 +62,12 @@ function updateAgent(
   const next = new Map(agents)
   next.set(agentId, updater(agent))
   return next
+}
+
+/** Trim messages array to MAX_MESSAGES_PER_AGENT, keeping the most recent. */
+function trimMessages(messages: ChatMessage[]): ChatMessage[] {
+  if (messages.length <= MAX_MESSAGES_PER_AGENT) return messages
+  return messages.slice(messages.length - MAX_MESSAGES_PER_AGENT)
 }
 
 export const agentStore = createStore<AgentStoreState>((set, get) => ({
@@ -128,7 +140,7 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
     set((state) => ({
       agents: updateAgent(state.agents, agentId, (a) => ({
         ...a,
-        messages: [...a.messages, message],
+        messages: trimMessages([...a.messages, message]),
         error: null,
       })),
     }))
@@ -145,7 +157,7 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
     set((state) => ({
       agents: updateAgent(state.agents, agentId, (a) => ({
         ...a,
-        messages: [...a.messages, message],
+        messages: trimMessages([...a.messages, message]),
         isGenerating: true,
         error: null,
       })),

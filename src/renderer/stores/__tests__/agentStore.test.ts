@@ -218,5 +218,18 @@ describe('agentStore', () => {
       expect(agentStore.getState().agents.get('a1')!.messages).toHaveLength(0)
       expect(agentStore.getState().agents.get('a2')!.messages).toHaveLength(1)
     })
+
+    it('truncates messages when exceeding MAX_MESSAGES_PER_AGENT (500)', () => {
+      const state = agentStore.getState()
+      // Add 510 user messages
+      for (let i = 0; i < 510; i++) {
+        state.addUserMessage('a1', `message ${i}`)
+      }
+      const messages = agentStore.getState().agents.get('a1')!.messages
+      expect(messages.length).toBe(500)
+      // The oldest messages should have been trimmed — first kept message is #10
+      const firstText = (messages[0].content[0] as { type: 'text'; text: string }).text
+      expect(firstText).toBe('message 10')
+    })
   })
 })

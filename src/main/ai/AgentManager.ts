@@ -126,11 +126,11 @@ export class AgentManager {
     return agent.agentId
   }
 
-  /** Remove an agent and abort any in-flight work. */
+  /** Remove an agent, abort in-flight work, and clean up resources. */
   removeAgent(agentId: string): boolean {
     const agent = this.agents.get(agentId)
     if (!agent) return false
-    agent.abort()
+    agent.dispose()
     this.agents.delete(agentId)
     this.agentMeta.delete(agentId)
     return true
@@ -200,9 +200,13 @@ export class AgentManager {
     }
   }
 
-  /** Stop the MCP bridge. */
+  /** Stop the MCP bridge and dispose all agents. */
   async shutdown(): Promise<void> {
-    this.abortAll()
+    for (const agent of this.agents.values()) {
+      agent.dispose()
+    }
+    this.agents.clear()
+    this.agentMeta.clear()
     await this.mcpBridge.stop()
   }
 }
