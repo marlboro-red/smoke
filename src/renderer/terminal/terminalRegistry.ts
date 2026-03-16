@@ -11,13 +11,37 @@ interface TerminalEntry {
 }
 
 const WEBGL_DISPOSE_TIMEOUT = 60_000
+const HIDDEN_BUFFER_MAX_CHARS = 5 * 1024 * 1024 // ~5MB cap per session
+
+interface HiddenBuffer {
+  chunks: string[]
+  totalChars: number
+}
 
 const registry = new Map<string, TerminalEntry>()
 const disposeTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 // Buffers for PTY data arriving while terminals are off-screen
-const hiddenBuffers = new Map<string, string[]>()
+const hiddenBuffers = new Map<string, HiddenBuffer>()
 const hiddenUnsubs = new Map<string, () => void>()
+
+function appendToHiddenBuffer(buf: HiddenBuffer, data: string): void {
+  buf.chunks.push(data)
+  buf.totalChars += data.length
+
+  // Evict oldest chunks until within capacity
+  while (buf.totalChars > HIDDEN_BUFFER_MAX_CHARS && buf.chunks.length > 1) {
+    const oldest = buf.chunks.shift()!
+    buf.totalChars -= oldest.length
+  }
+
+  // If a single chunk still exceeds the cap, truncate from the front
+  if (buf.totalChars > HIDDEN_BUFFER_MAX_CHARS && buf.chunks.length === 1) {
+    const excess = buf.totalChars - HIDDEN_BUFFER_MAX_CHARS
+    buf.chunks[0] = buf.chunks[0].slice(excess)
+    buf.totalChars = HIDDEN_BUFFER_MAX_CHARS
+  }
+}
 
 export function getTerminal(sessionId: string): TerminalEntry | undefined {
   return registry.get(sessionId)
@@ -70,11 +94,11 @@ export function markHidden(sessionId: string): void {
   // The component's usePty listener gets torn down on unmount, so without
   // this buffer any data from active processes would be lost.
   if (window.smokeAPI?.pty?.onData && !hiddenUnsubs.has(sessionId)) {
-    const buffer: string[] = []
+    const buffer: HiddenBuffer = { chunks: [], totalChars: 0 }
     hiddenBuffers.set(sessionId, buffer)
     const unsub = window.smokeAPI.pty.onData((event) => {
       if (event.id === sessionId) {
-        buffer.push(event.data)
+        appendToHiddenBuffer(buffer, event.data)
         activityStore.getState().markActive(sessionId)
       }
     })
@@ -175,8 +199,8 @@ export function reattachTerminal(
  */
 export function flushHiddenBuffer(sessionId: string, terminal: Terminal): void {
   const buffer = hiddenBuffers.get(sessionId)
-  if (buffer && buffer.length > 0) {
-    terminal.write(buffer.join(''))
+  if (buffer && buffer.chunks.length > 0) {
+    terminal.write(buffer.chunks.join(''))
   }
   hiddenBuffers.delete(sessionId)
 }
