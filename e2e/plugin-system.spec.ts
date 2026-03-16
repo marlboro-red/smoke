@@ -51,15 +51,36 @@ async function openCreateMenu(page: import('@playwright/test').Page): Promise<vo
 }
 
 /**
+ * Register the test plugin element type in the registry so Canvas can render it.
+ * Must be called before creating plugin sessions that need to be visible on canvas.
+ */
+async function registerPluginType(page: import('@playwright/test').Page): Promise<void> {
+  await page.evaluate(() => {
+    const registry = (window as any).__SMOKE_STORES__.pluginRegistry
+    // Only register if not already registered
+    if (!registry.getPluginElementRegistration('plugin:e2e-test-plugin')) {
+      registry.registerPluginElementType({
+        type: 'plugin:e2e-test-plugin',
+        displayName: 'E2E Test Plugin',
+        WindowComponent: registry.PluginWindow,
+        ThumbnailComponent: registry.PluginThumbnail,
+        defaultSize: { width: 400, height: 300 },
+      })
+    }
+  })
+}
+
+/**
  * Create a plugin session programmatically via evaluate().
- * This bypasses the source-loading limitation by passing actual JS source.
+ * Also registers the plugin element type if needed.
  */
 async function createPluginSessionProgrammatically(
   page: import('@playwright/test').Page,
   source: string,
 ): Promise<string> {
+  await registerPluginType(page)
   return page.evaluate((src: string) => {
-    const store = window.__SMOKE_STORES__.sessionStore
+    const store = (window as any).__SMOKE_STORES__.sessionStore
     const session = store.getState().createPluginSession(
       'plugin:e2e-test-plugin',
       'e2e-test-plugin',
@@ -236,7 +257,7 @@ test.describe('Plugin System: Rendering', () => {
 
     // Verify session is removed from store
     const sessionExists = await mainWindow.evaluate((id: string) => {
-      return window.__SMOKE_STORES__.sessionStore.getState().sessions.has(id)
+      return (window as any).__SMOKE_STORES__.sessionStore.getState().sessions.has(id)
     }, sessionId)
     expect(sessionExists).toBe(false)
   })
@@ -384,14 +405,15 @@ test.describe('Plugin System: Settings UI', () => {
 })
 
 test.describe('Plugin System: State Persistence', () => {
-  test('plugin session persists across layout save and load', async ({ mainWindow }) => {
+  test('plugin session data persists in layout save and load', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+    await registerPluginType(mainWindow)
 
     const source = getPluginSource()
 
     // Create a plugin session with some pluginData
     const sessionId = await mainWindow.evaluate((src: string) => {
-      const store = window.__SMOKE_STORES__.sessionStore
+      const store = (window as any).__SMOKE_STORES__.sessionStore
       const session = store.getState().createPluginSession(
         'plugin:e2e-test-plugin',
         'e2e-test-plugin',
@@ -416,7 +438,7 @@ test.describe('Plugin System: State Persistence', () => {
 
     // Save layout via IPC
     await mainWindow.evaluate(async () => {
-      const store = window.__SMOKE_STORES__.sessionStore
+      const store = (window as any).__SMOKE_STORES__.sessionStore
       const sessions = Array.from(store.getState().sessions.values())
       const layout = {
         name: 'plugin-persistence-test',
@@ -435,7 +457,7 @@ test.describe('Plugin System: State Persistence', () => {
 
     // Close all sessions
     await mainWindow.evaluate(() => {
-      const store = window.__SMOKE_STORES__.sessionStore
+      const store = (window as any).__SMOKE_STORES__.sessionStore
       const ids = Array.from(store.getState().sessions.keys())
       for (const id of ids) {
         store.getState().removeSession(id)
@@ -480,6 +502,9 @@ test.describe('Plugin System: Lifecycle', () => {
     // First remove the fixture to start clean
     removeFixturePlugin()
 
+    // Wait for TTL cache to expire (2s) before first reload
+    await mainWindow.waitForTimeout(2500)
+
     // Reload — should have no e2e-test-plugin
     const before = await mainWindow.evaluate(async () => {
       const result = await window.smokeAPI.plugin.reload()
@@ -489,6 +514,9 @@ test.describe('Plugin System: Lifecycle', () => {
 
     // Now install the fixture
     installFixturePlugin()
+
+    // Wait for TTL cache to expire (2s) before next reload
+    await mainWindow.waitForTimeout(2500)
 
     // Reload — should now discover it
     const after = await mainWindow.evaluate(async () => {
@@ -500,6 +528,9 @@ test.describe('Plugin System: Lifecycle', () => {
 
   test('plugin reload detects removed plugin', async ({ mainWindow }) => {
     await waitForAppReady(mainWindow)
+
+    // Wait for TTL cache to expire
+    await mainWindow.waitForTimeout(2500)
 
     // Reload — should discover the fixture
     const before = await mainWindow.evaluate(async () => {

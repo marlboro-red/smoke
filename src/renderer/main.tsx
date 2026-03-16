@@ -23,9 +23,13 @@ import { canvasSearchStore } from './search/searchStore'
 import { regionStore } from './stores/regionStore'
 import { replayStore } from './replay/replayStore'
 import { commandPaletteStore } from './palette/commandPaletteStore'
+import { registerPluginElementType, getPluginElementRegistration } from './plugin/pluginElementRegistry'
+import { default as PluginWindow } from './plugin/PluginWindow'
+import { default as PluginThumbnail } from './plugin/PluginThumbnail'
+import { pluginStore } from './stores/pluginStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore, preferencesStore, canvasStore, canvasControls: { setPanTo, setZoomTo }, depgraph: { buildDepGraph, expandDepGraph, buildDependentsGraph }, canvasSearchStore, regionStore, replayStore, commandPaletteStore }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore, preferencesStore, canvasStore, canvasControls: { setPanTo, setZoomTo }, depgraph: { buildDepGraph, expandDepGraph, buildDependentsGraph }, canvasSearchStore, regionStore, replayStore, commandPaletteStore, pluginStore, pluginRegistry: { registerPluginElementType, getPluginElementRegistration, PluginWindow, PluginThumbnail } }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
