@@ -6,9 +6,10 @@ import { connectorStore } from './stores/connectorStore'
 import { goToLineStore } from './fileviewer/goToLineStore'
 import { toastStore } from './stores/toastStore'
 import { shortcutBindingsStore } from './shortcuts/shortcutMap'
+import { splitPaneStore } from './stores/splitPaneStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, splitPaneStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
