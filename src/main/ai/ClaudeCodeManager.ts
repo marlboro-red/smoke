@@ -39,6 +39,9 @@ interface ConversationState {
   process: ChildProcess | null
 }
 
+/** Maximum number of idle conversations to keep per agent. */
+const MAX_CONVERSATIONS = 50
+
 export class ClaudeCodeManager {
   private conversations = new Map<string, ConversationState>()
   private getMainWindow: () => BrowserWindow | null
@@ -78,6 +81,7 @@ export class ClaudeCodeManager {
         process: null,
       }
       this.conversations.set(convId, conv)
+      this.evictOldConversations()
     }
 
     // Kill any existing process for this conversation
@@ -131,6 +135,33 @@ export class ClaudeCodeManager {
     } else {
       this.abort()
       this.conversations.clear()
+    }
+  }
+
+  /** Evict oldest idle conversations when the map exceeds MAX_CONVERSATIONS. */
+  private evictOldConversations(): void {
+    if (this.conversations.size <= MAX_CONVERSATIONS) return
+    for (const [id, conv] of this.conversations) {
+      if (this.conversations.size <= MAX_CONVERSATIONS) break
+      // Skip conversations with an active subprocess
+      if (conv.process) continue
+      this.conversations.delete(id)
+    }
+  }
+
+  /**
+   * Dispose this manager: abort all conversations and remove the temp MCP
+   * config file from disk. Call this when the agent is being removed.
+   */
+  dispose(): void {
+    this.clear()
+    if (this.mcpConfigPath) {
+      try {
+        fs.unlinkSync(this.mcpConfigPath)
+      } catch {
+        // File may already be gone — ignore
+      }
+      this.mcpConfigPath = null
     }
   }
 
