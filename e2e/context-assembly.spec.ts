@@ -494,14 +494,14 @@ test.describe('Context Assembly: Assembly Preview', () => {
     await expect(mainWindow.locator('.assembly-count')).toHaveText('3 of 3 selected')
 
     // Click "Deselect all"
-    await mainWindow.locator('.assembly-toolbar-btn', { hasText: 'Deselect all' }).click()
+    await mainWindow.getByRole('button', { name: 'Deselect all' }).click()
     await expect(mainWindow.locator('.assembly-count')).toHaveText('0 of 3 selected')
 
     // Confirm button should be disabled with no files selected
     await expect(mainWindow.locator('.assembly-confirm-btn')).toBeDisabled()
 
     // Click "Select all"
-    await mainWindow.locator('.assembly-toolbar-btn', { hasText: 'Select all' }).click()
+    await mainWindow.getByRole('button', { name: 'Select all', exact: true }).click()
     await expect(mainWindow.locator('.assembly-count')).toHaveText('3 of 3 selected')
 
     // Confirm button should be enabled
