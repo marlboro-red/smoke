@@ -39,6 +39,7 @@ import { useSuggestionEngine } from '../suggestions/useSuggestionEngine'
 import { useSuggestions } from '../stores/suggestionStore'
 import GhostSuggestion from '../suggestions/GhostSuggestion'
 import { getPluginElementRegistration, isPluginElementType } from '../plugin/pluginElementRegistry'
+import ComponentErrorBoundary from '../errors/ComponentErrorBoundary'
 import type { PluginSession as PluginSessionType } from '../stores/sessionStore'
 import '../styles/canvas.css'
 
@@ -156,27 +157,30 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
 
   const renderSessionElement = useCallback(
     (session: Session, isVisible: boolean) => {
+      let element: React.ReactNode = null
+
       switch (session.type) {
         case 'terminal':
           if (isThumbnailMode && !session.isPinned) {
-            return isVisible ? <ThumbnailRenderer key={session.id} session={session} /> : null
+            element = isVisible ? <ThumbnailRenderer session={session} /> : null
+          } else {
+            element = (
+              <TerminalWindow
+                session={session}
+                zoom={getZoom}
+                gridSize={gridSize}
+                hidden={!isVisible}
+              />
+            )
           }
-          return (
-            <TerminalWindow
-              key={session.id}
-              session={session}
-              zoom={getZoom}
-              gridSize={gridSize}
-              hidden={!isVisible}
-            />
-          )
+          break
         case 'file': {
           const fileSession = session as FileViewerSession
           // When editing, keep mounted but hidden (like terminals) to preserve
           // CodeMirror state (cursor, undo history) across viewport culling.
           if (!isVisible && !fileSession.editing) return null
-          return (
-            <React.Fragment key={session.id}>
+          element = (
+            <>
               <FileViewerThumbnail
                 session={session}
                 className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-active' : 'file-crossfade file-crossfade-inactive'}
@@ -188,61 +192,66 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
                 hidden={!isVisible}
                 className={isThumbnailMode && !session.isPinned ? 'file-crossfade file-crossfade-inactive' : 'file-crossfade file-crossfade-active'}
               />
-            </React.Fragment>
+            </>
           )
+          break
         }
         case 'note':
           if (!isVisible) return null
           if (isThumbnailMode && !session.isPinned) {
-            return <NoteThumbnail key={session.id} session={session} />
+            element = <NoteThumbnail session={session} />
+          } else {
+            element = (
+              <NoteWindow
+                session={session}
+                zoom={getZoom}
+                gridSize={gridSize}
+              />
+            )
           }
-          return (
-            <NoteWindow
-              key={session.id}
-              session={session}
-              zoom={getZoom}
-              gridSize={gridSize}
-            />
-          )
+          break
         case 'webview':
           if (!isVisible) return null
           if (isThumbnailMode && !session.isPinned) {
-            return <WebviewThumbnail key={session.id} session={session} />
+            element = <WebviewThumbnail session={session} />
+          } else {
+            element = (
+              <WebviewWindow
+                session={session}
+                zoom={getZoom}
+                gridSize={gridSize}
+              />
+            )
           }
-          return (
-            <WebviewWindow
-              key={session.id}
-              session={session}
-              zoom={getZoom}
-              gridSize={gridSize}
-            />
-          )
+          break
         case 'image':
           if (!isVisible) return null
           if (isThumbnailMode && !session.isPinned) {
-            return <ImageThumbnail key={session.id} session={session} />
+            element = <ImageThumbnail session={session} />
+          } else {
+            element = (
+              <ImageWindow
+                session={session}
+                zoom={getZoom}
+                gridSize={gridSize}
+              />
+            )
           }
-          return (
-            <ImageWindow
-              key={session.id}
-              session={session}
-              zoom={getZoom}
-              gridSize={gridSize}
-            />
-          )
+          break
         case 'snippet':
           if (!isVisible) return null
           if (isThumbnailMode && !session.isPinned) {
-            return <SnippetThumbnail key={session.id} session={session} />
+            element = <SnippetThumbnail session={session} />
+          } else {
+            element = (
+              <SnippetWindow
+                session={session}
+                zoom={getZoom}
+                gridSize={gridSize}
+              />
+            )
           }
-          return (
-            <SnippetWindow
-              key={session.id}
-              session={session}
-              zoom={getZoom}
-              gridSize={gridSize}
-            />
-          )
+          break
         default: {
           if (isPluginElementType(session.type)) {
             const reg = getPluginElementRegistration(session.type)
@@ -251,21 +260,29 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
             if (!isVisible) return null
             if (isThumbnailMode && !session.isPinned) {
               const Thumb = reg.ThumbnailComponent
-              return <Thumb key={session.id} session={pluginSession} />
+              element = <Thumb session={pluginSession} />
+            } else {
+              const Win = reg.WindowComponent
+              element = (
+                <Win
+                  session={pluginSession}
+                  zoom={getZoom}
+                  gridSize={gridSize}
+                />
+              )
             }
-            const Win = reg.WindowComponent
-            return (
-              <Win
-                key={session.id}
-                session={pluginSession}
-                zoom={getZoom}
-                gridSize={gridSize}
-              />
-            )
           }
-          return null
+          break
         }
       }
+
+      if (!element) return null
+
+      return (
+        <ComponentErrorBoundary key={session.id} name={`${session.type} session`}>
+          {element}
+        </ComponentErrorBoundary>
+      )
     },
     [isThumbnailMode, getZoom, gridSize]
   )
