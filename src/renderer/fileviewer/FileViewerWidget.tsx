@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { codeToHtml } from 'shiki'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { usePreference } from '../stores/preferencesStore'
 import { getTheme } from '../themes/themes'
 
@@ -24,7 +25,8 @@ export default function FileViewerWidget({
     let cancelled = false
 
     if (isMarkdown) {
-      const html = marked.parse(content, { async: false, gfm: true, breaks: false }) as string
+      const raw = marked.parse(content, { async: false, gfm: true, breaks: false }) as string
+      const html = DOMPurify.sanitize(raw)
       if (!cancelled) setRenderedHtml(html)
     } else {
       codeToHtml(content, {
