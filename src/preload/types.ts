@@ -45,6 +45,7 @@ export interface LayoutSession {
   url?: string
   aspectRatio?: number
   startupCommand?: string
+  pluginId?: string
   locked?: boolean
   isPinned?: boolean
   pinnedViewportPos?: { x: number; y: number }

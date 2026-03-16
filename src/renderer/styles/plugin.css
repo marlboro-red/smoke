@@ -1,0 +1,99 @@
+/* ── Plugin sandbox container ────────────────────────────────────── */
+.plugin-sandbox {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-primary, #1e1e1e);
+  border-radius: 0 0 6px 6px;
+}
+
+.plugin-sandbox-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+}
+
+/* ── Loading state ───────────────────────────────────────────────── */
+.plugin-sandbox-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary, #888);
+  font-size: 12px;
+  z-index: 1;
+}
+
+.plugin-sandbox-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-default, #333);
+  border-top-color: var(--text-secondary, #888);
+  border-radius: 50%;
+  animation: plugin-spin 0.8s linear infinite;
+}
+
+@keyframes plugin-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error states ────────────────────────────────────────────────── */
+.plugin-sandbox-error,
+.plugin-error-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+  z-index: 1;
+}
+
+.plugin-error-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(220, 80, 80, 0.15);
+  color: #dc5050;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.plugin-error-title {
+  color: var(--text-primary, #e0e0e0);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.plugin-error-message {
+  color: var(--text-secondary, #888);
+  font-size: 11px;
+  max-width: 280px;
+  word-break: break-word;
+}
+
+.plugin-error-retry {
+  margin-top: 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-default, #333);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary, #e0e0e0);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.plugin-error-retry:hover {
+  background: var(--bg-hover, #2a2a2a);
+}

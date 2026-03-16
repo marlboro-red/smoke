@@ -74,6 +74,14 @@ export interface SnippetSession extends BaseSession {
 
 export interface PluginSession extends BaseSession {
   type: PluginElementType
+  pluginId: string
+  pluginSource: string
+  pluginManifest: {
+    name: string
+    version: string
+    entryPoint: string
+    defaultSize: { width: number; height: number }
+  }
   pluginData: Record<string, unknown>
 }
 
@@ -93,7 +101,7 @@ interface SessionStore {
   createNoteSession: (position?: { x: number; y: number }, color?: string) => NoteSession
   createWebviewSession: (url?: string, position?: { x: number; y: number }) => WebviewSession
   createSnippetSession: (language?: string, content?: string, position?: { x: number; y: number }) => SnippetSession
-  createPluginSession: (pluginType: PluginElementType, title: string, pluginData?: Record<string, unknown>, position?: { x: number; y: number }, size?: { width: number; height: number }) => PluginSession
+  createPluginSession: (pluginType: PluginElementType, pluginId: string, pluginSource: string, manifest: PluginSession['pluginManifest'], pluginData?: Record<string, unknown>, position?: { x: number; y: number }) => PluginSession
   removeSession: (id: string) => void
   updateSession: (id: string, patch: Partial<Session>) => void
   focusSession: (id: string | null) => void
@@ -274,15 +282,20 @@ export const sessionStore = createStore<SessionStore>((set, get) => ({
     return session
   },
 
-  createPluginSession: (pluginType: PluginElementType, title: string, pluginData?: Record<string, unknown>, position?: { x: number; y: number }, size?: { width: number; height: number }): PluginSession => {
+  createPluginSession: (pluginType: PluginElementType, pluginId: string, pluginSource: string, manifest: PluginSession['pluginManifest'], pluginData?: Record<string, unknown>, position?: { x: number; y: number }): PluginSession => {
     const { nextZIndex } = get()
+    const defaultWidth = manifest.defaultSize?.width ?? 480
+    const defaultHeight = manifest.defaultSize?.height ?? 360
     const session: PluginSession = {
       id: uuidv4(),
       type: pluginType,
-      title,
+      title: manifest.name,
+      pluginId,
+      pluginSource,
+      pluginManifest: manifest,
       pluginData: pluginData ?? {},
       position: position ?? { x: 0, y: 0 },
-      size: { cols: 0, rows: 0, width: size?.width ?? 480, height: size?.height ?? 360 },
+      size: { cols: 0, rows: 0, width: defaultWidth, height: defaultHeight },
       zIndex: nextZIndex,
       createdAt: Date.now(),
     }
