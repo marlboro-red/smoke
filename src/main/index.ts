@@ -2,6 +2,8 @@ import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'path'
 import { PtyManager } from './pty/PtyManager'
 import { registerIpcHandlers, type IpcCleanup } from './ipc/ipcHandlers'
+import { configStore } from './config/ConfigStore'
+import { WORKSPACE_OPENED } from './ipc/channels'
 
 // Capture before Electron changes cwd
 const launchCwd = process.cwd()
@@ -9,6 +11,82 @@ const launchCwd = process.cwd()
 const ptyManager = new PtyManager()
 let mainWindow: BrowserWindow | null = null
 let ipcCleanup: IpcCleanup | null = null
+
+function buildRecentWorkspacesSubmenu(): Electron.MenuItemConstructorOptions[] {
+  const recent = configStore.get('recentWorkspaces', []) as string[]
+  if (recent.length === 0) {
+    return [{ label: 'No Recent Workspaces', enabled: false }]
+  }
+  return recent.map((ws) => ({
+    label: ws.split('/').pop() || ws,
+    sublabel: ws,
+    click: () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(WORKSPACE_OPENED, ws)
+      }
+    },
+  }))
+}
+
+function rebuildMenu(): void {
+  if (process.platform !== 'darwin') return
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Open Workspace…',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send(WORKSPACE_OPENED, '__dialog__')
+            }
+          },
+        },
+        {
+          label: 'Recent Workspaces',
+          submenu: buildRecentWorkspacesSubmenu(),
+        },
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' },
+        { type: 'separator' },
+        { role: 'front' }
+      ]
+    }
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
 
 function createWindow(): void {
   const isMac = process.platform === 'darwin'
@@ -63,48 +141,9 @@ app.whenReady().then(async () => {
   // Set an explicit application menu to prevent macOS "representedObject is not a
   // WeakPtrToElectronMenuModelAsNSObject" console spam (Electron bug triggered by
   // the auto-generated default menu during text input in CodeMirror).
-  if (process.platform === 'darwin') {
-    const template: Electron.MenuItemConstructorOptions[] = [
-      {
-        label: app.name,
-        submenu: [
-          { role: 'about' },
-          { type: 'separator' },
-          { role: 'services' },
-          { type: 'separator' },
-          { role: 'hide' },
-          { role: 'hideOthers' },
-          { role: 'unhide' },
-          { type: 'separator' },
-          { role: 'quit' }
-        ]
-      },
-      {
-        label: 'Edit',
-        submenu: [
-          { role: 'undo' },
-          { role: 'redo' },
-          { type: 'separator' },
-          { role: 'cut' },
-          { role: 'copy' },
-          { role: 'paste' },
-          { role: 'selectAll' }
-        ]
-      },
-      {
-        label: 'Window',
-        submenu: [
-          { role: 'minimize' },
-          { role: 'close' },
-          { type: 'separator' },
-          { role: 'front' }
-        ]
-      }
-    ]
-    Menu.setApplicationMenu(Menu.buildFromTemplate(template))
-  }
+  rebuildMenu()
 
-  ipcCleanup = await registerIpcHandlers(ptyManager, () => mainWindow, launchCwd)
+  ipcCleanup = await registerIpcHandlers(ptyManager, () => mainWindow, launchCwd, rebuildMenu)
   createWindow()
 
   app.on('activate', () => {

@@ -650,6 +650,13 @@ export interface SmokeAPI {
       graphDepth?: number,
     ) => Promise<ContextCollectResult>
   }
+  workspace: {
+    openDialog: () => Promise<string | null>
+    setTitle: (title: string) => Promise<void>
+    getRecent: () => Promise<string[]>
+    addRecent: (workspacePath: string) => Promise<string[]>
+    onOpened: (callback: (path: string) => void) => () => void
+  }
   window: {
     minimize: () => Promise<void>
     maximize: () => Promise<void>

@@ -51,6 +51,7 @@ export type ShortcutAction =
   | 'selectAll'
   | 'groupSelected'
   | 'assembleWorkspace'
+  | 'openWorkspace'
   | 'toggleSidebar'
   | 'escape'
 
@@ -116,6 +117,7 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
   selectAll: 'Select All',
   groupSelected: 'Group Selected',
   assembleWorkspace: 'Assemble Workspace',
+  openWorkspace: 'Open Workspace',
   toggleSidebar: 'Toggle Sidebar',
   escape: 'Unfocus Session',
 }
@@ -170,6 +172,7 @@ export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   selectAll: { key: 'a', mod: true, shift: false, alt: false },
   groupSelected: { key: 'g', mod: true, shift: false, alt: true },
   assembleWorkspace: { key: 'a', mod: true, shift: true, alt: false },
+  openWorkspace: { key: 'o', mod: true, shift: true, alt: false },
   toggleSidebar: { key: '\\', mod: true, shift: false, alt: true },
   escape: { key: 'Escape', mod: false, shift: false, alt: false },
 }
@@ -206,7 +209,7 @@ export const SHORTCUT_GROUPS: ShortcutGroupDef[] = [
   },
   {
     title: 'Layout & Settings',
-    actions: ['toggleSidebar', 'saveLayout', 'saveBookmark', 'openSettings'],
+    actions: ['toggleSidebar', 'saveLayout', 'saveBookmark', 'openSettings', 'openWorkspace'],
   },
   {
     title: 'AI & Tools',

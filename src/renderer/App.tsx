@@ -28,6 +28,7 @@ import { useIndexingProgress } from './statusbar/useIndexingProgress'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 import { pluginStore } from './stores/pluginStore'
 import { addToast } from './stores/toastStore'
+import { openWorkspaceDialog, openWorkspacePath } from './workspace/openWorkspace'
 import './styles/error-boundary.css'
 
 function App(): JSX.Element {
@@ -98,7 +99,58 @@ function App(): JSX.Element {
     const unsubPlugins = window.smokeAPI?.plugin.onChanged?.((event) => {
       pluginStore.setState({ plugins: event.plugins })
     })
-    return () => unsubPlugins?.()
+    // Listen for workspace:opened events from the main process (menu triggers)
+    const unsubWorkspace = window.smokeAPI?.workspace.onOpened((path) => {
+      if (path === '__dialog__') {
+        openWorkspaceDialog()
+      } else {
+        openWorkspacePath(path)
+      }
+    })
+    return () => {
+      unsubPlugins?.()
+      unsubWorkspace?.()
+    }
+  }, [])
+
+  // Set window title from current workspace on mount
+  useEffect(() => {
+    const { preferences, launchCwd } = preferencesStore.getState()
+    const cwd = preferences.defaultCwd || launchCwd
+    if (cwd) {
+      const dirName = cwd.split('/').pop() || cwd
+      window.smokeAPI?.workspace.setTitle(`${dirName} — Smoke`)
+    }
+  }, [])
+
+  // Drag-and-drop a folder onto the app to open as workspace
+  useEffect(() => {
+    const handleDragOver = (e: DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    const handleDrop = (e: DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+      const files = e.dataTransfer?.files
+      if (!files || files.length === 0) return
+      // Electron exposes .path on File objects
+      const file = files[0] as File & { path?: string }
+      if (file.path) {
+        // Check if it's a directory by trying to read it
+        window.smokeAPI?.fs.readdir(file.path).then(() => {
+          openWorkspacePath(file.path!)
+        }).catch(() => {
+          // Not a directory — ignore
+        })
+      }
+    }
+    document.addEventListener('dragover', handleDragOver)
+    document.addEventListener('drop', handleDrop)
+    return () => {
+      document.removeEventListener('dragover', handleDragOver)
+      document.removeEventListener('drop', handleDrop)
+    }
   }, [])
 
   // Watch for theme changes and apply them
