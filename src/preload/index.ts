@@ -11,6 +11,8 @@ const smokeAPI: SmokeAPI = {
 
     kill: (id) => ipcRenderer.send('pty:kill', { id }),
 
+    ack: (id) => ipcRenderer.send('pty:data:ack', { id }),
+
     onData: (callback: (event: PtyDataEvent) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, data: PtyDataEvent): void => {
         callback(data)

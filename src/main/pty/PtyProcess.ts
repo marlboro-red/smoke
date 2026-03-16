@@ -99,4 +99,22 @@ export class PtyProcess extends EventEmitter {
       // Process may have already been killed externally
     }
   }
+
+  pause(): void {
+    if (this.exited) return
+    try {
+      this.pty.pause()
+    } catch {
+      // Process may have exited between check and pause
+    }
+  }
+
+  resume(): void {
+    if (this.exited) return
+    try {
+      this.pty.resume()
+    } catch {
+      // Process may have exited between check and resume
+    }
+  }
 }

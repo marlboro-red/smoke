@@ -6,6 +6,7 @@ import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
 import { PtyManager } from '../pty/PtyManager'
+import { PtyDataBatcher } from '../pty/PtyDataBatcher'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
 import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/ConfigStore'
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
@@ -20,6 +21,7 @@ import {
   PTY_SPAWN,
   PTY_DATA_TO_PTY,
   PTY_DATA_FROM_PTY,
+  PTY_DATA_ACK,
   PTY_RESIZE,
   PTY_KILL,
   PTY_EXIT,
@@ -207,6 +209,29 @@ export async function registerIpcHandlers(
   const agentManager = new AgentManager(getMainWindow)
   await agentManager.setPtyManager(ptyManager)
   agentManagerInstance = agentManager
+  // PTY data batcher: accumulates data chunks per session over a short window
+  // and sends them as a single IPC message. Applies backpressure when the
+  // renderer falls behind.
+  const ptyBatcher = new PtyDataBatcher({
+    send(id: string, data: string) {
+      const win = getMainWindow()
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(PTY_DATA_FROM_PTY, { id, data })
+      }
+    },
+    pause(id: string) {
+      ptyManager.get(id)?.pause()
+    },
+    resume(id: string) {
+      ptyManager.get(id)?.resume()
+    },
+  })
+
+  // Renderer acknowledges receipt of a batched data message
+  ipcMain.on(PTY_DATA_ACK, (_event, message: { id: string }) => {
+    ptyBatcher.ack(message.id)
+  })
+
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
     const preferences = configStore.get('preferences', defaultPreferences)
 
@@ -226,10 +251,7 @@ export async function registerIpcHandlers(
     pty.on('data', (data: string) => {
       try {
         terminalOutputBuffer.append(pty.id, data)
-        const win = getMainWindow()
-        if (win && !win.isDestroyed()) {
-          win.webContents.send(PTY_DATA_FROM_PTY, { id: pty.id, data })
-        }
+        ptyBatcher.push(pty.id, data)
       } catch (err) {
         console.error(`[pty:data] Error forwarding data for ${pty.id}:`, err)
       }
@@ -237,6 +259,7 @@ export async function registerIpcHandlers(
 
     pty.on('exit', (exitCode: number, signal?: number) => {
       try {
+        ptyBatcher.remove(pty.id)
         terminalOutputBuffer.delete(pty.id)
         const win = getMainWindow()
         if (win && !win.isDestroyed()) {
