@@ -5,7 +5,7 @@ import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
 import { settingsModalStore, useSettingsModalOpen } from './settingsStore'
 import { themes, THEME_IDS } from '../themes/themes'
-import { applyFontSettings } from '../themes/applyTheme'
+import { applyFontSettings, applyTerminalOpacity } from '../themes/applyTheme'
 import ShortcutSettings from './ShortcutSettings'
 import '../styles/settings-modal.css'
 
@@ -51,6 +51,10 @@ export default function SettingsModal(): JSX.Element | null {
       if (key === 'fontFamily' || key === 'fontSize' || key === 'lineHeight') {
         const p = preferencesStore.getState().preferences
         applyFontSettings(p.fontFamily, p.fontSize, p.lineHeight)
+      }
+
+      if (key === 'terminalOpacity') {
+        applyTerminalOpacity(value as number)
       }
     },
     []
@@ -101,6 +105,24 @@ export default function SettingsModal(): JSX.Element | null {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="settings-row">
+              <div className="settings-row-info">
+                <label className="settings-label">Terminal Opacity: {Math.round((prefs.terminalOpacity ?? 1) * 100)}%</label>
+                <p className="settings-help">
+                  Adjust terminal background transparency. Lower values add a frosted glass effect.
+                </p>
+              </div>
+              <input
+                className="settings-slider"
+                type="range"
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={prefs.terminalOpacity ?? 1}
+                onChange={(e) => updatePref('terminalOpacity', Number(e.target.value))}
+              />
             </div>
           </section>
 
