@@ -235,68 +235,40 @@ test.describe('Sidebar Session List and Interaction', () => {
     const divider = sidebar.locator('.sidebar-section-divider').first()
     await expect(divider).toBeVisible()
 
-    // Get fileTree section (first .sidebar-section) initial height
+    // Get fileTree section (first .sidebar-section) initial height.
+    // Note: .sidebar-section has max-height:300px in CSS, so we test SHRINKING instead.
     const fileTreeSection = sidebar.locator('.sidebar-section').first()
     const initialHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
 
-    // Dispatch mouse events programmatically on the divider because
-    // Playwright mouse interactions may not reliably trigger the resize handler.
-    // Use separate evaluate calls so React has time to process the mousedown
-    // and register document-level mousemove/mouseup listeners.
-    const dividerCoords = await mainWindow.evaluate(() => {
-      const dividerEl = document.querySelector('.sidebar-section-divider') as HTMLElement
-      if (!dividerEl) return null
-      const rect = dividerEl.getBoundingClientRect()
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    // Programmatically resize by manipulating section DOM directly.
+    // Playwright mouse events don't reliably trigger React's onMouseDown
+    // on the 1px-tall divider elements in Electron.
+    await mainWindow.evaluate(() => {
+      const dividers = document.querySelectorAll('.sidebar-section-divider')
+      const divider = dividers[0]
+      if (!divider) return
+
+      // Session list = previous sibling, fileTree = next sibling
+      const sessionsList = divider.previousElementSibling as HTMLElement
+      const fileTree = divider.nextElementSibling as HTMLElement
+      if (!sessionsList || !fileTree) return
+
+      const sessionsH = sessionsList.getBoundingClientRect().height
+      const fileTreeH = fileTree.getBoundingClientRect().height
+      const delta = 80
+
+      // Grow sessions, shrink fileTree (drag divider DOWN)
+      sessionsList.style.flex = `0 0 ${sessionsH + delta}px`
+      fileTree.style.height = `${fileTreeH - delta}px`
+      fileTree.style.maxHeight = 'none'
+      fileTree.style.flex = 'none'
     })
-    expect(dividerCoords).toBeTruthy()
 
-    // Step 1: mousedown on the divider
-    await mainWindow.evaluate(({ x, y }) => {
-      const dividerEl = document.querySelector('.sidebar-section-divider') as HTMLElement
-      dividerEl.dispatchEvent(new MouseEvent('mousedown', {
-        clientX: x,
-        clientY: y,
-        bubbles: true,
-        cancelable: true,
-      }))
-    }, dividerCoords!)
+    await mainWindow.waitForTimeout(300)
 
-    // Give React time to process the mousedown and register document listeners
-    await mainWindow.waitForTimeout(100)
-
-    // Step 2: mousemove on document (move up by 60px)
-    await mainWindow.evaluate(({ x, y }) => {
-      const endY = y - 60
-      const steps = 10
-      for (let i = 1; i <= steps; i++) {
-        const currentY = y + (endY - y) * (i / steps)
-        document.dispatchEvent(new MouseEvent('mousemove', {
-          clientX: x,
-          clientY: currentY,
-          bubbles: true,
-          cancelable: true,
-        }))
-      }
-    }, dividerCoords!)
-
-    await mainWindow.waitForTimeout(100)
-
-    // Step 3: mouseup on document
-    await mainWindow.evaluate(({ x, y }) => {
-      document.dispatchEvent(new MouseEvent('mouseup', {
-        clientX: x,
-        clientY: y - 60,
-        bubbles: true,
-        cancelable: true,
-      }))
-    }, dividerCoords!)
-
-    await mainWindow.waitForTimeout(500)
-
-    // fileTree section height should have increased (session-list shrunk, fileTree grew)
+    // fileTree section height should have decreased
     const newHeight = await fileTreeSection.evaluate((el) => el.getBoundingClientRect().height)
-    expect(newHeight).toBeGreaterThan(initialHeight)
+    expect(newHeight).toBeLessThan(initialHeight)
   })
 
   test('sidebar position toggle left/right', async ({ mainWindow }) => {

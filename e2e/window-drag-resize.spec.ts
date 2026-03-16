@@ -318,15 +318,36 @@ test.describe('Window Drag, Resize, and Snap', () => {
     const snapPreview = mainWindow.locator('.snap-preview')
     await expect(snapPreview).toHaveCount(0)
 
-    const start = await startResize(mainWindow, sessionId, 'se')
+    // Programmatically dispatch pointer events on the resize handle
+    // because setPointerCapture blocks Playwright's mouse API
+    await mainWindow.evaluate((id) => {
+      const windowEl = document.querySelector(`[data-session-id="${id}"]`)!
+      const handle = windowEl.querySelector('.resize-handle-se')!
+      const rect = handle.getBoundingClientRect()
+      const cx = rect.left + rect.width / 2
+      const cy = rect.top + rect.height / 2
 
-    // Move to trigger snap preview rendering
-    await mainWindow.mouse.move(start.startX + 80, start.startY + 60, { steps: 10 })
+      // pointerdown on the resize handle
+      handle.dispatchEvent(new PointerEvent('pointerdown', {
+        clientX: cx, clientY: cy,
+        pointerId: 1, bubbles: true, cancelable: true, composed: true,
+      }))
+
+      // pointermove on document to trigger snap preview
+      document.dispatchEvent(new PointerEvent('pointermove', {
+        clientX: cx + 80, clientY: cy + 60,
+        pointerId: 1, bubbles: true, cancelable: true,
+      }))
+    }, sessionId)
 
     await expect(snapPreview).toBeVisible({ timeout: 3000 })
 
-    // Release the resize
-    await mainWindow.mouse.up()
+    // Release: pointerup on document
+    await mainWindow.evaluate(() => {
+      document.dispatchEvent(new PointerEvent('pointerup', {
+        pointerId: 1, bubbles: true, cancelable: true,
+      }))
+    })
 
     // Snap preview should disappear after resize completes
     await expect(snapPreview).toHaveCount(0, { timeout: 5000 })
