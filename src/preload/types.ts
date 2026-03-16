@@ -98,6 +98,7 @@ export interface ShortcutBindingPref {
   key: string
   mod: boolean
   shift: boolean
+  alt: boolean
 }
 
 export interface Preferences {

@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { resolveShortcut, getSortedSessionIds } from '../shortcutMap'
+import {
+  resolveShortcut,
+  getSortedSessionIds,
+  findConflict,
+  findSystemConflict,
+  validateBindings,
+  shortcutBindingsStore,
+  type ShortcutBinding,
+} from '../shortcutMap'
 import { sessionStore } from '../../stores/sessionStore'
 import { canvasStore } from '../../stores/canvasStore'
 import { gridStore } from '../../stores/gridStore'
@@ -248,5 +256,89 @@ describe('Keyboard shortcut actions', () => {
       const sorted = getSortedSessionIds(sessionStore.getState().sessions)
       expect(sorted[4]).toBeUndefined()
     })
+  })
+})
+
+describe('findConflict', () => {
+  beforeEach(() => {
+    shortcutBindingsStore.getState().resetToDefaults()
+  })
+
+  it('detects conflict with another action', () => {
+    // Cmd+N is already bound to newSession
+    const binding: ShortcutBinding = { key: 'n', mod: true, shift: false, alt: false }
+    const conflict = findConflict(binding, 'closeSession')
+    expect(conflict).toBe('newSession')
+  })
+
+  it('excludes the same action from conflict check', () => {
+    // Cmd+N should not conflict with itself
+    const binding: ShortcutBinding = { key: 'n', mod: true, shift: false, alt: false }
+    const conflict = findConflict(binding, 'newSession')
+    expect(conflict).toBeNull()
+  })
+
+  it('returns null for unused binding', () => {
+    const binding: ShortcutBinding = { key: 'x', mod: true, shift: true, alt: true }
+    const conflict = findConflict(binding, 'newSession')
+    expect(conflict).toBeNull()
+  })
+})
+
+describe('findSystemConflict', () => {
+  it('detects Cmd+Q as system shortcut on Mac', () => {
+    const binding: ShortcutBinding = { key: 'q', mod: true, shift: false, alt: false }
+    const label = findSystemConflict(binding)
+    expect(label).toContain('Quit')
+  })
+
+  it('detects Cmd+H as system shortcut on Mac', () => {
+    const binding: ShortcutBinding = { key: 'h', mod: true, shift: false, alt: false }
+    const label = findSystemConflict(binding)
+    expect(label).toContain('Hide')
+  })
+
+  it('detects Cmd+M as system shortcut on Mac', () => {
+    const binding: ShortcutBinding = { key: 'm', mod: true, shift: false, alt: false }
+    const label = findSystemConflict(binding)
+    expect(label).toContain('Minimize')
+  })
+
+  it('returns null for non-system shortcut', () => {
+    const binding: ShortcutBinding = { key: 'n', mod: true, shift: false, alt: false }
+    const label = findSystemConflict(binding)
+    expect(label).toBeNull()
+  })
+})
+
+describe('validateBindings', () => {
+  beforeEach(() => {
+    shortcutBindingsStore.getState().resetToDefaults()
+  })
+
+  it('returns empty warnings for default bindings', () => {
+    const warnings = validateBindings()
+    // Default bindings should have no duplicate conflicts
+    const duplicates = warnings.filter((w) => w.type === 'duplicate')
+    expect(duplicates).toHaveLength(0)
+  })
+
+  it('detects duplicate bindings from custom config', () => {
+    // Set two actions to the same key combo
+    shortcutBindingsStore.getState().updateBinding('newSession', { key: 'w', mod: true, shift: false, alt: false })
+    // Now both newSession and closeSession map to Cmd+W
+    const warnings = validateBindings()
+    const duplicates = warnings.filter((w) => w.type === 'duplicate')
+    expect(duplicates.length).toBeGreaterThan(0)
+    expect(duplicates[0].detail).toContain('share the same binding')
+  })
+
+  it('detects system shortcut conflict in custom bindings', () => {
+    // Bind an action to Cmd+Q (system shortcut)
+    shortcutBindingsStore.getState().updateBinding('newSession', { key: 'q', mod: true, shift: false, alt: false })
+    const warnings = validateBindings()
+    const sysWarnings = warnings.filter((w) => w.type === 'system')
+    expect(sysWarnings.length).toBeGreaterThan(0)
+    expect(sysWarnings[0].detail).toContain('system shortcut')
   })
 })

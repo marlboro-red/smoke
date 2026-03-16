@@ -162,6 +162,21 @@
   background: var(--bg-hover);
 }
 
+/* System shortcut conflict (red) */
+.sc-system-conflict {
+  background: rgba(255, 80, 80, 0.1);
+  border-color: rgba(255, 80, 80, 0.3);
+}
+
+/* ── Startup Warnings ── */
+
+.sc-startup-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
 /* ── Footer ── */
 
 .sc-footer {

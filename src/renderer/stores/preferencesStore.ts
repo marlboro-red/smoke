@@ -2,7 +2,7 @@ import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import type { Preferences } from '../../preload/types'
-import { shortcutBindingsStore } from '../shortcuts/shortcutMap'
+import { shortcutBindingsStore, validateBindings, type ShortcutConflictWarning } from '../shortcuts/shortcutMap'
 
 const defaultPreferences: Preferences = {
   defaultShell: '',
@@ -28,21 +28,33 @@ interface PreferencesStore {
   preferences: Preferences
   launchCwd: string
   loaded: boolean
+  shortcutWarnings: ShortcutConflictWarning[]
 
   setPreferences: (prefs: Preferences) => void
   setLaunchCwd: (cwd: string) => void
   updatePreference: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void
+  clearShortcutWarnings: () => void
 }
 
 export const preferencesStore = createStore<PreferencesStore>((set) => ({
   preferences: defaultPreferences,
   launchCwd: '',
   loaded: false,
+  shortcutWarnings: [],
 
   setPreferences: (prefs: Preferences) => {
     set({ preferences: prefs, loaded: true })
     if (prefs.customShortcuts && Object.keys(prefs.customShortcuts).length > 0) {
       shortcutBindingsStore.getState().setCustomBindings(prefs.customShortcuts)
+      // Validate bindings on startup to catch conflicts from manual config edits
+      const warnings = validateBindings()
+      for (const w of warnings) {
+        console.warn(`[Shortcuts] ${w.detail}`)
+      }
+      if (warnings.length > 0) {
+        // Store warnings so UI can display them
+        set({ shortcutWarnings: warnings })
+      }
     }
   },
 
@@ -55,6 +67,8 @@ export const preferencesStore = createStore<PreferencesStore>((set) => ({
       preferences: { ...state.preferences, [key]: value },
     }))
   },
+
+  clearShortcutWarnings: () => set({ shortcutWarnings: [] }),
 }))
 
 export const usePreferences = (): Preferences =>
