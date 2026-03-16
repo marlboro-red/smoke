@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, type Extension } from '@codemirror/state'
+import { indentWithTab } from '@codemirror/commands'
 import { basicSetup } from 'codemirror'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { getLanguageExtension } from '../fileviewer/codemirrorLanguages'
@@ -151,7 +152,7 @@ export default function SnippetWindow({
     const state = EditorState.create({
       doc: session.content,
       extensions: [
-        keymap.of([]),
+        keymap.of([indentWithTab]),
         basicSetup,
         ...cmThemeExtensions,
         ...getLanguageExtension(session.language),

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, type Extension } from '@codemirror/state'
+import { indentWithTab } from '@codemirror/commands'
 import { basicSetup } from 'codemirror'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { getLanguageExtension } from './codemirrorLanguages'
@@ -34,6 +35,7 @@ export default function FileEditorWidget({
     if (!containerRef.current) return
 
     const saveKeymap = keymap.of([
+      indentWithTab,
       {
         key: 'Mod-s',
         run: (view) => {
