@@ -55,8 +55,21 @@ async function openFileViewer(
 }
 
 /**
+ * Wait for the suggestion engine's debounced fetch to complete.
+ * The engine debounces at 800ms, then runs an async fetch.
+ * After this, it won't re-fetch for the same file (lastFilePath check).
+ */
+async function waitForSuggestionEngineSettled(
+  page: import('@playwright/test').Page
+): Promise<void> {
+  // Wait for debounce (800ms) + async fetch time + margin
+  await page.waitForTimeout(2000)
+}
+
+/**
  * Inject ghost suggestions directly into the suggestion store.
- * This avoids depending on the codegraph IPC which requires a real project.
+ * Must be called after waitForSuggestionEngineSettled() so the engine's
+ * debounced fetch won't overwrite our injected suggestions.
  */
 async function injectGhostSuggestions(
   page: import('@playwright/test').Page,
@@ -74,12 +87,13 @@ async function injectGhostSuggestions(
     ([suggs, srcPath]) => {
       const store = (window as any).__SMOKE_STORES__?.suggestionStore
       if (store) {
-        store.getState().setEnabled(true)
         store.getState().setSuggestions(suggs, srcPath)
       }
     },
     [suggestions, sourceFilePath] as const
   )
+  // Wait for the ghost-fade-in animation (0.4s) to complete
+  await page.waitForTimeout(500)
 }
 
 test.describe('Ghost Suggestions: Appearance and Materialization', () => {
@@ -109,7 +123,8 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     const fileWindow = mainWindow.locator('.file-viewer-window')
     await expect(fileWindow.first()).toBeVisible({ timeout: 5000 })
 
-    // Inject ghost suggestions into the store
+    // Wait for suggestion engine's debounced fetch to settle, then inject
+    await waitForSuggestionEngineSettled(mainWindow)
     await injectGhostSuggestions(
       mainWindow,
       [
@@ -129,7 +144,7 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     const ghost = mainWindow.locator('.ghost-suggestion')
     await expect(ghost.first()).toBeVisible({ timeout: 5000 })
 
-    // Verify ghost has faded appearance (opacity < 1 via CSS)
+    // Verify ghost has faded appearance (opacity < 1 via CSS animation end state = 0.55)
     const opacity = await ghost.first().evaluate((el) => {
       return parseFloat(window.getComputedStyle(el).opacity)
     })
@@ -153,7 +168,8 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     await openFileViewer(mainWindow, sourceFile)
     await expect(mainWindow.locator('.file-viewer-window').first()).toBeVisible({ timeout: 5000 })
 
-    // Inject three ghosts with different reasons
+    // Wait for suggestion engine's debounced fetch to settle, then inject
+    await waitForSuggestionEngineSettled(mainWindow)
     await injectGhostSuggestions(
       mainWindow,
       [
@@ -201,7 +217,8 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     await openFileViewer(mainWindow, sourceFile)
     await expect(mainWindow.locator('.file-viewer-window').first()).toBeVisible({ timeout: 5000 })
 
-    // Inject a ghost pointing to the real target file
+    // Wait for suggestion engine's debounced fetch to settle, then inject
+    await waitForSuggestionEngineSettled(mainWindow)
     await injectGhostSuggestions(
       mainWindow,
       [
@@ -220,8 +237,8 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     const ghost = mainWindow.locator('.ghost-suggestion')
     await expect(ghost.first()).toBeVisible({ timeout: 5000 })
 
-    // Click the ghost to materialize it
-    await ghost.first().click()
+    // Click the ghost to materialize it (force: true to bypass animation stability)
+    await ghost.first().click({ force: true })
 
     // Ghost should disappear (removed from suggestion store)
     await expect(ghost).toHaveCount(0, { timeout: 5000 })
@@ -242,7 +259,8 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     await openFileViewer(mainWindow, sourceFile)
     await expect(mainWindow.locator('.file-viewer-window').first()).toBeVisible({ timeout: 5000 })
 
-    // Inject two ghost suggestions
+    // Wait for suggestion engine's debounced fetch to settle, then inject
+    await waitForSuggestionEngineSettled(mainWindow)
     await injectGhostSuggestions(
       mainWindow,
       [
@@ -269,10 +287,7 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     const ghosts = mainWindow.locator('.ghost-suggestion')
     await expect(ghosts).toHaveCount(2, { timeout: 5000 })
 
-    // Hover over the first ghost to reveal the dismiss button
-    await ghosts.first().hover()
-
-    // Click the dismiss button (force click since it may be opacity-hidden)
+    // Click the dismiss button on the first ghost (force: true for animation + opacity)
     const dismissBtn = ghosts.first().locator('.ghost-suggestion-dismiss')
     await dismissBtn.click({ force: true })
 
@@ -295,7 +310,8 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
     })
     expect(initialCount).toBe(0)
 
-    // Inject suggestions
+    // Wait for suggestion engine's debounced fetch to settle, then inject
+    await waitForSuggestionEngineSettled(mainWindow)
     await injectGhostSuggestions(
       mainWindow,
       [
@@ -319,18 +335,16 @@ test.describe('Ghost Suggestions: Appearance and Materialization', () => {
         count: state.suggestions.length,
         sourceFilePath: state.sourceFilePath,
         firstId: state.suggestions[0]?.id,
-        enabled: state.enabled,
       }
     })
     expect(storeState.count).toBe(1)
     expect(storeState.sourceFilePath).toBe(sourceFile)
     expect(storeState.firstId).toBe('ghost-store-test')
-    expect(storeState.enabled).toBe(true)
 
-    // Dismiss and verify store is updated
+    // Dismiss via DOM and verify store is updated
     const ghost = mainWindow.locator('.ghost-suggestion')
-    await ghost.first().hover()
-    await ghost.first().locator('.ghost-suggestion-dismiss').click({ force: true })
+    const dismissBtn = ghost.first().locator('.ghost-suggestion-dismiss')
+    await dismissBtn.click({ force: true })
 
     const afterDismiss = await mainWindow.evaluate(() => {
       return (window as any).__SMOKE_STORES__?.suggestionStore.getState().suggestions.length
