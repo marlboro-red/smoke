@@ -33,11 +33,14 @@ vi.mock('../../codegraph/StructureAnalyzer', () => ({
   StructureAnalyzer: function StructureAnalyzer() { return mockStructureAnalyzer },
 }))
 
-// Mock child_process (used by ClaudeCodeManager and PluginInstaller)
+// Mock child_process (used by ClaudeCodeManager, PluginInstaller, and async IPC handlers)
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
-  execFile: vi.fn(),
-  execSync: vi.fn().mockReturnValue(Buffer.from('')),
+  execFile: vi.fn((_cmd: string, _args: string[], _opts: any, cb?: Function) => {
+    // Support promisify pattern: callback is last argument
+    const callback = cb || (typeof _opts === 'function' ? _opts : null)
+    if (callback) callback(null, '', '')
+  }),
 }))
 
 // Mock fs (sync methods used by ClaudeCodeManager for MCP config)
