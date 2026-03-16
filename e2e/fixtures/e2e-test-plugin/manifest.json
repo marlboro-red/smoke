@@ -1,0 +1,29 @@
+{
+  "name": "e2e-test-plugin",
+  "version": "1.0.0",
+  "description": "Test fixture plugin for E2E tests",
+  "author": "Smoke E2E",
+  "defaultSize": { "width": 400, "height": 300 },
+  "entryPoint": "index.js",
+  "permissions": [],
+  "configSchema": {
+    "greeting": {
+      "type": "string",
+      "label": "Greeting",
+      "default": "Hello",
+      "description": "The greeting message to display"
+    },
+    "fontSize": {
+      "type": "number",
+      "label": "Font Size",
+      "default": 14,
+      "min": 8,
+      "max": 32
+    },
+    "darkMode": {
+      "type": "boolean",
+      "label": "Dark Mode",
+      "default": true
+    }
+  }
+}
