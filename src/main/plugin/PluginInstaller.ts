@@ -1,4 +1,5 @@
 import { readFile, writeFile, readdir, rm, mkdir, rename, access, stat } from 'fs/promises'
+import { createWriteStream } from 'fs'
 import { join, basename } from 'path'
 import { homedir, tmpdir } from 'os'
 import { execFile } from 'child_process'
@@ -67,6 +68,9 @@ export class PluginInstaller {
       }
 
       const tgzPath = join(tmpDir, tgzName)
+
+      // Validate tarball contents before extraction
+      await this.validateTarball(tgzPath)
 
       // Extract tarball — npm pack creates a package/ directory
       const extractDir = join(tmpDir, 'extracted')
@@ -138,6 +142,9 @@ export class PluginInstaller {
       const fileName = basename(new URL(url).pathname) || 'plugin.tgz'
       const downloadPath = join(tmpDir, fileName)
       await this.downloadFile(url, downloadPath)
+
+      // Validate tarball contents before extraction
+      await this.validateTarball(downloadPath)
 
       // Extract
       const extractDir = join(tmpDir, 'extracted')
@@ -304,9 +311,27 @@ export class PluginInstaller {
   }
 
   private async downloadFile(url: string, destPath: string): Promise<void> {
+    const MAX_DOWNLOAD_SIZE = 50 * 1024 * 1024 // 50 MB
+    const DOWNLOAD_TIMEOUT = 60_000 // 60 seconds
+
     return new Promise((resolve, reject) => {
       const request = net.request(url)
-      const chunks: Buffer[] = []
+      let totalBytes = 0
+      let settled = false
+
+      const timeoutId = setTimeout(() => {
+        if (settled) return
+        settled = true
+        request.abort()
+        reject(new Error(`Download timed out after ${DOWNLOAD_TIMEOUT / 1000}s`))
+      }, DOWNLOAD_TIMEOUT)
+
+      const fail = (err: Error) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeoutId)
+        reject(err)
+      }
 
       request.on('response', (response) => {
         if (
@@ -315,7 +340,8 @@ export class PluginInstaller {
           response.statusCode < 400 &&
           response.headers.location
         ) {
-          // Follow redirect
+          clearTimeout(timeoutId)
+          settled = true
           const redirectUrl = Array.isArray(response.headers.location)
             ? response.headers.location[0]
             : response.headers.location
@@ -324,31 +350,96 @@ export class PluginInstaller {
         }
 
         if (response.statusCode && response.statusCode >= 400) {
-          reject(new Error(`HTTP ${response.statusCode} downloading ${url}`))
+          fail(new Error(`HTTP ${response.statusCode} downloading ${url}`))
           return
         }
 
+        // Reject early if Content-Length exceeds limit
+        const contentLength = response.headers['content-length']
+        const declaredSize = contentLength
+          ? Number(Array.isArray(contentLength) ? contentLength[0] : contentLength)
+          : null
+        if (declaredSize && declaredSize > MAX_DOWNLOAD_SIZE) {
+          request.abort()
+          fail(
+            new Error(
+              `Download rejected: declared size ${declaredSize} bytes exceeds ${MAX_DOWNLOAD_SIZE} byte limit`
+            )
+          )
+          return
+        }
+
+        // Stream directly to file instead of buffering in memory
+        const fileStream = createWriteStream(destPath)
+
+        fileStream.on('error', (err) => {
+          request.abort()
+          fail(err)
+        })
+
         response.on('data', (chunk) => {
-          chunks.push(chunk)
-        })
-
-        response.on('end', async () => {
-          try {
-            const buffer = Buffer.concat(chunks)
-            const { writeFile: wf } = await import('fs/promises')
-            await wf(destPath, buffer)
-            resolve()
-          } catch (err) {
-            reject(err)
+          totalBytes += chunk.length
+          if (totalBytes > MAX_DOWNLOAD_SIZE) {
+            fileStream.destroy()
+            request.abort()
+            fail(
+              new Error(
+                `Download aborted: exceeded ${MAX_DOWNLOAD_SIZE} byte limit`
+              )
+            )
+            return
           }
+          fileStream.write(chunk)
         })
 
-        response.on('error', reject)
+        response.on('end', () => {
+          if (settled) return
+          settled = true
+          clearTimeout(timeoutId)
+          fileStream.end(() => resolve())
+        })
+
+        response.on('error', (err) => {
+          fileStream.destroy()
+          fail(err)
+        })
       })
 
-      request.on('error', reject)
+      request.on('error', fail)
       request.end()
     })
+  }
+
+  /**
+   * Validate tarball contents before extraction.
+   * Checks for path traversal attacks and excessive entry counts.
+   */
+  private async validateTarball(tgzPath: string): Promise<void> {
+    const MAX_ENTRIES = 10_000
+
+    const { stdout } = await execFileAsync('tar', ['tzf', tgzPath], {
+      timeout: 30_000,
+      maxBuffer: 10 * 1024 * 1024,
+    })
+
+    const entries = stdout.trim().split('\n').filter(Boolean)
+
+    if (entries.length > MAX_ENTRIES) {
+      throw new Error(
+        `Archive contains ${entries.length} entries, exceeding the ${MAX_ENTRIES} entry limit`
+      )
+    }
+
+    for (const entry of entries) {
+      const normalized = entry.replace(/\\/g, '/')
+      if (
+        normalized.includes('../') ||
+        normalized.startsWith('/') ||
+        normalized.includes('/..')
+      ) {
+        throw new Error(`Archive contains path traversal: ${entry}`)
+      }
+    }
   }
 }
 
