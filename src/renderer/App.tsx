@@ -12,6 +12,7 @@ import { useKeyboardShortcuts } from './shortcuts/useKeyboardShortcuts'
 import { useAiCanvasActions } from './ai/useAiCanvasActions'
 import { useAiStream } from './ai/useAiStream'
 import { useEventRecording } from './recording/useEventRecording'
+import ComponentErrorBoundary from './errors/ComponentErrorBoundary'
 import { useIsReplaying } from './replay/replayStore'
 import ReplayControls from './replay/ReplayControls'
 import SettingsModal from './config/SettingsModal'
@@ -27,6 +28,7 @@ import { useIndexingProgress } from './statusbar/useIndexingProgress'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
 import { pluginStore } from './stores/pluginStore'
 import { addToast } from './stores/toastStore'
+import './styles/error-boundary.css'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -111,7 +113,9 @@ function App(): JSX.Element {
         {!isReplaying && (
           <div className={`sidebar-region${sidebarCollapsed ? ' collapsed' : ''}${sidebarPosition === 'right' ? ' position-right' : ''}`}>
             <div className="sidebar-wrapper">
-              <Sidebar />
+              <ComponentErrorBoundary name="Sidebar">
+                <Sidebar />
+              </ComponentErrorBoundary>
             </div>
             <button
               className="sidebar-collapse-btn"
@@ -132,10 +136,18 @@ function App(): JSX.Element {
         )}
         <div className="canvas-with-tabs">
           {!isReplaying && <TabBar />}
-          <Canvas readOnly={isReplaying} />
+          <ComponentErrorBoundary name="Canvas">
+            <Canvas readOnly={isReplaying} />
+          </ComponentErrorBoundary>
         </div>
-        {aiPanelOpen && !isReplaying && <AiChatPanel />}
-        <SettingsModal />
+        {aiPanelOpen && !isReplaying && (
+          <ComponentErrorBoundary name="AI Chat">
+            <AiChatPanel />
+          </ComponentErrorBoundary>
+        )}
+        <ComponentErrorBoundary name="Settings">
+          <SettingsModal />
+        </ComponentErrorBoundary>
         <ShortcutsOverlay />
         <CommandPalette />
         <SearchModal />
