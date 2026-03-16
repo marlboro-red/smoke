@@ -19,3 +19,17 @@ export type {
 } from './pluginContext'
 
 export { PLUGIN_API_VERSION } from './pluginContext'
+
+export {
+  registerPluginElementType,
+  getPluginElementRegistration,
+  isPluginElementType,
+  getAllPluginElementTypes,
+  subscribeToPluginRegistry,
+} from './pluginElementRegistry'
+
+export type {
+  PluginElementRegistration,
+  PluginWindowProps,
+  PluginThumbnailProps,
+} from './pluginElementRegistry'

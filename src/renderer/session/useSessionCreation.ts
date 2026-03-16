@@ -1,8 +1,9 @@
 import { useCallback } from 'react'
-import { sessionStore, type Session, type FileViewerSession, type TerminalSession, type NoteSession, type ImageSession, type SnippetSession, type WebviewSession } from '../stores/sessionStore'
+import { sessionStore, type Session, type FileViewerSession, type TerminalSession, type NoteSession, type ImageSession, type SnippetSession, type WebviewSession, type PluginSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { getCurrentPan, getCurrentZoom, getCanvasRootElement } from '../canvas/useCanvasControls'
+import { isPluginElementType } from '../plugin/pluginElementRegistry'
 
 function getViewportCenter(): { x: number; y: number } {
   const rootEl = getCanvasRootElement()
@@ -121,6 +122,19 @@ export function duplicateSession(sourceId: string): void {
     case 'webview': {
       const src = source as WebviewSession
       newSession = state.createWebviewSession(src.url, pos)
+      break
+    }
+    default: {
+      if (isPluginElementType(source.type)) {
+        const src = source as PluginSession
+        newSession = state.createPluginSession(
+          src.type,
+          src.title,
+          { ...src.pluginData },
+          pos,
+          { width: src.size.width, height: src.size.height }
+        )
+      }
       break
     }
   }

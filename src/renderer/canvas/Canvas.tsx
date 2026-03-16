@@ -3,7 +3,7 @@ import { useCanvasControls, getCurrentPan, getCurrentZoom } from './useCanvasCon
 import { useRubberBandSelect } from './useRubberBandSelect'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
-import type { Session, TerminalSession, FileViewerSession, NoteSession, WebviewSession, ImageSession, SnippetSession } from '../stores/sessionStore'
+import type { Session, TerminalSession, FileViewerSession, NoteSession, WebviewSession, ImageSession, SnippetSession, PluginSession } from '../stores/sessionStore'
 import { useCanvasStore } from '../stores/canvasStore'
 import { useGridStore } from '../stores/gridStore'
 import { useSnapshot } from '../stores/snapshotStore'
@@ -38,6 +38,8 @@ import { useConnectorList } from '../stores/connectorStore'
 import { useSuggestionEngine } from '../suggestions/useSuggestionEngine'
 import { useSuggestions } from '../stores/suggestionStore'
 import GhostSuggestion from '../suggestions/GhostSuggestion'
+import { getPluginElementRegistration, isPluginElementType } from '../plugin/pluginElementRegistry'
+import type { PluginSession as PluginSessionType } from '../stores/sessionStore'
 import '../styles/canvas.css'
 
 function ThumbnailRenderer({ session }: { session: TerminalSession }): JSX.Element {
@@ -236,8 +238,28 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
               gridSize={gridSize}
             />
           )
-        default:
+        default: {
+          if (isPluginElementType(session.type)) {
+            const reg = getPluginElementRegistration(session.type)
+            if (!reg) return null
+            const pluginSession = session as PluginSessionType
+            if (!isVisible) return null
+            if (isThumbnailMode && !session.isPinned) {
+              const Thumb = reg.ThumbnailComponent
+              return <Thumb key={session.id} session={pluginSession} />
+            }
+            const Win = reg.WindowComponent
+            return (
+              <Win
+                key={session.id}
+                session={pluginSession}
+                zoom={getZoom}
+                gridSize={gridSize}
+              />
+            )
+          }
           return null
+        }
       }
     },
     [isThumbnailMode, getZoom, gridSize]

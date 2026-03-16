@@ -30,7 +30,8 @@ export interface PtyExitEvent {
   signal?: number
 }
 
-export type LayoutElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
+export type BuiltinLayoutElementType = 'terminal' | 'file' | 'note' | 'webview' | 'image' | 'snippet'
+export type LayoutElementType = BuiltinLayoutElementType | `plugin:${string}`
 
 export interface LayoutSession {
   type?: LayoutElementType
@@ -47,6 +48,7 @@ export interface LayoutSession {
   locked?: boolean
   isPinned?: boolean
   pinnedViewportPos?: { x: number; y: number }
+  pluginData?: Record<string, unknown>
   position: { x: number; y: number }
   size: { width: number; height: number; cols: number; rows: number }
 }

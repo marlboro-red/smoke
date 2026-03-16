@@ -10,9 +10,14 @@ import {
 } from './searchStore'
 import { panToSession } from '../sidebar/useSidebarSync'
 import type { ElementType } from '../stores/sessionStore'
+import { isPluginElementType, getPluginElementRegistration } from '../plugin/pluginElementRegistry'
 import '../styles/search-modal.css'
 
 function typeIcon(type: ElementType): string {
+  if (isPluginElementType(type)) {
+    const reg = getPluginElementRegistration(type)
+    return reg?.searchIcon ?? '*'
+  }
   switch (type) {
     case 'terminal':
       return '>'
@@ -20,6 +25,8 @@ function typeIcon(type: ElementType): string {
       return '#'
     case 'note':
       return '~'
+    default:
+      return '*'
   }
 }
 

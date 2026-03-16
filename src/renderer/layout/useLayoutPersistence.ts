@@ -5,6 +5,8 @@ import { gridStore } from '../stores/gridStore'
 import { regionStore } from '../stores/regionStore'
 import { tabStore } from '../stores/tabStore'
 import { snapPosition, snapSize } from '../window/useSnapping'
+import { isPluginElementType, getPluginElementRegistration } from '../plugin/pluginElementRegistry'
+import type { PluginElementType } from '../stores/sessionStore'
 import type { Layout } from '../../preload/types'
 
 function serializeCurrentLayout(name: string): Layout {
@@ -57,6 +59,11 @@ function serializeCurrentLayout(name: string): Layout {
       }
       if (s.type === 'snippet') {
         return { ...base, content: s.content, language: s.language }
+      }
+      if (isPluginElementType(s.type)) {
+        const reg = getPluginElementRegistration(s.type)
+        const data = reg?.serializeData ? reg.serializeData(s) : s.pluginData
+        return { ...base, pluginData: data }
       }
       return base
     }),
@@ -197,6 +204,27 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
           title: saved.title,
           size: { ...saved.size, width: size.width, height: size.height },
         })
+        break
+      }
+      default: {
+        if (isPluginElementType(elementType)) {
+          const reg = getPluginElementRegistration(elementType)
+          if (reg) {
+            const pluginData = reg.deserializeData
+              ? reg.deserializeData(saved.pluginData ?? {})
+              : (saved.pluginData ?? {})
+            const session = sessionStore.getState().createPluginSession(
+              elementType as PluginElementType,
+              saved.title,
+              pluginData,
+              pos,
+              { width: size.width, height: size.height }
+            )
+            sessionStore.getState().updateSession(session.id, {
+              size: { ...saved.size, width: size.width, height: size.height },
+            })
+          }
+        }
         break
       }
     }
@@ -399,6 +427,29 @@ export function useLayoutRestore(): {
             size: { ...saved.size, width: size.width, height: size.height },
             ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
           })
+          break
+        }
+        default: {
+          if (isPluginElementType(elementType)) {
+            const reg = getPluginElementRegistration(elementType)
+            if (reg) {
+              const pluginData = reg.deserializeData
+                ? reg.deserializeData(saved.pluginData ?? {})
+                : (saved.pluginData ?? {})
+              const session = sessionStore.getState().createPluginSession(
+                elementType as PluginElementType,
+                saved.title,
+                pluginData,
+                pos,
+                { width: size.width, height: size.height }
+              )
+              createdId = session.id
+              sessionStore.getState().updateSession(session.id, {
+                size: { ...saved.size, width: size.width, height: size.height },
+                ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
+              })
+            }
+          }
           break
         }
       }
