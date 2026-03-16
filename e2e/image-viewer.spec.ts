@@ -144,61 +144,36 @@ async function getImageSession(
 }
 
 /**
- * Initiate a resize on an image window by dispatching pointerdown directly
- * on the resize handle element. Uses dispatchEvent to bypass any z-index
- * overlay issues.
+ * Initiate a resize on an image window using standard Playwright mouse API.
+ * Disables pointer-events on the image body so the resize handle is clickable
+ * (same pattern as window-drag-resize.spec.ts).
  */
-async function startResizeViaDispatch(
+async function startResize(
   page: import('@playwright/test').Page,
   sessionId: string,
   direction: 'e' | 's' | 'se'
 ): Promise<{ startX: number; startY: number }> {
   const pos = await page.evaluate(([id, dir]) => {
     const windowEl = document.querySelector(`[data-session-id="${id}"]`)!
-    const handle = windowEl.querySelector(`.resize-handle-${dir}`)! as HTMLElement
+    const handle = windowEl.querySelector(`.resize-handle-${dir}`)!
     const rect = handle.getBoundingClientRect()
-    const x = rect.left + rect.width / 2
-    const y = rect.top + rect.height / 2
-
-    // Dispatch pointerdown directly on the handle to initiate resize
-    handle.dispatchEvent(new PointerEvent('pointerdown', {
-      clientX: x,
-      clientY: y,
-      bubbles: true,
-      composed: true,
-      pointerId: 1,
-    }))
-
-    return { x, y }
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
   }, [sessionId, direction] as const)
 
-  return { startX: pos.x, startY: pos.y }
-}
+  // Disable pointer-events on image body so the resize handle is clickable
+  await page.evaluate((id) => {
+    const el = document.querySelector(`[data-session-id="${id}"] .image-body`) as HTMLElement
+    if (el) el.style.pointerEvents = 'none'
+  }, sessionId)
 
-/**
- * Initiate a drag by dispatching pointerdown directly on the window chrome.
- * This bypasses any z-index overlay issues.
- */
-async function startDragViaDispatch(
-  page: import('@playwright/test').Page,
-  sessionId: string
-): Promise<{ startX: number; startY: number }> {
-  const pos = await page.evaluate((id) => {
-    const el = document.querySelector(`[data-session-id="${id}"]`)!
-    const chrome = el.querySelector('.window-chrome')! as HTMLElement
-    const rect = chrome.getBoundingClientRect()
-    const x = rect.left + rect.width / 2
-    const y = rect.top + rect.height / 2
+  // Standard Playwright mouse: move to handle, press down
+  await page.mouse.move(pos.x, pos.y)
+  await page.mouse.down()
 
-    chrome.dispatchEvent(new PointerEvent('pointerdown', {
-      clientX: x,
-      clientY: y,
-      bubbles: true,
-      composed: true,
-      pointerId: 1,
-    }))
-
-    return { x, y }
+  // Restore pointer-events
+  await page.evaluate((id) => {
+    const el = document.querySelector(`[data-session-id="${id}"] .image-body`) as HTMLElement
+    if (el) el.style.pointerEvents = ''
   }, sessionId)
 
   return { startX: pos.x, startY: pos.y }
@@ -306,11 +281,17 @@ test.describe('Image Viewer: Open, Render, Drag, and Resize', () => {
 
     const before = await getWindowStyle(mainWindow, sessionId)
 
-    // Dispatch pointerdown directly on the chrome to initiate drag
-    const start = await startDragViaDispatch(mainWindow, sessionId)
+    // Drag via standard Playwright mouse API on the chrome bar
+    const chrome = imageWindow.locator('.window-chrome')
+    const chromeBbox = await chrome.boundingBox()
+    expect(chromeBbox).toBeTruthy()
 
-    // Complete the drag via mouse.move + mouse.up
-    await mainWindow.mouse.move(start.startX + 120, start.startY + 80, { steps: 10 })
+    const startX = chromeBbox!.x + chromeBbox!.width / 2
+    const startY = chromeBbox!.y + chromeBbox!.height / 2
+
+    await mainWindow.mouse.move(startX, startY)
+    await mainWindow.mouse.down()
+    await mainWindow.mouse.move(startX + 120, startY + 80, { steps: 10 })
     await mainWindow.mouse.up()
 
     await mainWindow.waitForTimeout(500)
@@ -336,8 +317,7 @@ test.describe('Image Viewer: Open, Render, Drag, and Resize', () => {
     const beforeSession = await getImageSession(mainWindow, sessionId)
     const aspectRatio = beforeSession.aspectRatio
 
-    // Dispatch pointerdown on SE resize handle, then move via mouse API
-    const start = await startResizeViaDispatch(mainWindow, sessionId, 'se')
+    const start = await startResize(mainWindow, sessionId, 'se')
     await mainWindow.mouse.move(start.startX + 100, start.startY + 50, { steps: 10 })
     await mainWindow.mouse.up()
 
@@ -368,7 +348,7 @@ test.describe('Image Viewer: Open, Render, Drag, and Resize', () => {
     const beforeSession = await getImageSession(mainWindow, sessionId)
     const aspectRatio = beforeSession.aspectRatio
 
-    const start = await startResizeViaDispatch(mainWindow, sessionId, 'e')
+    const start = await startResize(mainWindow, sessionId, 'e')
     await mainWindow.mouse.move(start.startX + 80, start.startY, { steps: 10 })
     await mainWindow.mouse.up()
 
@@ -397,7 +377,7 @@ test.describe('Image Viewer: Open, Render, Drag, and Resize', () => {
     const imageWindow = mainWindow.locator(`.image-window[data-session-id="${sessionId}"]`)
     await expect(imageWindow).toBeVisible({ timeout: 5000 })
 
-    const start = await startResizeViaDispatch(mainWindow, sessionId, 'se')
+    const start = await startResize(mainWindow, sessionId, 'se')
     await mainWindow.mouse.move(start.startX + 73, start.startY + 47, { steps: 10 })
     await mainWindow.mouse.up()
 
@@ -420,7 +400,7 @@ test.describe('Image Viewer: Open, Render, Drag, and Resize', () => {
     const imageWindow = mainWindow.locator(`.image-window[data-session-id="${sessionId}"]`)
     await expect(imageWindow).toBeVisible({ timeout: 5000 })
 
-    const start = await startResizeViaDispatch(mainWindow, sessionId, 'se')
+    const start = await startResize(mainWindow, sessionId, 'se')
     await mainWindow.mouse.move(start.startX - 500, start.startY - 500, { steps: 10 })
     await mainWindow.mouse.up()
 
