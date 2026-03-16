@@ -1,0 +1,1 @@
+{"timestamp":"2026-03-16T00:00:21.845942Z","level":"INFO","fields":{"message":"beads issue closed — agent completed","agent_id":48,"task_id":"smoke-c04","runtime":"CLAUDE","elapsed_secs":191,"total_completed":48,"event":"issue_closed"},"target":"obelisk::app","span":{"session_id":"sess-20260315-225438","name":"session"}}
