@@ -410,10 +410,20 @@ test.describe('Split Panes: Max Pane Limit', () => {
       (window as any).__SMOKE_STORES__.sessionStore.getState().focusedId
     )
 
-    // Split 3 times to reach 4 panes — use longer waits to ensure each split completes
+    // Split 3 times to reach 4 panes — verify each split before proceeding
     for (let i = 0; i < 3; i++) {
+      const expectedCount = i + 2
       await pressShortcut(mainWindow, '\\')
-      await mainWindow.waitForTimeout(1500)
+      // Wait for the split to register in the store
+      await mainWindow.waitForFunction(
+        ([id, expected]) => {
+          return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getPaneCount(id) >= expected
+        },
+        [sessionId, expectedCount] as [string, number],
+        { timeout: 5000 }
+      )
+      // Extra wait for PTY spawn to complete before next split
+      await mainWindow.waitForTimeout(1000)
     }
 
     const paneCount = await mainWindow.evaluate((id) => {
@@ -423,7 +433,7 @@ test.describe('Split Panes: Max Pane Limit', () => {
 
     // Try to split again — should not exceed 4
     await pressShortcut(mainWindow, '\\')
-    await mainWindow.waitForTimeout(500)
+    await mainWindow.waitForTimeout(1000)
 
     const paneCountAfter = await mainWindow.evaluate((id) => {
       return (window as any).__SMOKE_STORES__.splitPaneStore.getState().getPaneCount(id)
