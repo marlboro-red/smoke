@@ -21,9 +21,10 @@ import { setPanTo, setZoomTo } from './canvas/useCanvasControls'
 import { buildDepGraph, expandDepGraph, buildDependentsGraph } from './depgraph/buildDepGraph'
 import { canvasSearchStore } from './search/searchStore'
 import { regionStore } from './stores/regionStore'
+import { replayStore } from './replay/replayStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore, preferencesStore, canvasStore, canvasControls: { setPanTo, setZoomTo }, depgraph: { buildDepGraph, expandDepGraph, buildDependentsGraph }, canvasSearchStore, regionStore }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore, taskInputStore, assemblyPreviewStore, presentationStore, preferencesStore, canvasStore, canvasControls: { setPanTo, setZoomTo }, depgraph: { buildDepGraph, expandDepGraph, buildDependentsGraph }, canvasSearchStore, regionStore, replayStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
