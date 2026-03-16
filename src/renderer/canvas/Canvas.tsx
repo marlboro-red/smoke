@@ -217,6 +217,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
   const storeZoom = useCanvasStore((s) => s.zoom)
   const gridSize = useGridStore((s) => s.gridSize)
   const showGrid = useGridStore((s) => s.showGrid)
+  const isResnapping = useGridStore((s) => s.isResnapping)
 
   useRubberBandSelect(rootRef, panRef, zoomRef)
 
@@ -334,7 +335,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
       onClick={handleClick}
     >
       <AlignmentToolbar />
-      <div className="canvas-viewport" ref={viewportRef}>
+      <div className={`canvas-viewport${isResnapping ? ' grid-resnapping' : ''}`} ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         <SnapPreview />
         <ConnectorLayer />

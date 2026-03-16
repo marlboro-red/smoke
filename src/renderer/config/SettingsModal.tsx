@@ -3,6 +3,7 @@ import type { Preferences } from '../../preload/types'
 import { preferencesStore, usePreferences } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
+import { reSnapAllElements } from '../stores/reSnapAllElements'
 import { settingsModalStore, useSettingsModalOpen } from './settingsStore'
 import { themes, THEME_IDS } from '../themes/themes'
 import { applyFontSettings, applyTerminalOpacity } from '../themes/applyTheme'
@@ -47,6 +48,7 @@ export default function SettingsModal(): JSX.Element | null {
         const size = value as number
         gridStore.getState().setGridSize(size)
         canvasStore.getState().setGridSize(size)
+        reSnapAllElements(size)
       }
 
       if (key === 'fontFamily' || key === 'fontSize' || key === 'lineHeight') {

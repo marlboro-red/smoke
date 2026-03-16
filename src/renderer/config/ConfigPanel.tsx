@@ -3,6 +3,7 @@ import type { Preferences } from '../../preload/types'
 import { preferencesStore, usePreferences } from '../stores/preferencesStore'
 import { gridStore } from '../stores/gridStore'
 import { canvasStore } from '../stores/canvasStore'
+import { reSnapAllElements } from '../stores/reSnapAllElements'
 import { applyTerminalOpacity, applyFontSettings } from '../themes/applyTheme'
 import PluginSettings from './PluginSettings'
 import '../styles/config.css'
@@ -24,11 +25,12 @@ export default function ConfigPanel(): JSX.Element {
       preferencesStore.getState().updatePreference(key, value)
       await window.smokeAPI?.config.set(key, value)
 
-      // Apply grid size change immediately
+      // Apply grid size change immediately and re-snap all elements
       if (key === 'gridSize') {
         const size = value as number
         gridStore.getState().setGridSize(size)
         canvasStore.getState().setGridSize(size)
+        reSnapAllElements(size)
       }
 
       // Apply terminal opacity change immediately
