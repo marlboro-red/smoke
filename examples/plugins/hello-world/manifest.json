@@ -1,0 +1,9 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "description": "A simple example plugin that displays a live clock and greeting",
+  "author": "Smoke Team",
+  "entryPoint": "index.html",
+  "defaultSize": { "width": 320, "height": 240 },
+  "permissions": []
+}

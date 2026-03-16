@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createNewSession } from '../session/useSessionCreation'
-import { sessionStore } from '../stores/sessionStore'
+import { sessionStore, type PluginElementType } from '../stores/sessionStore'
 import { performAutoLayout } from '../layout/autoLayout'
 import { taskInputStore } from '../assembly/taskInputStore'
+import { usePlugins } from '../stores/pluginStore'
+import type { PluginInfo } from '../../preload/types'
 import ShellSelector from './ShellSelector'
 
 interface CreateMenuProps {
@@ -14,6 +16,7 @@ export default function CreateMenu({ anchorRef, onClose }: CreateMenuProps): JSX
   const menuRef = useRef<HTMLDivElement>(null)
   const [shellSelectorOpen, setShellSelectorOpen] = useState(false)
   const shellBtnRef = useRef<HTMLButtonElement>(null)
+  const plugins = usePlugins()
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -54,6 +57,23 @@ export default function CreateMenu({ anchorRef, onClose }: CreateMenuProps): JSX
 
   const handleNewSnippet = useCallback(() => {
     const session = sessionStore.getState().createSnippetSession()
+    sessionStore.getState().focusSession(session.id)
+    onClose()
+  }, [onClose])
+
+  const handleNewPlugin = useCallback((plugin: PluginInfo) => {
+    const pluginType = `plugin:${plugin.name}` as PluginElementType
+    const session = sessionStore.getState().createPluginSession(
+      pluginType,
+      plugin.name,
+      plugin.source,
+      {
+        name: plugin.name,
+        version: plugin.version,
+        entryPoint: plugin.entryPointPath,
+        defaultSize: plugin.defaultSize,
+      }
+    )
     sessionStore.getState().focusSession(session.id)
     onClose()
   }, [onClose])
@@ -110,6 +130,25 @@ export default function CreateMenu({ anchorRef, onClose }: CreateMenuProps): JSX
           <span className="create-menu-label">Code Snippet</span>
         </button>
       </div>
+      {plugins.length > 0 && (
+        <>
+          <div className="create-menu-divider" />
+          <div className="create-menu-section">
+            <div className="create-menu-section-label">Plugins</div>
+            {plugins.map((plugin) => (
+              <button
+                key={plugin.name}
+                className="create-menu-item"
+                onClick={() => handleNewPlugin(plugin)}
+                title={plugin.description}
+              >
+                <span className="create-menu-icon">&#9881;</span>
+                <span className="create-menu-label">{plugin.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <div className="create-menu-divider" />
       <div className="create-menu-section">
         <button className="create-menu-item" onClick={handleAutoLayout}>

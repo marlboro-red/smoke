@@ -25,6 +25,7 @@ import ToastContainer from './toast/ToastContainer'
 import StatusBar from './statusbar/StatusBar'
 import { useIndexingProgress } from './statusbar/useIndexingProgress'
 import { applyTheme, applyTerminalOpacity, applyFontSettings } from './themes/applyTheme'
+import { pluginStore } from './stores/pluginStore'
 
 function App(): JSX.Element {
   useLayoutAutoSave()
@@ -81,6 +82,13 @@ function App(): JSX.Element {
         preferencesStore.getState().setLaunchCwd(cwd)
       }
     })
+    // Load available plugins
+    pluginStore.getState().loadPlugins()
+    // Listen for plugin hot-reload changes (dev mode)
+    const unsubPlugins = window.smokeAPI?.plugin.onChanged?.((event) => {
+      pluginStore.setState({ plugins: event.plugins })
+    })
+    return () => unsubPlugins?.()
   }, [])
 
   // Watch for theme changes and apply them
