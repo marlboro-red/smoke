@@ -11,9 +11,10 @@ import { splitPaneStore } from './stores/splitPaneStore'
 import { indexingStore } from './stores/indexingStore'
 import { agentStore } from './stores/agentStore'
 import { groupStore } from './stores/groupStore'
+import { focusModeStore } from './stores/focusModeStore'
 
 // Expose stores on window for E2E testing
-;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore }
+;(window as any).__SMOKE_STORES__ = { sessionStore, connectorStore, goToLineStore, toastStore, shortcutBindingsStore, suggestionStore, splitPaneStore, indexingStore, agentStore, groupStore, focusModeStore }
 
 const root = createRoot(document.getElementById('root')!)
 root.render(<App />)
