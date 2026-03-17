@@ -1,4 +1,5 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useState } from 'react'
+import { codeToHtml } from 'shiki'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
@@ -8,6 +9,8 @@ import {
   type NoteSession,
 } from '../stores/sessionStore'
 import { useFocusModeActiveIds } from '../stores/focusModeStore'
+import { usePreference } from '../stores/preferencesStore'
+import { getTheme } from '../themes/themes'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from '../fileviewer/useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -24,6 +27,15 @@ interface NoteWindowProps {
   gridSize: number
 }
 
+/**
+ * Extract the code portion from note content by stripping the source label header.
+ * Note content format is: "[source/label]\n\n<code>"
+ */
+function extractCodeContent(content: string): string {
+  const match = content.match(/^\[.*\]\n\n/)
+  return match ? content.slice(match[0].length) : content
+}
+
 export default function NoteWindow({
   session,
   zoom,
@@ -33,8 +45,14 @@ export default function NoteWindow({
   const highlightedId = useHighlightedId()
   const selectedIds = useSelectedIds()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
 
   const focusModeActiveIds = useFocusModeActiveIds()
+  const themePref = usePreference('theme')
+  const shikiTheme = getTheme(themePref || 'dark').shikiTheme
+
+  const hasHighlighting = !!session.language && session.language !== 'text' && session.language !== 'markdown'
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
@@ -132,12 +150,49 @@ export default function NoteWindow({
     [session.id]
   )
 
-  // Focus textarea when window is focused
+  // Focus textarea when window is focused (only when editing or no highlighting)
   useEffect(() => {
-    if (isFocused && textareaRef.current) {
+    if (isFocused && textareaRef.current && (!hasHighlighting || editing)) {
       textareaRef.current.focus()
     }
-  }, [isFocused])
+  }, [isFocused, editing, hasHighlighting])
+
+  // Generate syntax-highlighted HTML when language is present
+  useEffect(() => {
+    if (!hasHighlighting) {
+      setHighlightedHtml(null)
+      return
+    }
+    let cancelled = false
+    const code = extractCodeContent(session.content)
+    codeToHtml(code, {
+      lang: session.language!,
+      theme: shikiTheme,
+    })
+      .then((html) => {
+        if (!cancelled) setHighlightedHtml(html)
+      })
+      .catch(() => {
+        // Fallback to plain text if language not supported
+        codeToHtml(code, { lang: 'text', theme: shikiTheme })
+          .then((html) => {
+            if (!cancelled) setHighlightedHtml(html)
+          })
+          .catch(() => {
+            if (!cancelled) setHighlightedHtml(null)
+          })
+      })
+    return () => { cancelled = true }
+  }, [session.content, session.language, hasHighlighting, shikiTheme])
+
+  // Exit edit mode when note loses focus
+  useEffect(() => {
+    if (!isFocused && editing) setEditing(false)
+  }, [isFocused, editing])
+
+  const handleToggleEdit = useCallback(() => {
+    setEditing((prev) => !prev)
+  }, [])
 
   const colors = resolveNoteColors(session.color)
 
@@ -190,17 +245,34 @@ export default function NoteWindow({
         {session.sourceRef && (
           <div className="note-source-bar">
             <SourceRefLink sourceRef={session.sourceRef} />
+            {hasHighlighting && (
+              <button
+                className="note-edit-toggle"
+                onClick={handleToggleEdit}
+                title={editing ? 'View highlighted' : 'Edit'}
+              >
+                {editing ? '✓' : '✎'}
+              </button>
+            )}
           </div>
         )}
-        <textarea
-          ref={textareaRef}
-          className="note-textarea"
-          value={session.content}
-          onChange={handleContentChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a note..."
-          spellCheck={false}
-        />
+        {hasHighlighting && !editing && highlightedHtml ? (
+          <div
+            className="note-highlighted"
+            onDoubleClick={handleToggleEdit}
+            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+          />
+        ) : (
+          <textarea
+            ref={textareaRef}
+            className="note-textarea"
+            value={session.content}
+            onChange={handleContentChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a note..."
+            spellCheck={false}
+          />
+        )}
       </div>
       <ResizeHandle direction="e" onResizeStart={onResizeStart} />
       <ResizeHandle direction="s" onResizeStart={onResizeStart} />
