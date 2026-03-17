@@ -75,7 +75,7 @@ export class ClaudeCodeManager {
     if (!conv) {
       conv = {
         id: convId,
-        sessionId: `smoke-${this.agentId}-${convId}`,
+        sessionId: uuid(),
         process: null,
         messageCount: 0,
         aborted: false,
