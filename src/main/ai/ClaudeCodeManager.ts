@@ -342,6 +342,12 @@ export class ClaudeCodeManager {
 
       conv.process = proc
 
+      // Close stdin immediately — the message is passed as a positional
+      // argument, so stdin is not needed.  Without this, the CLI may detect
+      // that stdin is a pipe (not a TTY) and block waiting for input, which
+      // prevents it from ever reaching the API call.  Sending EOF unblocks it.
+      proc.stdin?.end()
+
       aiLogger.debug('subprocess', `Subprocess spawned with PID ${proc.pid}`, {
         agentId: this.agentId,
         conversationId: conv.id,
@@ -365,6 +371,7 @@ export class ClaudeCodeManager {
 
       const onInactivityTimeout = (): void => {
         if (conv.process) {
+          killedByInactivityTimeout = true
           aiLogger.warn('subprocess', `Inactivity timeout (${SUBPROCESS_INACTIVITY_TIMEOUT_MS}ms) — killing`, {
             agentId: this.agentId,
             conversationId: conv.id,
@@ -389,6 +396,9 @@ export class ClaudeCodeManager {
       // the full text from assistant.message and result events.
       let hasStreamedText = false
       let streamEventCount = 0
+      // Set when the inactivity timer kills the process so the close
+      // handler can emit a more helpful error message.
+      let killedByInactivityTimeout = false
 
       const processLine = (line: string): void => {
         if (!line.trim()) return
@@ -481,20 +491,30 @@ export class ClaudeCodeManager {
           settle('resolve')
         } else {
           // Non-zero exit or signal kill (code === null) — emit error
-          // and message_complete so the renderer always leaves generating state
-          const errorMsg =
-            code === null
-              ? stderr.trim() || 'Claude Code process was killed unexpectedly'
-              : stderr.trim() || `Claude Code exited with code ${code}`
+          // and message_complete so the renderer always leaves generating state.
+          const defaultMsg = killedByInactivityTimeout
+            ? `Claude Code subprocess timed out — no output for ${SUBPROCESS_INACTIVITY_TIMEOUT_MS / 1000}s`
+            : code === null
+              ? 'Claude Code process was killed unexpectedly'
+              : `Claude Code exited with code ${code}`
+          const errorMsg = stderr.trim() || defaultMsg
           aiLogger.error('subprocess', `Subprocess exited with error: ${errorMsg}`, {
             agentId: this.agentId,
             conversationId: conv.id,
-            meta: { code, durationMs, streamEvents: streamEventCount, stderr: stderr.slice(0, 500) },
+            meta: { code, durationMs, streamEvents: streamEventCount, stderr: stderr.slice(0, 500), killedByInactivityTimeout },
           })
           this.emit({
             type: 'error',
             conversationId: conv.id,
             error: errorMsg,
+          })
+          // Also emit message_complete so the renderer always cleans up
+          // its per-agent message tracking (currentMessageIds), even if
+          // the error event handler doesn't clear it for some reason.
+          this.emit({
+            type: 'message_complete',
+            conversationId: conv.id,
+            stopReason: 'error',
           })
           settle('resolve') // Don't reject — error was already emitted
         }

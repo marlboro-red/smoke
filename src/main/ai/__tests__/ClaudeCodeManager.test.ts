@@ -200,6 +200,67 @@ describe('ClaudeCodeManager', () => {
       }
     })
 
+    it('closes stdin immediately after spawn to prevent blocking (smoke-0l6m)', async () => {
+      const { spawn } = await import('child_process')
+      const mockSpawn = vi.mocked(spawn)
+
+      const mockProc = {
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
+        kill: vi.fn(),
+        stdin: { write: vi.fn(), end: vi.fn() },
+      }
+
+      mockProc.on.mockImplementation((event: string, handler: Function) => {
+        if (event === 'close') {
+          setTimeout(() => handler(0), 0)
+        }
+        return mockProc
+      })
+
+      mockSpawn.mockReturnValue(mockProc as any)
+
+      await manager.sendMessage('hello')
+
+      // stdin.end() must be called to send EOF so the CLI doesn't block
+      expect(mockProc.stdin.end).toHaveBeenCalled()
+    })
+
+    it('emits both error and message_complete on non-zero exit (smoke-0l6m)', async () => {
+      const { spawn } = await import('child_process')
+      const mockSpawn = vi.mocked(spawn)
+
+      const mockProc = {
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
+        kill: vi.fn(),
+        stdin: { write: vi.fn(), end: vi.fn() },
+      }
+
+      mockProc.on.mockImplementation((event: string, handler: Function) => {
+        if (event === 'close') {
+          // Simulate process killed by signal (code === null)
+          setTimeout(() => handler(null), 0)
+        }
+        return mockProc
+      })
+
+      mockSpawn.mockReturnValue(mockProc as any)
+
+      await manager.sendMessage('hello')
+
+      // Should emit both an error and a message_complete event
+      const errorEvent = emittedEvents.find(e => e.type === 'error')
+      const completeEvent = emittedEvents.find(e => e.type === 'message_complete')
+      expect(errorEvent).toBeDefined()
+      expect(completeEvent).toBeDefined()
+      if (completeEvent?.type === 'message_complete') {
+        expect(completeEvent.stopReason).toBe('error')
+      }
+    })
+
     it('passes a valid UUID as --session-id, not a prefixed string (smoke-0gy6)', async () => {
       const { spawn } = await import('child_process')
       const mockSpawn = vi.mocked(spawn)
