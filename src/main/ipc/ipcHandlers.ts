@@ -1037,6 +1037,7 @@ export async function registerIpcHandlers(
           { path: 'powershell.exe', name: 'PowerShell' },
           { path: 'pwsh.exe', name: 'PowerShell Core' },
           { path: 'cmd.exe', name: 'Command Prompt' },
+          { path: 'nu.exe', name: 'Nushell' },
           { path: 'bash.exe', name: 'Bash (WSL)' },
           { path: 'wsl.exe', name: 'WSL' },
         ]
@@ -1072,7 +1073,7 @@ export async function registerIpcHandlers(
           }
         } catch (err) {
           console.warn('[ipc] Could not read /etc/shells, falling back to common paths:', err)
-          const fallbacks = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/fish']
+          const fallbacks = ['/bin/zsh', '/bin/bash', '/bin/sh', '/usr/bin/fish', '/usr/bin/nu']
           for (const p of fallbacks) {
             try {
               await fs.access(p, fs.constants.X_OK)
