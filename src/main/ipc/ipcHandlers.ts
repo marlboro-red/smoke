@@ -50,6 +50,7 @@ import {
   AI_SEND,
   AI_ABORT,
   AI_CLEAR,
+  AI_DIAGNOSTICS,
   AGENT_CREATE,
   AGENT_REMOVE,
   AGENT_LIST,
@@ -190,6 +191,7 @@ import {
   WORKSPACE_ADD_RECENT,
 } from './channels'
 import type { AgentInfo } from '../../preload/types'
+import { aiLogger, type AiLogEntry, type AiLogCategory, type AiLogLevel } from '../ai/AiLogger'
 import { PluginLoader, type LoadedPlugin } from '../plugin/PluginLoader'
 import { PluginInstaller } from '../plugin/PluginInstaller'
 import { registerPluginIpcHandlers } from '../plugin/pluginIpcHandlers'
@@ -892,8 +894,15 @@ export async function registerIpcHandlers(
   ipcMain.handle(
     AI_SEND,
     async (_event, request: AiSendRequest): Promise<AiSendResponse> => {
+      aiLogger.info('ipc', `AI_SEND received`, {
+        agentId: request.agentId,
+        conversationId: request.conversationId ?? undefined,
+        meta: { messageLength: request.message.length },
+      })
+      const sendStart = Date.now()
       const agent = agentManager.getAgent(request.agentId)
       if (!agent) {
+        aiLogger.error('ipc', `AI_SEND: agent not found`, { agentId: request.agentId })
         return { conversationId: '', error: `Agent ${request.agentId} not found` }
       }
       try {
@@ -901,23 +910,54 @@ export async function registerIpcHandlers(
           request.message,
           request.conversationId
         )
+        aiLogger.info('ipc', `AI_SEND completed`, {
+          agentId: request.agentId,
+          conversationId,
+          meta: { durationMs: Date.now() - sendStart },
+        })
         return { conversationId }
       } catch (err: unknown) {
-        return { conversationId: request.conversationId ?? '', error: err instanceof Error ? err.message : 'AI request failed' }
+        const errorMsg = err instanceof Error ? err.message : 'AI request failed'
+        aiLogger.error('ipc', `AI_SEND error: ${errorMsg}`, {
+          agentId: request.agentId,
+          meta: { durationMs: Date.now() - sendStart },
+        })
+        return { conversationId: request.conversationId ?? '', error: errorMsg }
       }
     }
   )
 
   ipcMain.handle(AI_ABORT, (_event, request: AiAbortRequest): void => {
+    aiLogger.info('ipc', `AI_ABORT received`, {
+      agentId: request.agentId,
+      conversationId: request.conversationId ?? undefined,
+    })
     const agent = agentManager.getAgent(request.agentId)
     agent?.abort(request.conversationId)
   })
 
   ipcMain.handle(AI_CLEAR, (_event, request: AiClearRequest): void => {
+    aiLogger.info('ipc', `AI_CLEAR received`, {
+      agentId: request.agentId,
+      conversationId: request.conversationId ?? undefined,
+    })
     const agent = agentManager.getAgent(request.agentId)
     agent?.clear(request.conversationId)
   })
 
+  // AI diagnostics — return log entries to the renderer
+  ipcMain.handle(
+    AI_DIAGNOSTICS,
+    (_event, filter?: {
+      category?: AiLogCategory
+      agentId?: string
+      level?: AiLogLevel
+      since?: number
+      limit?: number
+    }): AiLogEntry[] => {
+      return aiLogger.getEntries(filter)
+    }
+  )
 
   // Code graph handlers
   ipcMain.handle(

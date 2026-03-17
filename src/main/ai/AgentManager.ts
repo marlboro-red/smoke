@@ -15,6 +15,7 @@ import { ClaudeCodeManager } from './ClaudeCodeManager'
 import { McpBridge, type ToolExecutor } from './McpBridge'
 import type { PtyManager } from '../pty/PtyManager'
 import { createExecutors, type AgentScopeProvider, type CodegraphDeps, type PluginDeps } from './tools'
+import { aiLogger } from './AiLogger'
 
 export const AGENT_COLORS = [
   '#61afef', '#e06c75', '#98c379', '#e5c07b', '#c678dd', '#56b6c2',
@@ -97,6 +98,10 @@ export class AgentManager {
       undefined,
       name
     )
+    aiLogger.info('agent', `Created agent "${name}"`, {
+      agentId: agent.agentId,
+      meta: { color },
+    })
     const meta: AgentMeta = {
       groupId: null,
       role: null,
@@ -132,7 +137,11 @@ export class AgentManager {
   /** Remove an agent, abort in-flight work, and clean up resources. */
   removeAgent(agentId: string): boolean {
     const agent = this.agents.get(agentId)
-    if (!agent) return false
+    if (!agent) {
+      aiLogger.warn('agent', `removeAgent: agent not found`, { agentId })
+      return false
+    }
+    aiLogger.info('agent', `Removing agent "${agent.name}"`, { agentId })
     agent.dispose()
     this.agents.delete(agentId)
     this.agentMeta.delete(agentId)
@@ -153,6 +162,10 @@ export class AgentManager {
   assignGroup(agentId: string, groupId: string | null, memberSessionIds?: string[]): void {
     const meta = this.agentMeta.get(agentId)
     if (!meta) return
+    aiLogger.info('agent', `assignGroup: ${groupId ?? 'unrestricted'}`, {
+      agentId,
+      meta: { groupId, memberCount: memberSessionIds?.length ?? 0 },
+    })
     meta.groupId = groupId
     if (groupId === null) {
       meta.allowedSessionIds = null

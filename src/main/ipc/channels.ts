@@ -42,6 +42,7 @@ export const AI_ABORT = 'ai:abort' as const
 export const AI_CLEAR = 'ai:clear' as const
 export const AI_STREAM = 'ai:stream' as const
 export const AI_CANVAS_ACTION = 'ai:canvas-action' as const
+export const AI_DIAGNOSTICS = 'ai:diagnostics' as const
 
 // Recording channels
 export const RECORDING_FLUSH = 'recording:flush' as const

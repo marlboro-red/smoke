@@ -21,8 +21,19 @@ import { toolDefs } from './toolDefs'
 const BRIDGE_PORT = parseInt(process.env.SMOKE_BRIDGE_PORT || '0', 10)
 const AGENT_ID = process.env.SMOKE_AGENT_ID || ''
 
+function mcpLog(level: string, message: string, meta?: Record<string, unknown>): void {
+  const entry = {
+    ts: new Date().toISOString(),
+    level,
+    agentId: AGENT_ID.slice(0, 8),
+    message,
+    ...meta,
+  }
+  process.stderr.write(`[MCP] ${JSON.stringify(entry)}\n`)
+}
+
 if (!BRIDGE_PORT) {
-  process.stderr.write('SMOKE_BRIDGE_PORT not set\n')
+  mcpLog('error', 'SMOKE_BRIDGE_PORT not set')
   process.exit(1)
 }
 
@@ -97,8 +108,11 @@ function callBridge(
 // ── MCP message handler ──────────────────────────────────────────────
 
 async function handleMessage(msg: JsonRpcRequest): Promise<void> {
+  mcpLog('debug', `Received: ${msg.method}`, { id: msg.id })
+
   switch (msg.method) {
     case 'initialize':
+      mcpLog('info', 'MCP initialize handshake')
       respond(msg.id, {
         protocolVersion: '2024-11-05',
         capabilities: { tools: {} },
@@ -107,10 +121,12 @@ async function handleMessage(msg: JsonRpcRequest): Promise<void> {
       break
 
     case 'notifications/initialized':
+      mcpLog('info', 'MCP initialized notification received')
       // Notification — no response needed
       break
 
     case 'tools/list':
+      mcpLog('debug', `tools/list — returning ${toolDefs.length} tools`)
       respond(msg.id, {
         tools: toolDefs.map((t) => ({
           name: t.name,
@@ -123,24 +139,36 @@ async function handleMessage(msg: JsonRpcRequest): Promise<void> {
     case 'tools/call': {
       const params = msg.params as { name: string; arguments?: Record<string, unknown> } | undefined
       if (!params?.name) {
+        mcpLog('warn', 'tools/call missing tool name')
         respondError(msg.id, -32602, 'Missing tool name')
         return
       }
 
+      const callStart = Date.now()
+      mcpLog('info', `tools/call: ${params.name}`, { args: params.arguments })
+
       try {
         const bridgeResult = await callBridge(params.name, params.arguments ?? {})
+        const callDuration = Date.now() - callStart
         if (bridgeResult.error) {
+          mcpLog('warn', `tools/call ${params.name} returned error (${callDuration}ms)`, {
+            error: bridgeResult.error,
+          })
           respond(msg.id, {
             content: [{ type: 'text', text: bridgeResult.error }],
             isError: true,
           })
         } else {
+          mcpLog('info', `tools/call ${params.name} completed (${callDuration}ms)`, {
+            resultLength: bridgeResult.result?.length ?? 0,
+          })
           respond(msg.id, {
             content: [{ type: 'text', text: bridgeResult.result ?? '' }],
           })
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Bridge call failed'
+        mcpLog('error', `tools/call ${params.name} exception: ${message}`)
         respond(msg.id, {
           content: [{ type: 'text', text: message }],
           isError: true,
@@ -154,6 +182,7 @@ async function handleMessage(msg: JsonRpcRequest): Promise<void> {
       break
 
     default:
+      mcpLog('warn', `Unknown method: ${msg.method}`)
       respondError(msg.id, -32601, `Method not found: ${msg.method}`)
   }
 }
@@ -162,18 +191,21 @@ async function handleMessage(msg: JsonRpcRequest): Promise<void> {
 
 const rl = readline.createInterface({ input: process.stdin, terminal: false })
 
+mcpLog('info', `MCP server started`, { bridgePort: BRIDGE_PORT })
+
 rl.on('line', (line: string) => {
   if (!line.trim()) return
   try {
     const msg = JSON.parse(line) as JsonRpcRequest
     handleMessage(msg).catch((err) => {
-      process.stderr.write(`MCP handler error: ${err}\n`)
+      mcpLog('error', `Handler error: ${err}`)
     })
   } catch {
-    process.stderr.write(`Invalid JSON: ${line}\n`)
+    mcpLog('warn', `Invalid JSON on stdin: ${line.slice(0, 200)}`)
   }
 })
 
 rl.on('close', () => {
+  mcpLog('info', 'stdin closed — exiting')
   process.exit(0)
 })

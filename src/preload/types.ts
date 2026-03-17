@@ -218,6 +218,35 @@ export type AiStreamEvent =
   | AiStreamMessageComplete
   | AiStreamError
 
+// AI diagnostics log types
+export type AiLogLevel = 'debug' | 'info' | 'warn' | 'error'
+
+export type AiLogCategory =
+  | 'ipc'
+  | 'subprocess'
+  | 'stream'
+  | 'tool'
+  | 'agent'
+  | 'mcp'
+
+export interface AiLogEntry {
+  timestamp: number
+  level: AiLogLevel
+  category: AiLogCategory
+  agentId?: string
+  conversationId?: string
+  message: string
+  meta?: Record<string, unknown>
+}
+
+export interface AiDiagnosticsFilter {
+  category?: AiLogCategory
+  agentId?: string
+  level?: AiLogLevel
+  since?: number
+  limit?: number
+}
+
 export interface EventLogData {
   version: number
   startedAt: number
@@ -587,6 +616,8 @@ export interface SmokeAPI {
     clear: (agentId: string, conversationId?: string) => Promise<void>
     onStream: (callback: (event: AiStreamEvent) => void) => () => void
     onCanvasAction: (callback: (event: AiStreamCanvasAction) => void) => () => void
+    /** Retrieve AI pipeline diagnostic log entries from the main process. */
+    diagnostics: (filter?: AiDiagnosticsFilter) => Promise<AiLogEntry[]>
   }
   canvas: {
     exportPng: (rect: CanvasExportRect) => Promise<{ filePath: string | null }>

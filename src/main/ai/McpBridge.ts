@@ -9,6 +9,7 @@
  */
 
 import * as http from 'http'
+import { aiLogger } from './AiLogger'
 
 export type ToolExecutor = (input: Record<string, unknown>) => Promise<string>
 
@@ -47,23 +48,40 @@ export class McpBridge {
         })
         req.on('end', async () => {
           try {
-            const { name, input } = JSON.parse(body) as {
+            const { name, input, agentId } = JSON.parse(body) as {
               name: string
               input: Record<string, unknown>
+              agentId?: string
             }
 
             const executor = this.executors.get(name)
             if (!executor) {
+              aiLogger.warn('tool', `Unknown tool: ${name}`, { agentId })
               res.writeHead(404)
               res.end(JSON.stringify({ error: `Unknown tool: ${name}` }))
               return
             }
 
+            const toolStart = Date.now()
+            aiLogger.info('tool', `Executing: ${name}`, {
+              agentId,
+              meta: { input },
+            })
+
             const result = await executor(input)
+            const toolDuration = Date.now() - toolStart
+            aiLogger.info('tool', `Completed: ${name} (${toolDuration}ms)`, {
+              agentId,
+              meta: { durationMs: toolDuration, resultLength: result.length },
+            })
+
             res.writeHead(200, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ result }))
           } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Tool execution failed'
+            aiLogger.error('tool', `Tool error: ${message}`, {
+              meta: { error: message },
+            })
             res.writeHead(200, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: message }))
           }
@@ -75,6 +93,7 @@ export class McpBridge {
         if (addr && typeof addr === 'object') {
           this._port = addr.port
           this.server = server
+          aiLogger.info('tool', `McpBridge started on port ${this._port}`)
           resolve(this._port)
         } else {
           reject(new Error('Failed to bind McpBridge'))

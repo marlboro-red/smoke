@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult, ShellInfo, PluginChangedEvent, ManifestPermission, PluginContextPermission, PluginFsReadResult, PluginFsWriteResult, PluginFsDirEntry, PluginCommandResult } from './types'
+import type { SmokeAPI, PtyDataEvent, PtyExitEvent, AiStreamEvent, AiStreamCanvasAction, AiDiagnosticsFilter, AiLogEntry, EventLogData, Bookmark, ProjectIndexUpdatedEvent, CodeGraphImportEntry, TabState, SearchResponse, SearchBuildResult, SearchStats, SearchIndexProgressEvent, StructureMap, StructureModuleInfo, WorkspaceFileInput, WorkspaceLayoutResult, ParsedTask, ContextCollectResult, ShellInfo, PluginChangedEvent, ManifestPermission, PluginContextPermission, PluginFsReadResult, PluginFsWriteResult, PluginFsDirEntry, PluginCommandResult } from './types'
 
 const smokeAPI: SmokeAPI = {
   pty: {
@@ -112,6 +112,9 @@ const smokeAPI: SmokeAPI = {
         ipcRenderer.removeListener('ai:canvas-action', listener)
       }
     },
+
+    diagnostics: (filter?: AiDiagnosticsFilter) =>
+      ipcRenderer.invoke('ai:diagnostics', filter) as Promise<AiLogEntry[]>,
   },
 
   canvas: {
