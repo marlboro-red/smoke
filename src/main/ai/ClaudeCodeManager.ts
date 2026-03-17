@@ -21,14 +21,7 @@ import { app } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { v4 as uuid } from 'uuid'
 import { AI_STREAM } from '../ipc/channels'
-import type {
-  AiStreamEvent,
-  AiStreamTextDelta,
-  AiStreamToolUse,
-  AiStreamToolResult,
-  AiStreamMessageComplete,
-  AiStreamError,
-} from '../../preload/types'
+import type { AiStreamEvent } from '../../preload/types'
 import { McpBridge } from './McpBridge'
 import { terminalOutputBuffer } from './TerminalOutputBuffer'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
@@ -38,6 +31,7 @@ interface ConversationState {
   sessionId: string // Claude Code session-id
   process: ChildProcess | null
   messageCount: number // Number of messages sent in this conversation
+  aborted: boolean // Set when abort() is called so the close handler knows
 }
 
 /** Maximum number of idle conversations to keep per agent. */
@@ -84,6 +78,7 @@ export class ClaudeCodeManager {
         sessionId: `smoke-${this.agentId}-${convId}`,
         process: null,
         messageCount: 0,
+        aborted: false,
       }
       this.conversations.set(convId, conv)
       this.evictOldConversations()
@@ -122,12 +117,14 @@ export class ClaudeCodeManager {
     if (conversationId) {
       const conv = this.conversations.get(conversationId)
       if (conv?.process) {
+        conv.aborted = true
         conv.process.kill('SIGTERM')
         conv.process = null
       }
     } else {
       for (const conv of this.conversations.values()) {
         if (conv.process) {
+          conv.aborted = true
           conv.process.kill('SIGTERM')
           conv.process = null
         }
@@ -265,17 +262,28 @@ export class ClaudeCodeManager {
       args.push('--model', this.model)
     }
 
+    // Always pass session-id so Claude Code reuses the same session
+    args.push('--session-id', conv.sessionId)
+
     // Continue conversation if not the first message
     if (isFirstMessage) {
       args.push('--system-prompt', systemPrompt)
     } else {
-      args.push('--resume', '--session-id', conv.sessionId)
+      args.push('--resume')
     }
 
     // The message is the positional argument
     args.push(message)
 
     return new Promise<void>((resolve, reject) => {
+      let settled = false
+      const settle = (action: 'resolve' | 'reject', value?: Error): void => {
+        if (settled) return
+        settled = true
+        if (action === 'resolve') resolve()
+        else reject(value)
+      }
+
       const proc = spawn(claudeCmd, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
@@ -288,7 +296,25 @@ export class ClaudeCodeManager {
       conv.process = proc
 
       let stdout = ''
-      let currentToolUseId: string | null = null
+      // Track whether we received streaming text to avoid duplicating
+      // the full text from assistant.message and result events.
+      let hasStreamedText = false
+
+      const processLine = (line: string): void => {
+        if (!line.trim()) return
+        try {
+          const event = JSON.parse(line)
+          this.processStreamEvent(conv, event, hasStreamedText)
+          if (
+            (event as Record<string, unknown>).type === 'assistant' &&
+            (event as Record<string, unknown>).subtype === 'text'
+          ) {
+            hasStreamedText = true
+          }
+        } catch {
+          // Non-JSON line — ignore
+        }
+      }
 
       proc.stdout?.on('data', (chunk: Buffer) => {
         stdout += chunk.toString()
@@ -297,13 +323,7 @@ export class ClaudeCodeManager {
         stdout = lines.pop() ?? '' // Keep incomplete last line
 
         for (const line of lines) {
-          if (!line.trim()) continue
-          try {
-            const event = JSON.parse(line)
-            this.processStreamEvent(conv, event)
-          } catch {
-            // Non-JSON line — ignore
-          }
+          processLine(line)
         }
       })
 
@@ -315,27 +335,26 @@ export class ClaudeCodeManager {
       proc.on('close', (code) => {
         conv.process = null
 
-        // Process any remaining stdout
+        // Process any remaining stdout (may contain multiple lines)
         if (stdout.trim()) {
-          try {
-            const event = JSON.parse(stdout)
-            this.processStreamEvent(conv, event)
-          } catch {
-            // ignore
+          const remaining = stdout.split('\n')
+          for (const line of remaining) {
+            processLine(line)
           }
         }
 
-        if (code === null || code === 0) {
+        if (conv.aborted) {
+          // User-initiated abort — not an error
+          conv.aborted = false
+          settle('reject', new Error('aborted'))
+        } else if (code === null || code === 0) {
           // Normal exit — emit message_complete
           this.emit({
             type: 'message_complete',
             conversationId: conv.id,
             stopReason: 'end_turn',
           })
-          resolve()
-        } else if (code === 143 || code === 137) {
-          // SIGTERM or SIGKILL — user aborted
-          reject(new Error('aborted'))
+          settle('resolve')
         } else {
           const errorMsg = stderr.trim() || `Claude Code exited with code ${code}`
           this.emit({
@@ -343,7 +362,7 @@ export class ClaudeCodeManager {
             conversationId: conv.id,
             error: errorMsg,
           })
-          resolve() // Don't reject — error was already emitted
+          settle('resolve') // Don't reject — error was already emitted
         }
       })
 
@@ -354,7 +373,7 @@ export class ClaudeCodeManager {
           conversationId: conv.id,
           error: `Failed to spawn Claude Code: ${err.message}. Make sure 'claude' is installed and in PATH.`,
         })
-        resolve()
+        settle('resolve')
       })
     })
   }
@@ -365,25 +384,42 @@ export class ClaudeCodeManager {
    *
    * Claude Code's stream-json format emits one JSON object per line.
    * Common event shapes:
-   *   {"type":"assistant","message":{...}}       — full assistant message
-   *   {"type":"content_block_start",...}          — start of content block
-   *   {"type":"content_block_delta",...}          — text or input delta
-   *   {"type":"result","result":"...","cost":...} — final result
+   *   {"type":"assistant","subtype":"text","text":"..."}  — streaming text chunk
+   *   {"type":"assistant","message":{...}}                — full assistant message
+   *   {"type":"content_block_delta",...}                   — text or input delta
+   *   {"type":"result","result":"...","cost":...}         — final result
+   *
+   * Text appears in three places: streaming subtype=text events, the full
+   * assistant message content, and the result event. We only emit text from
+   * one source to avoid triplication. When streaming text has been received,
+   * we skip the duplicate text from message.content and result.
    */
   private processStreamEvent(
     conv: ConversationState,
-    event: Record<string, unknown>
+    event: Record<string, unknown>,
+    hasStreamedText: boolean
   ): void {
     const type = event.type as string
 
-    // Handle text content
+    // Handle assistant events (streaming text + full message)
     if (type === 'assistant') {
+      // Handle subtype text (streaming text delta) — primary text source
+      if (event.subtype === 'text') {
+        this.emit({
+          type: 'text_delta',
+          conversationId: conv.id,
+          delta: event.text as string,
+        })
+      }
+
+      // Handle full message — extract tool_use blocks always, but only
+      // emit text blocks if no streaming text was received (fallback).
       const message = event.message as Record<string, unknown> | undefined
       if (message) {
         const content = message.content as Array<Record<string, unknown>> | undefined
         if (content) {
           for (const block of content) {
-            if (block.type === 'text') {
+            if (block.type === 'text' && !hasStreamedText) {
               this.emit({
                 type: 'text_delta',
                 conversationId: conv.id,
@@ -400,14 +436,6 @@ export class ClaudeCodeManager {
             }
           }
         }
-      }
-      // Handle subtype text (streaming text delta)
-      if (event.subtype === 'text') {
-        this.emit({
-          type: 'text_delta',
-          conversationId: conv.id,
-          delta: event.text as string,
-        })
       }
     }
 
@@ -445,19 +473,9 @@ export class ClaudeCodeManager {
       })
     }
 
-    // Handle result event (final)
-    if (type === 'result') {
-      // The final result text — emit as a text delta if present
-      const resultText = event.result as string | undefined
-      if (resultText) {
-        this.emit({
-          type: 'text_delta',
-          conversationId: conv.id,
-          delta: resultText,
-        })
-      }
-      // message_complete is emitted in the 'close' handler
-    }
+    // Handle result event (final) — text is always a duplicate of either
+    // streaming text or message.content, so we never re-emit it here.
+    // message_complete is emitted in the 'close' handler.
   }
 
   /**
