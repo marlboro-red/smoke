@@ -339,4 +339,231 @@ describe('ClaudeCodeManager', () => {
       expect(sessionId).toBe('test-conv-id')
     })
   })
+
+  describe('stream event processing (smoke-x6mu)', () => {
+    /**
+     * Helper: spawn a mock Claude Code process, feed it stream-json
+     * lines, then close with the given exit code.  Returns the events
+     * that were emitted to the renderer.
+     */
+    async function feedStreamLines(
+      mgr: typeof manager,
+      lines: string[],
+      exitCode = 0
+    ): Promise<AiStreamEvent[]> {
+      const { spawn } = await import('child_process')
+      const mockSpawn = vi.mocked(spawn)
+
+      let stdoutHandler: ((chunk: Buffer) => void) | null = null
+      let closeHandler: ((code: number | null) => void) | null = null
+
+      const mockProc = {
+        stdout: {
+          on: vi.fn().mockImplementation((_e: string, h: Function) => {
+            stdoutHandler = h as (chunk: Buffer) => void
+          }),
+        },
+        stderr: { on: vi.fn() },
+        on: vi.fn().mockImplementation((event: string, handler: Function) => {
+          if (event === 'close') closeHandler = handler as (code: number | null) => void
+          return mockProc
+        }),
+        kill: vi.fn(),
+        stdin: { write: vi.fn(), end: vi.fn() },
+        pid: 12345,
+      }
+
+      mockSpawn.mockReturnValue(mockProc as any)
+
+      const promise = mgr.sendMessage('test prompt')
+
+      // Feed all lines as a single stdout chunk (newline-delimited)
+      const chunk = lines.join('\n') + '\n'
+      stdoutHandler?.(Buffer.from(chunk))
+
+      // Close the process
+      closeHandler?.(exitCode)
+
+      await promise
+      return [...emittedEvents]
+    }
+
+    it('extracts text from assistant message.content (no streaming events)', async () => {
+      emittedEvents = []
+      const events = await feedStreamLines(manager, [
+        JSON.stringify({ type: 'system', subtype: 'init', tools: [] }),
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Hello from Claude!' }],
+            stop_reason: null,
+          },
+        }),
+        JSON.stringify({ type: 'result', subtype: 'success', result: 'Hello from Claude!' }),
+      ])
+
+      const textDeltas = events.filter(e => e.type === 'text_delta')
+      expect(textDeltas.length).toBeGreaterThanOrEqual(1)
+      const fullText = textDeltas
+        .map(e => (e.type === 'text_delta' ? e.delta : ''))
+        .join('')
+      expect(fullText).toBe('Hello from Claude!')
+    })
+
+    it('extracts text AND tool_use from multi-turn tool-call conversation', async () => {
+      emittedEvents = []
+      const events = await feedStreamLines(manager, [
+        JSON.stringify({ type: 'system', subtype: 'init', tools: [] }),
+        // Turn 1: assistant uses a tool
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: [
+              { type: 'tool_use', id: 'tool-1', name: 'mcp__smoke-tools__write_to_terminal', input: { text: 'ls' } },
+            ],
+            stop_reason: 'tool_use',
+          },
+        }),
+        // Tool result comes back as user message
+        JSON.stringify({
+          type: 'user',
+          message: {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'tool-1', content: 'file1.txt\nfile2.txt' }],
+          },
+        }),
+        // Turn 2: assistant responds with text
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: [{ type: 'text', text: 'I listed the files for you.' }],
+            stop_reason: 'end_turn',
+          },
+        }),
+        JSON.stringify({ type: 'result', subtype: 'success', result: 'I listed the files for you.' }),
+      ])
+
+      // Should have both tool_use and text_delta events
+      const toolUseEvents = events.filter(e => e.type === 'tool_use')
+      const textDeltas = events.filter(e => e.type === 'text_delta')
+
+      expect(toolUseEvents.length).toBe(1)
+      if (toolUseEvents[0].type === 'tool_use') {
+        expect(toolUseEvents[0].toolName).toBe('write_to_terminal')
+      }
+
+      expect(textDeltas.length).toBeGreaterThanOrEqual(1)
+      const fullText = textDeltas
+        .map(e => (e.type === 'text_delta' ? e.delta : ''))
+        .join('')
+      expect(fullText).toBe('I listed the files for you.')
+    })
+
+    it('falls back to result.result when no text in assistant events', async () => {
+      emittedEvents = []
+      const events = await feedStreamLines(manager, [
+        JSON.stringify({ type: 'system', subtype: 'init', tools: [] }),
+        // Assistant only uses tools, no text content
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: [
+              { type: 'tool_use', id: 'tool-1', name: 'mcp__smoke-tools__write_to_terminal', input: { text: 'echo hello' } },
+            ],
+            stop_reason: 'tool_use',
+          },
+        }),
+        JSON.stringify({
+          type: 'user',
+          message: {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'tool-1', content: 'hello' }],
+          },
+        }),
+        // Final assistant turn has NO text — only tool_use
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: [
+              { type: 'tool_use', id: 'tool-2', name: 'mcp__smoke-tools__write_to_terminal', input: { text: 'echo done' } },
+            ],
+            stop_reason: 'tool_use',
+          },
+        }),
+        JSON.stringify({
+          type: 'user',
+          message: {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'tool-2', content: 'done' }],
+          },
+        }),
+        // Result event has the text summary
+        JSON.stringify({ type: 'result', subtype: 'success', result: 'I wrote hello and done to the terminal.' }),
+      ])
+
+      // No text from assistant events, but result fallback should provide text
+      const textDeltas = events.filter(e => e.type === 'text_delta')
+      expect(textDeltas.length).toBeGreaterThanOrEqual(1)
+      const fullText = textDeltas
+        .map(e => (e.type === 'text_delta' ? e.delta : ''))
+        .join('')
+      expect(fullText).toBe('I wrote hello and done to the terminal.')
+    })
+
+    it('does not duplicate text when assistant events already provided it', async () => {
+      emittedEvents = []
+      const events = await feedStreamLines(manager, [
+        JSON.stringify({ type: 'system', subtype: 'init', tools: [] }),
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Response text here.' }],
+            stop_reason: 'end_turn',
+          },
+        }),
+        // Result has same text — should NOT be emitted again
+        JSON.stringify({ type: 'result', subtype: 'success', result: 'Response text here.' }),
+      ])
+
+      const textDeltas = events.filter(e => e.type === 'text_delta')
+      // Only one text_delta (from assistant message), not duplicated by result
+      expect(textDeltas.length).toBe(1)
+      if (textDeltas[0].type === 'text_delta') {
+        expect(textDeltas[0].delta).toBe('Response text here.')
+      }
+    })
+
+    it('all emitted events include agentId', async () => {
+      emittedEvents = []
+      const events = await feedStreamLines(manager, [
+        JSON.stringify({ type: 'system', subtype: 'init', tools: [] }),
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            type: 'message',
+            role: 'assistant',
+            content: [{ type: 'text', text: 'Hi' }],
+          },
+        }),
+        JSON.stringify({ type: 'result', subtype: 'success', result: 'Hi' }),
+      ])
+
+      // Every event should have agentId
+      for (const event of events) {
+        expect((event as any).agentId).toBe('test-agent-id')
+      }
+    })
+  })
 })

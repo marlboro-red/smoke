@@ -392,9 +392,13 @@ export class ClaudeCodeManager {
       }
 
       let stdout = ''
-      // Track whether we received streaming text to avoid duplicating
-      // the full text from assistant.message and result events.
-      let hasStreamedText = false
+      // Track whether we received streaming text (assistant/text events)
+      // for the CURRENT turn — reset when we see a new full assistant
+      // message so earlier turns don't suppress later ones.
+      let hasStreamedTextThisTurn = false
+      // Track whether ANY text_delta was emitted across the entire
+      // stream so we can fall back to the result event's text.
+      let anyTextEmitted = false
       let streamEventCount = 0
       // Set when the inactivity timer kills the process so the close
       // handler can emit a more helpful error message.
@@ -412,12 +416,37 @@ export class ClaudeCodeManager {
             conversationId: conv.id,
             meta: { eventType, eventSubtype },
           })
-          this.processStreamEvent(conv, event, hasStreamedText)
+          const emitted = this.processStreamEvent(conv, event, hasStreamedTextThisTurn)
+          if (emitted) anyTextEmitted = true
+          if (eventType === 'assistant' && eventSubtype === 'text') {
+            hasStreamedTextThisTurn = true
+          }
+          // Reset per-turn streaming flag when we see a full assistant
+          // message (the boundary between turns).
           if (
-            (event as Record<string, unknown>).type === 'assistant' &&
-            (event as Record<string, unknown>).subtype === 'text'
+            eventType === 'assistant' &&
+            !eventSubtype &&
+            (event as Record<string, unknown>).message
           ) {
-            hasStreamedText = true
+            hasStreamedTextThisTurn = false
+          }
+          // Fallback: if we reach the result event and no text was
+          // emitted from any earlier source, use result.result.
+          if (eventType === 'result' && !anyTextEmitted) {
+            const resultText = (event as Record<string, unknown>).result as string | undefined
+            if (resultText) {
+              aiLogger.info('stream', 'No text from assistant events — using result fallback', {
+                agentId: this.agentId,
+                conversationId: conv.id,
+                meta: { resultLength: resultText.length },
+              })
+              this.emit({
+                type: 'text_delta',
+                conversationId: conv.id,
+                delta: resultText,
+              })
+              anyTextEmitted = true
+            }
           }
         } catch {
           // Non-JSON line — log as dropped
@@ -549,16 +578,19 @@ export class ClaudeCodeManager {
    *   {"type":"result","result":"...","cost":...}         — final result
    *
    * Text appears in three places: streaming subtype=text events, the full
-   * assistant message content, and the result event. We only emit text from
-   * one source to avoid triplication. When streaming text has been received,
-   * we skip the duplicate text from message.content and result.
+   * assistant message content, and the result event. We prefer streaming
+   * text, fall back to message.content, and finally fall back to
+   * result.result if no text was emitted from earlier sources.
+   *
+   * Returns true if a text_delta was emitted.
    */
   private processStreamEvent(
     conv: ConversationState,
     event: Record<string, unknown>,
-    hasStreamedText: boolean
-  ): void {
+    hasStreamedTextThisTurn: boolean
+  ): boolean {
     const type = event.type as string
+    let textEmitted = false
 
     // Handle assistant events (streaming text + full message)
     if (type === 'assistant') {
@@ -569,21 +601,26 @@ export class ClaudeCodeManager {
           conversationId: conv.id,
           delta: event.text as string,
         })
+        textEmitted = true
       }
 
       // Handle full message — extract tool_use blocks always, but only
-      // emit text blocks if no streaming text was received (fallback).
+      // emit text blocks if no streaming text was received this turn.
       const message = event.message as Record<string, unknown> | undefined
       if (message) {
         const content = message.content as Array<Record<string, unknown>> | undefined
         if (content) {
           for (const block of content) {
-            if (block.type === 'text' && !hasStreamedText) {
-              this.emit({
-                type: 'text_delta',
-                conversationId: conv.id,
-                delta: block.text as string,
-              })
+            if (block.type === 'text' && !hasStreamedTextThisTurn) {
+              const text = block.text as string
+              if (text) {
+                this.emit({
+                  type: 'text_delta',
+                  conversationId: conv.id,
+                  delta: text,
+                })
+                textEmitted = true
+              }
             } else if (block.type === 'tool_use') {
               this.emit({
                 type: 'tool_use',
@@ -607,6 +644,7 @@ export class ClaudeCodeManager {
           conversationId: conv.id,
           delta: delta.text as string,
         })
+        textEmitted = true
       }
     }
 
@@ -632,9 +670,12 @@ export class ClaudeCodeManager {
       })
     }
 
-    // Handle result event (final) — text is always a duplicate of either
-    // streaming text or message.content, so we never re-emit it here.
-    // message_complete is emitted in the 'close' handler.
+    // Handle result event (final) — used as a last-resort fallback
+    // when no text was emitted from assistant events. The caller
+    // tracks anyTextEmitted and passes it here via the return value.
+    // The actual fallback emission happens in processLine.
+
+    return textEmitted
   }
 
   /**
