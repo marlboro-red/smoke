@@ -199,5 +199,40 @@ describe('ClaudeCodeManager', () => {
         expect(errorEvent.error).toContain('Failed to spawn Claude Code')
       }
     })
+
+    it('passes a valid UUID as --session-id, not a prefixed string (smoke-0gy6)', async () => {
+      const { spawn } = await import('child_process')
+      const mockSpawn = vi.mocked(spawn)
+
+      const mockProc = {
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
+        kill: vi.fn(),
+        stdin: { write: vi.fn(), end: vi.fn() },
+      }
+
+      mockProc.on.mockImplementation((event: string, handler: Function) => {
+        if (event === 'close') {
+          setTimeout(() => handler(0), 0)
+        }
+        return mockProc
+      })
+
+      mockSpawn.mockReturnValue(mockProc as any)
+
+      await manager.sendMessage('hello')
+
+      // Verify spawn was called with --session-id followed by a pure UUID value
+      const spawnArgs = mockSpawn.mock.calls[0][1] as string[]
+      const sessionIdIdx = spawnArgs.indexOf('--session-id')
+      expect(sessionIdIdx).toBeGreaterThan(-1)
+
+      const sessionId = spawnArgs[sessionIdIdx + 1]
+      // Session ID must NOT contain the old "smoke-" prefix
+      expect(sessionId).not.toMatch(/^smoke-/)
+      // Session ID should be exactly what uuid() returns (our mock returns 'test-conv-id')
+      expect(sessionId).toBe('test-conv-id')
+    })
   })
 })
