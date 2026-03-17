@@ -615,6 +615,16 @@ describe('registerIpcHandlers', () => {
         handlers['fs:readfile']({}, { path: '/etc/passwd' })
       ).rejects.toThrow('Access denied')
     })
+
+    it('allows reading a file inside defaultCwd workspace (smoke-goat regression)', async () => {
+      // Set defaultCwd to the temp dir (simulates opening a workspace)
+      mockConfig.preferences.defaultCwd = tmpDir
+      const filePath = path.join(tmpDir, 'test.txt')
+      const result = await handlers['fs:readfile']({}, { path: filePath })
+      expect(result).toEqual({ content: 'file content here', size: 17 })
+      // Clean up
+      mockConfig.preferences.defaultCwd = ''
+    })
   })
 
   describe('FS_READFILE_BASE64', () => {

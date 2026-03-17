@@ -445,9 +445,12 @@ export async function registerIpcHandlers(
     const filePath = path.resolve(request.path)
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
 
-    // Safety: reject paths outside the user's home directory and project cwd
+    // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
     const homedir = require('os').homedir()
-    await assertWithinAny(filePath, [homedir, launchCwd])
+    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
+    const allowed = [homedir, launchCwd]
+    if (defaultCwd) allowed.push(defaultCwd)
+    await assertWithinAny(filePath, allowed)
 
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {
@@ -473,9 +476,12 @@ export async function registerIpcHandlers(
     const filePath = path.resolve(request.path)
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
 
-    // Safety: reject paths outside the user's home directory and project cwd
+    // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
     const homedir = require('os').homedir()
-    await assertWithinAny(filePath, [homedir, launchCwd])
+    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
+    const allowed = [homedir, launchCwd]
+    if (defaultCwd) allowed.push(defaultCwd)
+    await assertWithinAny(filePath, allowed)
 
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {
