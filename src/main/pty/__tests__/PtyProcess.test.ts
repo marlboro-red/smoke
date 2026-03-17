@@ -15,14 +15,13 @@ vi.mock('node-pty', () => ({
   spawn: vi.fn(() => mockPty),
 }))
 
-// Mock fs
+// Mock fs — existsSync is the only gate for shell resolution now
 vi.mock('fs', () => ({
-  existsSync: vi.fn((path: string) => path !== '/nonexistent'),
-  accessSync: vi.fn((path: string) => {
-    if (path === '/usr/bin/zsh' || path === '/bin/bash') return
-    throw new Error('EACCES')
+  existsSync: vi.fn((p: string) => {
+    if (p === '/nonexistent') return false
+    if (p.startsWith('/bad/')) return false
+    return true
   }),
-  constants: { X_OK: 1 },
 }))
 
 vi.mock('os', () => ({
@@ -99,6 +98,22 @@ describe('PtyProcess', () => {
       // Should use getDefaultShell() result, not the bad shell
       const calledShell = (ptySpawn as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledShell).not.toBe('/bad/shell')
+    })
+
+    it('resolves bare shell name via PATH (e.g. nu.exe)', () => {
+      // Simulate a PATH containing a directory with nu.exe
+      const origPath = process.env.PATH
+      process.env.PATH = '/test-bin' + (process.platform === 'win32' ? ';' : ':') + (origPath || '')
+      try {
+        new PtyProcess({ id: 'test-path-resolve', cwd: '/tmp', shell: 'nu.exe' })
+
+        // existsSync mock returns true for /test-bin/nu.exe, so it should
+        // resolve to the full path instead of falling back to default shell
+        const calledShell = (ptySpawn as ReturnType<typeof vi.fn>).mock.calls[0][0]
+        expect(calledShell).toContain('nu.exe')
+      } finally {
+        process.env.PATH = origPath
+      }
     })
 
     it('passes custom args to PTY', () => {
