@@ -454,6 +454,15 @@ export class ClaudeCodeManager {
             conversationId: conv.id,
             meta: { code, durationMs, streamEvents: streamEventCount },
           })
+          // Emit message_complete so the renderer cleans up its
+          // per-agent message tracking (currentMessageIds). Without this,
+          // the next message's text would be appended to the old
+          // (aborted) assistant message instead of creating a new one.
+          this.emit({
+            type: 'message_complete',
+            conversationId: conv.id,
+            stopReason: 'abort',
+          })
           // User-initiated abort — not an error
           conv.aborted = false
           settle('reject', new Error('aborted'))

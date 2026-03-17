@@ -90,7 +90,10 @@ export function useAiStream(): void {
           })
           store.completeGeneration(agentId)
           currentMessageIds.current.delete(agentId)
-          addToast('AI task completed', 'success')
+          // Don't show success toast for user-initiated aborts
+          if (event.stopReason !== 'abort') {
+            addToast('AI task completed', 'success')
+          }
           break
         }
 
