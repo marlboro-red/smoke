@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import * as path from 'path'
 import * as fs from 'fs/promises'
 import * as os from 'os'
-import { isWithinBoundary, resolveNearestReal, assertWithinHome } from '../pathBoundary'
+import { isWithinBoundary, resolveNearestReal, assertWithinHome, assertWithinAny } from '../pathBoundary'
 
 describe('isWithinBoundary', () => {
   it('allows a path directly inside the boundary', () => {
@@ -149,6 +149,57 @@ describe('assertWithinHome', () => {
   it('rejects absolute path completely outside home', async () => {
     await expect(
       assertWithinHome('/etc/shadow', tmpHome)
+    ).rejects.toThrow('Access denied')
+  })
+})
+
+describe('assertWithinAny', () => {
+  let tmpHome: string
+  let tmpProject: string
+  let outsideDir: string
+
+  beforeAll(async () => {
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-home-'))
+    tmpProject = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-project-'))
+    outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-outside-'))
+
+    await fs.mkdir(path.join(tmpHome, 'docs'))
+    await fs.mkdir(path.join(tmpProject, 'src'))
+
+    // Symlink inside project pointing outside
+    await fs.symlink(outsideDir, path.join(tmpProject, 'escape-link'))
+  })
+
+  afterAll(async () => {
+    await fs.rm(tmpHome, { recursive: true, force: true })
+    await fs.rm(tmpProject, { recursive: true, force: true })
+    await fs.rm(outsideDir, { recursive: true, force: true })
+  })
+
+  it('allows a path inside the first boundary (home)', async () => {
+    await expect(
+      assertWithinAny(path.join(tmpHome, 'docs', 'readme.md'), [tmpHome, tmpProject])
+    ).resolves.toBeUndefined()
+  })
+
+  it('allows a path inside the second boundary (project)', async () => {
+    await expect(
+      assertWithinAny(path.join(tmpProject, 'src', 'index.ts'), [tmpHome, tmpProject])
+    ).resolves.toBeUndefined()
+  })
+
+  it('rejects a path outside all boundaries', async () => {
+    await expect(
+      assertWithinAny('/etc/passwd', [tmpHome, tmpProject])
+    ).rejects.toThrow('Access denied')
+  })
+
+  it('rejects a symlink escape from a boundary', async () => {
+    await expect(
+      assertWithinAny(
+        path.join(tmpProject, 'escape-link', 'secret.txt'),
+        [tmpHome, tmpProject]
+      )
     ).rejects.toThrow('Access denied')
   })
 })

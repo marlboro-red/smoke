@@ -75,3 +75,27 @@ export async function assertWithinHome(
     throw new Error('Access denied: path must be within the user home directory')
   }
 }
+
+/**
+ * Assert that a file path is within at least one of the provided boundary
+ * directories.  Resolves symlinks on the nearest existing ancestor to
+ * prevent symlink escapes.
+ *
+ * Useful for read operations where access should be allowed from both
+ * the user home directory and the project working directory.
+ */
+export async function assertWithinAny(
+  filePath: string,
+  boundaries: string[]
+): Promise<void> {
+  const realPath = await resolveNearestReal(filePath)
+
+  for (const boundary of boundaries) {
+    const realBoundary = await resolveNearestReal(boundary)
+    if (isWithinBoundary(realPath, realBoundary)) return
+  }
+
+  throw new Error(
+    'Access denied: path must be within an allowed directory'
+  )
+}

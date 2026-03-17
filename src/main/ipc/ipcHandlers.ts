@@ -12,7 +12,7 @@ import type { Layout, Bookmark, Preferences, SmokeConfig } from '../config/Confi
 import { terminalOutputBuffer } from '../ai/TerminalOutputBuffer'
 import { AgentManager } from '../ai/AgentManager'
 import { FileWatcher } from '../watcher/FileWatcher'
-import { assertWithinHome, isWithinBoundary } from './pathBoundary'
+import { assertWithinHome, assertWithinAny, isWithinBoundary } from './pathBoundary'
 import { FilenameIndex } from '../index/FilenameIndex'
 import { buildCodeGraph, expandCodeGraph, buildDependentsGraph, getDependents, ensureIndex, getIndexStats, invalidateIndex, parseImports, detectLanguage, resolveImport, loadPathAliases, computeLayout, computeIncrementalLayout, scoreRelevance, computeWorkspaceLayout, parseTask, collectContext } from '../codegraph'
 import { SearchIndex } from '../codegraph/SearchIndex'
@@ -445,9 +445,9 @@ export async function registerIpcHandlers(
     const filePath = path.resolve(request.path)
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
 
-    // Safety: reject absolute paths outside the user's home directory
+    // Safety: reject paths outside the user's home directory and project cwd
     const homedir = require('os').homedir()
-    await assertWithinHome(filePath, homedir)
+    await assertWithinAny(filePath, [homedir, launchCwd])
 
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {
@@ -473,9 +473,9 @@ export async function registerIpcHandlers(
     const filePath = path.resolve(request.path)
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
 
-    // Safety: reject absolute paths outside the user's home directory
+    // Safety: reject paths outside the user's home directory and project cwd
     const homedir = require('os').homedir()
-    await assertWithinHome(filePath, homedir)
+    await assertWithinAny(filePath, [homedir, launchCwd])
 
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {
