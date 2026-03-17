@@ -124,27 +124,11 @@ export class PtyProcess extends EventEmitter {
   }
 
   /**
-   * Gracefully close the PTY: write `exit` to the shell, wait briefly for a
-   * clean exit, then force-kill if still alive.
+   * Kill the PTY process immediately. The UI has already been removed,
+   * so there is no need for a graceful shell exit.
    */
   gracefulKill(): void {
-    if (this.exited) return
-
-    // Try sending `exit` to the shell for a clean exit (code 0)
-    try {
-      this.pty.write('exit\r')
-    } catch {
-      // Shell might not accept input — fall through to force kill
-    }
-
-    // If the process hasn't exited after 300ms, force kill
-    const timer = setTimeout(() => {
-      this.kill()
-    }, 300)
-
-    this.once('exit', () => {
-      clearTimeout(timer)
-    })
+    this.kill()
   }
 
   pause(): void {

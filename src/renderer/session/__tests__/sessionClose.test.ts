@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { sessionStore } from '../../stores/sessionStore'
 import { snapshotStore } from '../../stores/snapshotStore'
 
@@ -10,14 +10,8 @@ vi.mock('../../terminal/terminalRegistry', () => ({
 import { unregisterTerminal } from '../../terminal/terminalRegistry'
 
 // Mock window.smokeAPI
-let exitCallbacks: Array<(event: { id: string; exitCode: number; signal?: number }) => void> = []
 const mockKill = vi.fn()
-const mockOnExit = vi.fn((cb: any) => {
-  exitCallbacks.push(cb)
-  return () => {
-    exitCallbacks = exitCallbacks.filter(c => c !== cb)
-  }
-})
+const mockOnExit = vi.fn(() => () => {})
 
 Object.defineProperty(globalThis, 'window', {
   value: {
@@ -31,15 +25,11 @@ Object.defineProperty(globalThis, 'window', {
   writable: true,
 })
 
-// We need to re-import after setting up mocks, and we need to clear the pendingCloses set
-// between tests. Since pendingCloses is module-scoped, we import fresh or reset manually.
 import { closeSession } from '../useSessionClose'
 
 describe('closeSession', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
     vi.clearAllMocks()
-    exitCallbacks = []
 
     sessionStore.setState({
       sessions: new Map(),
@@ -48,10 +38,6 @@ describe('closeSession', () => {
       nextZIndex: 1,
     })
     snapshotStore.setState({ snapshots: new Map() })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
   })
 
   function createTestSession(id: string, status: string = 'running') {
@@ -65,23 +51,22 @@ describe('closeSession', () => {
     return id
   }
 
-  it('kills PTY and cleans up on exit event', () => {
+  it('removes session from UI immediately and kills PTY in background', () => {
     createTestSession('sess-1')
     snapshotStore.getState().setSnapshot('sess-1', ['line1'])
 
     closeSession('sess-1')
 
-    expect(mockKill).toHaveBeenCalledWith('sess-1')
-
-    // Simulate PTY exit
-    exitCallbacks.forEach(cb => cb({ id: 'sess-1', exitCode: 0 }))
-
+    // Session should be removed from UI immediately
     expect(unregisterTerminal).toHaveBeenCalledWith('sess-1')
     expect(sessionStore.getState().sessions.has('sess-1')).toBe(false)
     expect(snapshotStore.getState().snapshots.has('sess-1')).toBe(false)
+
+    // PTY kill should be sent in background
+    expect(mockKill).toHaveBeenCalledWith('sess-1')
   })
 
-  it('cleans up immediately if session already exited', () => {
+  it('cleans up immediately without killing PTY if session already exited', () => {
     createTestSession('sess-2', 'exited')
 
     closeSession('sess-2')
@@ -90,21 +75,6 @@ describe('closeSession', () => {
     expect(mockKill).not.toHaveBeenCalled()
     expect(unregisterTerminal).toHaveBeenCalledWith('sess-2')
     expect(sessionStore.getState().sessions.has('sess-2')).toBe(false)
-  })
-
-  it('cleans up after EXIT_TIMEOUT if onExit never fires (smoke-9dc regression)', () => {
-    createTestSession('sess-3')
-
-    closeSession('sess-3')
-
-    expect(mockKill).toHaveBeenCalledWith('sess-3')
-    expect(sessionStore.getState().sessions.has('sess-3')).toBe(true)
-
-    // Advance past EXIT_TIMEOUT (5000ms)
-    vi.advanceTimersByTime(5000)
-
-    expect(unregisterTerminal).toHaveBeenCalledWith('sess-3')
-    expect(sessionStore.getState().sessions.has('sess-3')).toBe(false)
   })
 
   it('prevents double-close (smoke-9dc regression)', () => {
@@ -121,20 +91,5 @@ describe('closeSession', () => {
     // Should not throw
     closeSession('nonexistent')
     expect(mockKill).not.toHaveBeenCalled()
-  })
-
-  it('clears timeout when exit fires before timeout', () => {
-    createTestSession('sess-5')
-
-    closeSession('sess-5')
-
-    // Simulate exit before timeout
-    exitCallbacks.forEach(cb => cb({ id: 'sess-5', exitCode: 0 }))
-
-    expect(unregisterTerminal).toHaveBeenCalledTimes(1)
-
-    // Advance past timeout — should NOT call unregister again
-    vi.advanceTimersByTime(5000)
-    expect(unregisterTerminal).toHaveBeenCalledTimes(1)
   })
 })
