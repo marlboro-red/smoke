@@ -24,6 +24,7 @@ export const AGENT_COLORS = [
 export interface AgentMeta {
   groupId: string | null
   role: string | null
+  model: string | null
   color: string
   allowedSessionIds: Set<string> | null // null = unrestricted
 }
@@ -33,6 +34,7 @@ export interface AgentInfo {
   name: string
   groupId: string | null
   role: string | null
+  model: string | null
   color: string
 }
 
@@ -98,6 +100,7 @@ export class AgentManager {
     const meta: AgentMeta = {
       groupId: null,
       role: null,
+      model: null,
       color,
       allowedSessionIds: null,
     }
@@ -165,6 +168,18 @@ export class AgentManager {
     meta.role = role
   }
 
+  /** Set the agent's model. */
+  setAgentModel(agentId: string, model: string | null): void {
+    const meta = this.agentMeta.get(agentId)
+    if (!meta) return
+    meta.model = model
+    // Update the ClaudeCodeManager so subsequent messages use this model
+    const agent = this.agents.get(agentId)
+    if (agent) {
+      agent.model = model
+    }
+  }
+
   /** Update the scope (allowed session IDs) for an agent. */
   updateScope(agentId: string, sessionIds: string[]): void {
     const meta = this.agentMeta.get(agentId)
@@ -187,6 +202,7 @@ export class AgentManager {
         name: agent.name,
         groupId: meta?.groupId ?? null,
         role: meta?.role ?? null,
+        model: meta?.model ?? null,
         color: meta?.color ?? AGENT_COLORS[0],
       })
     }

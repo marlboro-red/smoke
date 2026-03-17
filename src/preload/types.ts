@@ -229,6 +229,7 @@ export interface AgentInfo {
   name: string
   groupId: string | null
   role: string | null
+  model: string | null
   color: string
 }
 
@@ -602,6 +603,7 @@ export interface SmokeAPI {
     list: () => Promise<AgentInfo[]>
     assignGroup: (agentId: string, groupId: string | null, memberSessionIds?: string[]) => Promise<void>
     setRole: (agentId: string, role: string | null) => Promise<void>
+    setModel: (agentId: string, model: string | null) => Promise<void>
     updateScope: (agentId: string, sessionIds: string[]) => Promise<void>
   }
   task: {

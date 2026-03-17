@@ -120,6 +120,16 @@ export default function AiChatPanel(): JSX.Element {
     [activeAgentId]
   )
 
+  const handleSetModel = useCallback(
+    (model: string) => {
+      if (!activeAgentId) return
+      const resolvedModel = model === '' ? null : model
+      agentStore.getState().setModel(activeAgentId, resolvedModel)
+      window.smokeAPI?.agent.setModel(activeAgentId, resolvedModel)
+    },
+    [activeAgentId]
+  )
+
   const messages = activeAgent?.messages ?? []
   const isGenerating = activeAgent?.isGenerating ?? false
   const error = activeAgent?.error ?? null
@@ -224,6 +234,19 @@ export default function AiChatPanel(): JSX.Element {
                 {activeAgent.role ? `Role: ${activeAgent.role}` : 'Set role...'}
               </button>
             )}
+          </div>
+          <div className="ai-agent-config-row">
+            <select
+              className="ai-agent-model-select"
+              value={activeAgent.model ?? ''}
+              onChange={(e) => handleSetModel(e.target.value)}
+              title="Select AI model"
+            >
+              <option value="">Default model</option>
+              <option value="claude-opus-4-6">Claude Opus</option>
+              <option value="claude-sonnet-4-6">Claude Sonnet</option>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku</option>
+            </select>
           </div>
         </div>
       )}
