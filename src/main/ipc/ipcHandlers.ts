@@ -55,6 +55,7 @@ import {
   AGENT_LIST,
   AGENT_ASSIGN_GROUP,
   AGENT_SET_ROLE,
+  AGENT_SET_MODEL,
   AGENT_UPDATE_SCOPE,
   PROJECT_INDEX_BUILD,
   PROJECT_INDEX_LOOKUP,
@@ -124,6 +125,7 @@ import {
   AgentRemoveRequest,
   AgentAssignGroupRequest,
   AgentSetRoleRequest,
+  AgentSetModelRequest,
   AgentUpdateScopeRequest,
   ProjectIndexBuildRequest,
   ProjectIndexBuildResponse,
@@ -876,6 +878,10 @@ export async function registerIpcHandlers(
 
   ipcMain.handle(AGENT_SET_ROLE, (_event, request: AgentSetRoleRequest): void => {
     agentManager.setAgentRole(request.agentId, request.role)
+  })
+
+  ipcMain.handle(AGENT_SET_MODEL, (_event, request: AgentSetModelRequest): void => {
+    agentManager.setAgentModel(request.agentId, request.model)
   })
 
   ipcMain.handle(AGENT_UPDATE_SCOPE, (_event, request: AgentUpdateScopeRequest): void => {

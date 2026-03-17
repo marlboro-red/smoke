@@ -55,6 +55,9 @@ export class ClaudeCodeManager {
   /** Human-readable name for this agent. */
   name: string
 
+  /** Model override for this agent (null = use Claude Code default). */
+  model: string | null = null
+
   constructor(
     getMainWindow: () => BrowserWindow | null,
     mcpBridge: McpBridge,
@@ -256,6 +259,11 @@ export class ClaudeCodeManager {
       '--mcp-config', mcpConfigPath,
       '--allowedTools', 'mcp__smoke-tools__*',
     ]
+
+    // Use agent-specific model if set
+    if (this.model) {
+      args.push('--model', this.model)
+    }
 
     // Continue conversation if not the first message
     if (isFirstMessage) {

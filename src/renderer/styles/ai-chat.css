@@ -209,6 +209,23 @@
   border-color: var(--accent-strong);
 }
 
+.ai-agent-model-select {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  padding: 2px var(--space-sm);
+  outline: none;
+  cursor: pointer;
+}
+
+.ai-agent-model-select:focus {
+  border-color: var(--accent-strong);
+}
+
 .ai-agent-role-btn {
   flex: 1;
   background: none;

@@ -56,6 +56,7 @@ export const AGENT_REMOVE = 'agent:remove' as const
 export const AGENT_LIST = 'agent:list' as const
 export const AGENT_ASSIGN_GROUP = 'agent:assign-group' as const
 export const AGENT_SET_ROLE = 'agent:set-role' as const
+export const AGENT_SET_MODEL = 'agent:set-model' as const
 export const AGENT_UPDATE_SCOPE = 'agent:update-scope' as const
 
 // Canvas export channels
@@ -336,6 +337,11 @@ export interface AgentSetRoleRequest {
   role: string | null
 }
 
+export interface AgentSetModelRequest {
+  agentId: string
+  model: string | null
+}
+
 export interface AgentUpdateScopeRequest {
   agentId: string
   sessionIds: string[]
@@ -346,6 +352,7 @@ export interface AgentInfo {
   name: string
   groupId: string | null
   role: string | null
+  model: string | null
   color: string
 }
 

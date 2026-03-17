@@ -71,6 +71,7 @@ describe('agentStore', () => {
       const agent = agentStore.getState().agents.get('a1')!
       expect(agent.assignedGroupId).toBeNull()
       expect(agent.role).toBeNull()
+      expect(agent.model).toBeNull()
       expect(agent.color).toBeTruthy()
     })
   })
@@ -118,6 +119,21 @@ describe('agentStore', () => {
       agentStore.getState().setRole('a1', 'backend')
       agentStore.getState().setRole('a1', null)
       expect(agentStore.getState().agents.get('a1')!.role).toBeNull()
+    })
+  })
+
+  describe('setModel', () => {
+    it('sets a model on an agent', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().setModel('a1', 'claude-sonnet-4-6')
+      expect(agentStore.getState().agents.get('a1')!.model).toBe('claude-sonnet-4-6')
+    })
+
+    it('clears model with null', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().setModel('a1', 'claude-opus-4-6')
+      agentStore.getState().setModel('a1', null)
+      expect(agentStore.getState().agents.get('a1')!.model).toBeNull()
     })
   })
 
