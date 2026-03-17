@@ -129,10 +129,11 @@ export function duplicateSession(sourceId: string): void {
         const src = source as PluginSession
         newSession = state.createPluginSession(
           src.type,
-          src.title,
+          src.pluginId,
+          src.pluginSource,
+          src.pluginManifest,
           { ...src.pluginData },
-          pos,
-          { width: src.size.width, height: src.size.height }
+          pos
         )
       }
       break

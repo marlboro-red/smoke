@@ -65,7 +65,13 @@ function serializeCurrentLayout(name: string): Layout {
       if (isPluginElementType(s.type)) {
         const reg = getPluginElementRegistration(s.type)
         const data = reg?.serializeData ? reg.serializeData(s) : s.pluginData
-        return { ...base, pluginData: data }
+        return {
+          ...base,
+          pluginId: s.pluginId,
+          pluginSource: s.pluginSource,
+          pluginManifest: s.pluginManifest,
+          pluginData: data,
+        }
       }
       return base
     }),
@@ -216,12 +222,19 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
             const pluginData = reg.deserializeData
               ? reg.deserializeData(saved.pluginData ?? {})
               : (saved.pluginData ?? {})
+            const manifest = saved.pluginManifest ?? {
+              name: reg.displayName,
+              version: '0.0.0',
+              entryPoint: '',
+              defaultSize: reg.defaultSize,
+            }
             const session = sessionStore.getState().createPluginSession(
               elementType as PluginElementType,
-              saved.title,
+              saved.pluginId ?? elementType.replace('plugin:', ''),
+              saved.pluginSource ?? '',
+              manifest,
               pluginData,
-              pos,
-              { width: size.width, height: size.height }
+              pos
             )
             sessionStore.getState().updateSession(session.id, {
               size: { ...saved.size, width: size.width, height: size.height },
@@ -440,12 +453,19 @@ export function useLayoutRestore(): {
               const pluginData = reg.deserializeData
                 ? reg.deserializeData(saved.pluginData ?? {})
                 : (saved.pluginData ?? {})
+              const manifest = saved.pluginManifest ?? {
+                name: reg.displayName,
+                version: '0.0.0',
+                entryPoint: '',
+                defaultSize: reg.defaultSize,
+              }
               const session = sessionStore.getState().createPluginSession(
                 elementType as PluginElementType,
-                saved.title,
+                saved.pluginId ?? elementType.replace('plugin:', ''),
+                saved.pluginSource ?? '',
+                manifest,
                 pluginData,
-                pos,
-                { width: size.width, height: size.height }
+                pos
               )
               createdId = session.id
               sessionStore.getState().updateSession(session.id, {
