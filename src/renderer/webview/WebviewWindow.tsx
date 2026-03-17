@@ -12,7 +12,6 @@ import { useWindowDrag } from '../window/useWindowDrag'
 import { useWebviewResize } from './useWebviewResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
-import { useCrispWindowZoom, crispWindowStyles } from '../canvas/useCrispWindowZoom'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import { isAllowedUrl, normalizeUrl } from './urlValidation'
@@ -39,7 +38,6 @@ export default React.memo(function WebviewWindow({
   const [isLoading, setIsLoading] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
 
-  const crispZoom = useCrispWindowZoom()
   const focusModeActiveIds = useFocusModeActiveIds()
 
   const isFocused = focusedId === session.id
@@ -239,7 +237,6 @@ export default React.memo(function WebviewWindow({
         width: session.size.width,
         height: session.size.height,
         zIndex: session.zIndex,
-        ...crispWindowStyles(crispZoom),
       }}
       onPointerDown={handlePointerDown}
     >

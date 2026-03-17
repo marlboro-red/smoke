@@ -10,7 +10,6 @@ interface WindowChromeProps {
   isPinned?: boolean
   agentColor?: string | null
   agentRole?: string | null
-  crispZoom?: number
   onTitleChange: (title: string) => void
   onClose: () => void
   onDragStart: (e: React.PointerEvent) => void
@@ -28,7 +27,6 @@ export default function WindowChrome({
   isPinned,
   agentColor,
   agentRole,
-  crispZoom = 1,
   onTitleChange,
   onClose,
   onDragStart,
@@ -87,8 +85,6 @@ export default function WindowChrome({
     },
     [onToggleLock]
   )
-
-  const isCrisp = crispZoom > 1
 
   const chromeContent = (
     <>
@@ -164,29 +160,10 @@ export default function WindowChrome({
   return (
     <div
       className={`window-chrome${isLocked ? ' locked' : ''}`}
-      style={{ height: CHROME_HEIGHT, overflow: isCrisp ? 'hidden' : undefined }}
+      style={{ height: CHROME_HEIGHT }}
       onPointerDown={onDragStart}
     >
-      {isCrisp ? (
-        <div
-          className="window-chrome-crisp"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-md)',
-            padding: '0 10px',
-            width: '100%',
-            height: CHROME_HEIGHT,
-            zoom: crispZoom,
-            transform: `scale(${1 / crispZoom})`,
-            transformOrigin: '0 0',
-          }}
-        >
-          {chromeContent}
-        </div>
-      ) : (
-        chromeContent
-      )}
+      {chromeContent}
     </div>
   )
 }

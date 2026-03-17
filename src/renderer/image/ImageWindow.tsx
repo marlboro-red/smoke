@@ -11,7 +11,6 @@ import { useWindowDrag } from '../window/useWindowDrag'
 import { useImageResize } from './useImageResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
-import { useCrispWindowZoom, crispWindowStyles } from '../canvas/useCrispWindowZoom'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import '../styles/image.css'
@@ -30,8 +29,6 @@ export default React.memo(function ImageWindow({
   const focusedId = useFocusedId()
   const highlightedId = useHighlightedId()
   const selectedIds = useSelectedIds()
-
-  const crispZoom = useCrispWindowZoom()
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
@@ -117,7 +114,6 @@ export default React.memo(function ImageWindow({
         width: session.size.width,
         height: session.size.height + CHROME_HEIGHT,
         zIndex: session.zIndex,
-        ...crispWindowStyles(crispZoom),
       }}
       onPointerDown={handlePointerDown}
     >
