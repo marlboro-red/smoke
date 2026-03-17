@@ -10,7 +10,6 @@ import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
-import { useCrispWindowZoom, crispWindowStyles } from '../canvas/useCrispWindowZoom'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import TerminalWidget from './TerminalWidget'
@@ -40,7 +39,6 @@ export default React.memo(function TerminalWindow({
   const charDimsRef = useRef({ width: 8, height: 16 })
   const getSnapshotRef = useRef<(() => string[]) | null>(null)
 
-  const crispZoom = useCrispWindowZoom()
   const focusModeActiveIds = useFocusModeActiveIds()
 
   const isFocused = focusedId === session.id
@@ -194,7 +192,6 @@ export default React.memo(function TerminalWindow({
         zIndex: session.zIndex,
         visibility: hidden ? 'hidden' : undefined,
         pointerEvents: hidden ? 'none' : undefined,
-        ...crispWindowStyles(crispZoom),
       }}
       onPointerDown={handlePointerDown}
     >
@@ -206,7 +203,6 @@ export default React.memo(function TerminalWindow({
         isPinned={session.isPinned}
         agentColor={assignedAgent?.color}
         agentRole={assignedAgent?.role}
-        crispZoom={crispZoom}
         onTitleChange={handleTitleChange}
         onClose={handleClose}
         onDragStart={onDragStart}

@@ -19,7 +19,6 @@ import { buildDepGraph, expandDepGraph, buildDependentsGraph } from '../depgraph
 import { isInActiveGraph, isNodeExpanded } from '../depgraph/GraphCache'
 import { createTerminalAtFileDir } from '../session/useSessionCreation'
 import { goToLineStore, useGoToLineSessionId } from './goToLineStore'
-import { useCrispWindowZoom, crispWindowStyles } from '../canvas/useCrispWindowZoom'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import FileViewerWidget from './FileViewerWidget'
@@ -55,7 +54,6 @@ export default React.memo(function FileViewerWindow({
   const scrollToLineRef = useRef<((line: number) => void) | null>(null)
   const [extractButton, setExtractButton] = useState<{ x: number; y: number } | null>(null)
 
-  const crispZoom = useCrispWindowZoom()
   const focusModeActiveIds = useFocusModeActiveIds()
 
   const isFocused = focusedId === session.id
@@ -355,7 +353,6 @@ export default React.memo(function FileViewerWindow({
         zIndex: session.zIndex,
         visibility: hidden ? 'hidden' : undefined,
         pointerEvents: hidden ? 'none' : undefined,
-        ...crispWindowStyles(crispZoom),
       }}
       onPointerDown={handlePointerDown}
     >
