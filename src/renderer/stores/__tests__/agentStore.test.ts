@@ -137,6 +137,29 @@ describe('agentStore', () => {
     })
   })
 
+  describe('setConversationId (smoke-zrdd)', () => {
+    it('stores conversationId on the agent', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      expect(agentStore.getState().agents.get('a1')!.conversationId).toBeNull()
+      agentStore.getState().setConversationId('a1', 'conv-abc')
+      expect(agentStore.getState().agents.get('a1')!.conversationId).toBe('conv-abc')
+    })
+
+    it('clears conversationId with null', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().setConversationId('a1', 'conv-abc')
+      agentStore.getState().setConversationId('a1', null)
+      expect(agentStore.getState().agents.get('a1')!.conversationId).toBeNull()
+    })
+
+    it('does not affect other agents', () => {
+      agentStore.getState().addAgent('a1', 'Agent 1')
+      agentStore.getState().addAgent('a2', 'Agent 2')
+      agentStore.getState().setConversationId('a1', 'conv-abc')
+      expect(agentStore.getState().agents.get('a2')!.conversationId).toBeNull()
+    })
+  })
+
   describe('findAgentByGroupId', () => {
     it('finds agent assigned to a group', () => {
       agentStore.getState().addAgent('a1', 'Agent 1')
@@ -233,6 +256,13 @@ describe('agentStore', () => {
       agentStore.getState().clearHistory('a1')
       expect(agentStore.getState().agents.get('a1')!.messages).toHaveLength(0)
       expect(agentStore.getState().agents.get('a2')!.messages).toHaveLength(1)
+    })
+
+    it('clears conversationId when clearing history (smoke-zrdd)', () => {
+      agentStore.getState().setConversationId('a1', 'conv-123')
+      expect(agentStore.getState().agents.get('a1')!.conversationId).toBe('conv-123')
+      agentStore.getState().clearHistory('a1')
+      expect(agentStore.getState().agents.get('a1')!.conversationId).toBeNull()
     })
 
     it('truncates messages when exceeding MAX_MESSAGES_PER_AGENT (500)', () => {

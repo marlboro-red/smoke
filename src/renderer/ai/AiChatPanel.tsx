@@ -52,7 +52,8 @@ export default function AiChatPanel(): JSX.Element {
       const store = agentStore.getState()
       store.addUserMessage(agentId, text)
       store.startGeneration(agentId)
-      const sendPromise = window.smokeAPI?.ai.send(agentId, text)
+      const existingConvId = store.agents.get(agentId)?.conversationId ?? undefined
+      const sendPromise = window.smokeAPI?.ai.send(agentId, text, existingConvId)
       if (!sendPromise) return
 
       withTimeout(sendPromise, AI_SEND_TIMEOUT_MS)
@@ -61,6 +62,11 @@ export default function AiChatPanel(): JSX.Element {
             console.error('AI send error:', response.error)
             agentStore.getState().setError(agentId, response.error)
           } else {
+            // Store the conversationId so subsequent messages continue the
+            // same conversation instead of spawning a fresh subprocess.
+            if (response?.conversationId) {
+              agentStore.getState().setConversationId(agentId, response.conversationId)
+            }
             // Safety net: ensure generation completes even if stream events
             // (message_complete) were missed due to IPC timing or window state.
             // The IPC Promise resolves after the subprocess exits, so by this

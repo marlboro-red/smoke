@@ -24,6 +24,7 @@ export interface AgentState {
   role: string | null
   model: string | null
   color: string
+  conversationId: string | null
   messages: ChatMessage[]
   isGenerating: boolean
   error: string | null
@@ -42,6 +43,7 @@ interface AgentStoreState {
   assignGroup: (agentId: string, groupId: string | null) => void
   setRole: (agentId: string, role: string | null) => void
   setModel: (agentId: string, model: string | null) => void
+  setConversationId: (agentId: string, conversationId: string | null) => void
 
   // Per-agent message operations
   startGeneration: (agentId: string) => void
@@ -88,6 +90,7 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
         role: null,
         model: null,
         color: agentColor,
+        conversationId: null,
         messages: [],
         isGenerating: false,
         error: null,
@@ -139,6 +142,15 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
       agents: updateAgent(state.agents, agentId, (a) => ({
         ...a,
         model,
+      })),
+    }))
+  },
+
+  setConversationId: (agentId, conversationId) => {
+    set((state) => ({
+      agents: updateAgent(state.agents, agentId, (a) => ({
+        ...a,
+        conversationId,
       })),
     }))
   },
@@ -266,6 +278,7 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
     set((state) => ({
       agents: updateAgent(state.agents, agentId, (a) => ({
         ...a,
+        conversationId: null,
         messages: [],
         isGenerating: false,
         error: null,
