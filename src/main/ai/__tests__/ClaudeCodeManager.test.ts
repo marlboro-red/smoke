@@ -261,6 +261,49 @@ describe('ClaudeCodeManager', () => {
       }
     })
 
+    it('uses --resume for second message in same conversation (smoke-zrdd)', async () => {
+      const { spawn } = await import('child_process')
+      const mockSpawn = vi.mocked(spawn)
+
+      const createMockProc = () => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
+        kill: vi.fn(),
+        stdin: { write: vi.fn(), end: vi.fn() },
+      })
+
+      // First message — process exits normally
+      const proc1 = createMockProc()
+      proc1.on.mockImplementation((event: string, handler: Function) => {
+        if (event === 'close') setTimeout(() => handler(0), 0)
+        return proc1
+      })
+      mockSpawn.mockReturnValue(proc1 as any)
+
+      const convId = await manager.sendMessage('first message')
+
+      // First call should use --system-prompt (not --resume)
+      const args1 = mockSpawn.mock.calls[0][1] as string[]
+      expect(args1).toContain('--system-prompt')
+      expect(args1).not.toContain('--resume')
+
+      // Second message — reuse the same conversation ID
+      const proc2 = createMockProc()
+      proc2.on.mockImplementation((event: string, handler: Function) => {
+        if (event === 'close') setTimeout(() => handler(0), 0)
+        return proc2
+      })
+      mockSpawn.mockReturnValue(proc2 as any)
+
+      await manager.sendMessage('second message', convId)
+
+      // Second call should use --resume (not --system-prompt)
+      const args2 = mockSpawn.mock.calls[1][1] as string[]
+      expect(args2).toContain('--resume')
+      expect(args2).not.toContain('--system-prompt')
+    })
+
     it('passes a valid UUID as --session-id, not a prefixed string (smoke-0gy6)', async () => {
       const { spawn } = await import('child_process')
       const mockSpawn = vi.mocked(spawn)
