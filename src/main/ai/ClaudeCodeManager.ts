@@ -289,6 +289,7 @@ export class ClaudeCodeManager {
 
     const args = [
       '-p',
+      '--verbose',
       '--output-format', 'stream-json',
       '--max-turns', '50',
       '--mcp-config', mcpConfigPath,
