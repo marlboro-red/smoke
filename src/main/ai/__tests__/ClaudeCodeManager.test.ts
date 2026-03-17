@@ -298,10 +298,55 @@ describe('ClaudeCodeManager', () => {
 
       await manager.sendMessage('second message', convId)
 
-      // Second call should use --resume (not --system-prompt)
+      // Second call should use --resume with --fork-session (not --system-prompt)
       const args2 = mockSpawn.mock.calls[1][1] as string[]
       expect(args2).toContain('--resume')
+      expect(args2).toContain('--fork-session')
       expect(args2).not.toContain('--system-prompt')
+    })
+
+    it('passes --fork-session when resuming with --session-id (smoke-4mns)', async () => {
+      const { spawn } = await import('child_process')
+      const mockSpawn = vi.mocked(spawn)
+
+      const createMockProc = () => ({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
+        kill: vi.fn(),
+        stdin: { write: vi.fn(), end: vi.fn() },
+      })
+
+      // First message — process exits normally
+      const proc1 = createMockProc()
+      proc1.on.mockImplementation((event: string, handler: Function) => {
+        if (event === 'close') setTimeout(() => handler(0), 0)
+        return proc1
+      })
+      mockSpawn.mockReturnValue(proc1 as any)
+
+      const convId = await manager.sendMessage('first message')
+
+      // First call: --session-id present, no --fork-session needed
+      const args1 = mockSpawn.mock.calls[0][1] as string[]
+      expect(args1).toContain('--session-id')
+      expect(args1).not.toContain('--fork-session')
+
+      // Second message — reuse conversation
+      const proc2 = createMockProc()
+      proc2.on.mockImplementation((event: string, handler: Function) => {
+        if (event === 'close') setTimeout(() => handler(0), 0)
+        return proc2
+      })
+      mockSpawn.mockReturnValue(proc2 as any)
+
+      await manager.sendMessage('second message', convId)
+
+      // Second call: --session-id + --resume must include --fork-session
+      const args2 = mockSpawn.mock.calls[1][1] as string[]
+      expect(args2).toContain('--session-id')
+      expect(args2).toContain('--resume')
+      expect(args2).toContain('--fork-session')
     })
 
     it('passes a valid UUID as --session-id, not a prefixed string (smoke-0gy6)', async () => {
