@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect } from 'react'
+import React, { useRef, useCallback, useState, useEffect } from 'react'
 import {
   type Region,
   regionStore,
@@ -21,7 +21,7 @@ interface RegionShapeProps {
 
 type ResizeDir = 'e' | 's' | 'se'
 
-export default function RegionShape({ region, zoom, gridSize }: RegionShapeProps): JSX.Element {
+export default React.memo(function RegionShape({ region, zoom, gridSize }: RegionShapeProps): JSX.Element {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(region.name)
   const [showMenu, setShowMenu] = useState(false)
@@ -326,4 +326,4 @@ export default function RegionShape({ region, zoom, gridSize }: RegionShapeProps
       />
     </div>
   )
-}
+})

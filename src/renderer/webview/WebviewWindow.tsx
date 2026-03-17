@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react'
+import React, { useCallback, useRef, useState, useEffect } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
@@ -25,7 +25,7 @@ interface WebviewWindowProps {
   gridSize: number
 }
 
-export default function WebviewWindow({
+export default React.memo(function WebviewWindow({
   session,
   zoom,
   gridSize,
@@ -302,4 +302,4 @@ export default function WebviewWindow({
       <ResizeHandle direction="se" onResizeStart={onResizeStart} />
     </div>
   )
-}
+})

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react'
+import React, { useCallback, useRef, useEffect } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, type Extension } from '@codemirror/state'
 import { indentWithTab } from '@codemirror/commands'
@@ -52,7 +52,7 @@ interface SnippetWindowProps {
   gridSize: number
 }
 
-export default function SnippetWindow({
+export default React.memo(function SnippetWindow({
   session,
   zoom,
   gridSize,
@@ -254,4 +254,4 @@ export default function SnippetWindow({
       <ResizeHandle direction="se" onResizeStart={onResizeStart} />
     </div>
   )
-}
+})

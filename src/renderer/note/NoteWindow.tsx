@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useState } from 'react'
+import React, { useCallback, useRef, useEffect, useState } from 'react'
 import { codeToHtml } from 'shiki'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
@@ -36,7 +36,7 @@ function extractCodeContent(content: string): string {
   return match ? content.slice(match[0].length) : content
 }
 
-export default function NoteWindow({
+export default React.memo(function NoteWindow({
   session,
   zoom,
   gridSize,
@@ -279,4 +279,4 @@ export default function NoteWindow({
       <ResizeHandle direction="se" onResizeStart={onResizeStart} />
     </div>
   )
-}
+})
