@@ -51,6 +51,7 @@ export default function FileViewerWindow({
   const editorViewRef = useRef<EditorView | null>(null)
   const viewerBodyRef = useRef<HTMLDivElement>(null)
   const goToLineInputRef = useRef<HTMLInputElement>(null)
+  const scrollToLineRef = useRef<((line: number) => void) | null>(null)
   const [extractButton, setExtractButton] = useState<{ x: number; y: number } | null>(null)
 
   const focusModeActiveIds = useFocusModeActiveIds()
@@ -82,8 +83,11 @@ export default function FileViewerWindow({
           effects: EditorView.scrollIntoView(line.from, { y: 'center' }),
         })
         view.focus()
+      } else if (scrollToLineRef.current) {
+        // Virtualized read-only mode: use ref-based scroll
+        scrollToLineRef.current(targetLine)
       } else if (viewerBodyRef.current) {
-        // Read-only mode: find the line span and scroll to it
+        // Small-file read-only mode: find the line span and scroll to it
         const lineSpans = viewerBodyRef.current.querySelectorAll('.line')
         const targetSpan = lineSpans[targetLine - 1] as HTMLElement | undefined
         if (targetSpan) {
@@ -431,6 +435,7 @@ export default function FileViewerWindow({
           <FileViewerWidget
             content={session.content}
             language={session.language}
+            scrollToLineRef={scrollToLineRef}
           />
         )}
       </div>

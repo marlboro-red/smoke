@@ -88,6 +88,54 @@
   background-color: var(--bg-primary);
 }
 
+/* ─── Virtualized File Viewer (large files) ─── */
+
+.file-viewer-virtualized {
+  height: 100%;
+  overflow: auto;
+}
+
+.file-viewer-virtualized .file-viewer-virtual-spacer {
+  position: relative;
+}
+
+.file-viewer-virtualized .file-viewer-virtual-pre {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0 var(--space-lg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-code);
+  overflow: visible;
+}
+
+.file-viewer-virtualized code {
+  font-family: inherit;
+  background-color: inherit;
+}
+
+.file-viewer-virtualized .line {
+  display: block;
+  counter-increment: line;
+  background-color: inherit;
+  white-space: pre;
+}
+
+.file-viewer-virtualized .line::before {
+  content: counter(line);
+  display: inline-block;
+  width: 3.5em;
+  padding-right: 1em;
+  text-align: right;
+  color: var(--text-muted, rgba(255, 255, 255, 0.3));
+  user-select: none;
+  position: sticky;
+  left: 0;
+  background-color: inherit;
+}
+
 /* ─── File Viewer Crossfade ─── */
 
 .file-crossfade {
