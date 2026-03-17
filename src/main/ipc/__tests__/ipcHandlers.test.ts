@@ -712,6 +712,16 @@ describe('registerIpcHandlers', () => {
         const result = await handlers['recording:load']({}, { filename: 'nonexistent.json' })
         expect(result).toBeNull()
       })
+
+      it('blocks path traversal via ../ in filename', async () => {
+        const result = await handlers['recording:load']({}, { filename: '../../etc/passwd' })
+        expect(result).toBeNull()
+      })
+
+      it('blocks path traversal via absolute path', async () => {
+        const result = await handlers['recording:load']({}, { filename: '/etc/passwd' })
+        expect(result).toBeNull()
+      })
     })
 
     describe('RECORDING_EXPORT', () => {
@@ -752,6 +762,18 @@ describe('registerIpcHandlers', () => {
 
         const result = await handlers['recording:export']({}, { filename: 'source2.json' })
         expect(result.filePath).toBeNull()
+      })
+
+      it('blocks path traversal via ../ in filename', async () => {
+        await expect(
+          handlers['recording:export']({}, { filename: '../../etc/passwd' })
+        ).rejects.toThrow(/Invalid recording filename/)
+      })
+
+      it('blocks path traversal via absolute path', async () => {
+        await expect(
+          handlers['recording:export']({}, { filename: '/etc/passwd' })
+        ).rejects.toThrow(/Invalid recording filename/)
       })
     })
 
