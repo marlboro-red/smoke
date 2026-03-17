@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useTerminal } from './useTerminal'
 import { usePty } from './usePty'
+import { useCrispZoom } from './useCrispZoom'
 import { useFocusedId, sessionStore } from '../stores/sessionStore'
 import { resolveShortcut } from '../shortcuts/shortcutMap'
 import '@xterm/xterm/css/xterm.css'
@@ -19,6 +20,7 @@ export default function TerminalWidget({ sessionId, cols, rows, isFocused: isFoc
   const containerRef = useRef<HTMLDivElement | null>(null)
   const { terminalRef, getSnapshot, charDims } = useTerminal(containerRef, sessionId, cols, rows)
   usePty(sessionId, terminalRef)
+  useCrispZoom(containerRef, terminalRef)
 
   const focusedId = useFocusedId()
   const derivedFocused = isFocusedProp !== undefined ? isFocusedProp : focusedId === sessionId
