@@ -37,6 +37,7 @@ interface ConversationState {
   id: string
   sessionId: string // Claude Code session-id
   process: ChildProcess | null
+  messageCount: number // Number of messages sent in this conversation
 }
 
 /** Maximum number of idle conversations to keep per agent. */
@@ -79,6 +80,7 @@ export class ClaudeCodeManager {
         id: convId,
         sessionId: `smoke-${this.agentId}-${convId}`,
         process: null,
+        messageCount: 0,
       }
       this.conversations.set(convId, conv)
       this.evictOldConversations()
@@ -90,8 +92,11 @@ export class ClaudeCodeManager {
       conv.process = null
     }
 
+    const isFirstMessage = conv.messageCount === 0
+    conv.messageCount++
+
     try {
-      await this.runClaude(conv, message)
+      await this.runClaude(conv, message, isFirstMessage)
     } catch (err: unknown) {
       if (err instanceof Error && err.message === 'aborted') {
         // User aborted — not an error
@@ -237,14 +242,12 @@ export class ClaudeCodeManager {
   /** Spawn Claude Code and process its stream-json output. */
   private async runClaude(
     conv: ConversationState,
-    message: string
+    message: string,
+    isFirstMessage: boolean
   ): Promise<void> {
     const mcpConfigPath = this.ensureMcpConfig()
     const claudeCmd = this.getClaudeCommand()
     const systemPrompt = this.buildSystemPrompt()
-
-    const isFirstMessage = !this.conversations.has(conv.id) ||
-      !conv.process // First time spawning for this conv
 
     const args = [
       '-p',

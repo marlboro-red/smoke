@@ -42,6 +42,7 @@ interface AgentStoreState {
   setRole: (agentId: string, role: string | null) => void
 
   // Per-agent message operations
+  startGeneration: (agentId: string) => void
   addUserMessage: (agentId: string, text: string) => ChatMessage | null
   addAssistantMessage: (agentId: string) => ChatMessage | null
   appendText: (agentId: string, messageId: string, text: string) => void
@@ -126,6 +127,16 @@ export const agentStore = createStore<AgentStoreState>((set, get) => ({
       agents: updateAgent(state.agents, agentId, (a) => ({
         ...a,
         role,
+      })),
+    }))
+  },
+
+  startGeneration: (agentId) => {
+    set((state) => ({
+      agents: updateAgent(state.agents, agentId, (a) => ({
+        ...a,
+        isGenerating: true,
+        error: null,
       })),
     }))
   },

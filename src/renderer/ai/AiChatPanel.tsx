@@ -43,11 +43,21 @@ export default function AiChatPanel(): JSX.Element {
   const handleSend = useCallback(
     (text: string) => {
       if (!activeAgentId) return
-      agentStore.getState().addUserMessage(activeAgentId, text)
-      window.smokeAPI?.ai.send(activeAgentId, text).catch((err) => {
-        console.error('AI send failed:', err)
-        agentStore.getState().setError(activeAgentId, 'Failed to send message')
-      })
+      const store = agentStore.getState()
+      store.addUserMessage(activeAgentId, text)
+      store.startGeneration(activeAgentId)
+      window.smokeAPI?.ai
+        .send(activeAgentId, text)
+        .then((response) => {
+          if (response?.error) {
+            console.error('AI send error:', response.error)
+            agentStore.getState().setError(activeAgentId, response.error)
+          }
+        })
+        .catch((err) => {
+          console.error('AI send failed:', err)
+          agentStore.getState().setError(activeAgentId, 'Failed to send message')
+        })
     },
     [activeAgentId]
   )
