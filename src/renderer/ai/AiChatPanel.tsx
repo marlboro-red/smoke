@@ -12,7 +12,12 @@ import ChatInput from './ChatInput'
 import StopButton from './StopButton'
 import { taskInputStore } from '../assembly/taskInputStore'
 import { addToast } from '../stores/toastStore'
+import { withTimeout } from '../utils/withTimeout'
 import '../styles/ai-chat.css'
+
+/** Timeout for ai.send() — if the subprocess doesn't resolve in this time,
+ *  force-complete generation so the UI doesn't get stuck forever. */
+const AI_SEND_TIMEOUT_MS = 120_000
 
 export default function AiChatPanel(): JSX.Element {
   const agents = useAgents()
@@ -47,8 +52,10 @@ export default function AiChatPanel(): JSX.Element {
       const store = agentStore.getState()
       store.addUserMessage(agentId, text)
       store.startGeneration(agentId)
-      window.smokeAPI?.ai
-        .send(agentId, text)
+      const sendPromise = window.smokeAPI?.ai.send(agentId, text)
+      if (!sendPromise) return
+
+      withTimeout(sendPromise, AI_SEND_TIMEOUT_MS)
         .then((response) => {
           if (response?.error) {
             console.error('AI send error:', response.error)
@@ -64,7 +71,13 @@ export default function AiChatPanel(): JSX.Element {
         })
         .catch((err) => {
           console.error('AI send failed:', err)
-          agentStore.getState().setError(agentId, 'Failed to send message')
+          const message =
+            err instanceof Error && err.message.includes('timed out')
+              ? 'AI response timed out — the subprocess may have hung'
+              : 'Failed to send message'
+          agentStore.getState().setError(agentId, message)
+          // Also attempt to abort the hung subprocess
+          window.smokeAPI?.ai.abort(agentId)
         })
     },
     [activeAgentId]
