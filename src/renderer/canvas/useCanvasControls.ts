@@ -120,9 +120,15 @@ export function useCanvasControls(
     if (!root) return
 
     const onWheel = (e: WheelEvent): void => {
+      // Let terminal containers handle their own scroll (xterm.js scrollback).
+      // Only intercept Ctrl/Meta+wheel for canvas zoom.
+      const target = e.target as HTMLElement
+      if (target.closest('.terminal-container') && !e.ctrlKey && !e.metaKey) {
+        return
+      }
+
       // Let scrollable child elements (file viewer, note, editor) handle
       // wheel events when they can still scroll in the wheel direction.
-      const target = e.target as HTMLElement
       const scrollable = (
         target.closest('.file-viewer-highlighted, .file-viewer-markdown, .file-viewer-plaintext, .cm-scroller') ??
         target.closest('.note-textarea')

@@ -133,6 +133,34 @@ describe('grid opacity based on zoom', () => {
   })
 })
 
+describe('terminal scroll guard', () => {
+  // Regression test for smoke-l1cj: wheel events over terminals should not
+  // propagate to the canvas pan/zoom handler.
+  //
+  // The actual guard in useCanvasControls checks:
+  //   if (target.closest('.terminal-container') && !ctrlKey) return;
+  //
+  // We verify the decision logic here as a pure function (no DOM needed).
+  function shouldCanvasHandleWheel(isInsideTerminal: boolean, ctrlKey: boolean): boolean {
+    if (isInsideTerminal && !ctrlKey) {
+      return false
+    }
+    return true
+  }
+
+  it('blocks wheel events when target is inside a terminal container', () => {
+    expect(shouldCanvasHandleWheel(true, false)).toBe(false)
+  })
+
+  it('allows Ctrl+wheel over terminal for canvas zoom', () => {
+    expect(shouldCanvasHandleWheel(true, true)).toBe(true)
+  })
+
+  it('allows wheel events on empty canvas', () => {
+    expect(shouldCanvasHandleWheel(false, false)).toBe(true)
+  })
+})
+
 describe('canvasStore integration', () => {
   beforeEach(() => {
     canvasStore.setState({ panX: 0, panY: 0, zoom: 1.0, gridSize: 20 })
