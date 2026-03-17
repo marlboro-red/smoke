@@ -37,6 +37,9 @@ interface ConversationState {
 /** Maximum number of idle conversations to keep per agent. */
 const MAX_CONVERSATIONS = 50
 
+/** Kill the subprocess if no stdout/stderr data arrives for this long. */
+const SUBPROCESS_INACTIVITY_TIMEOUT_MS = 90_000
+
 export class ClaudeCodeManager {
   private conversations = new Map<string, ConversationState>()
   private getMainWindow: () => BrowserWindow | null
@@ -280,6 +283,7 @@ export class ClaudeCodeManager {
       const settle = (action: 'resolve' | 'reject', value?: Error): void => {
         if (settled) return
         settled = true
+        clearTimeout(inactivityTimer)
         if (action === 'resolve') resolve()
         else reject(value)
       }
@@ -294,6 +298,37 @@ export class ClaudeCodeManager {
       })
 
       conv.process = proc
+
+      // Inactivity timeout — kill the process if it produces no output
+      // for an extended period (likely hung).
+      let inactivityTimer: ReturnType<typeof setTimeout> = setTimeout(
+        () => onInactivityTimeout(),
+        SUBPROCESS_INACTIVITY_TIMEOUT_MS
+      )
+
+      const resetInactivityTimer = (): void => {
+        clearTimeout(inactivityTimer)
+        inactivityTimer = setTimeout(
+          () => onInactivityTimeout(),
+          SUBPROCESS_INACTIVITY_TIMEOUT_MS
+        )
+      }
+
+      const onInactivityTimeout = (): void => {
+        if (conv.process) {
+          console.warn(
+            `[ClaudeCodeManager] Subprocess for conversation ${conv.id} ` +
+            `inactive for ${SUBPROCESS_INACTIVITY_TIMEOUT_MS}ms — killing`
+          )
+          conv.process.kill('SIGTERM')
+          // If SIGTERM doesn't work, force-kill after 5s
+          setTimeout(() => {
+            if (conv.process) {
+              conv.process.kill('SIGKILL')
+            }
+          }, 5000)
+        }
+      }
 
       let stdout = ''
       // Track whether we received streaming text to avoid duplicating
@@ -317,6 +352,7 @@ export class ClaudeCodeManager {
       }
 
       proc.stdout?.on('data', (chunk: Buffer) => {
+        resetInactivityTimer()
         stdout += chunk.toString()
         // Process complete lines
         const lines = stdout.split('\n')
@@ -329,6 +365,7 @@ export class ClaudeCodeManager {
 
       let stderr = ''
       proc.stderr?.on('data', (chunk: Buffer) => {
+        resetInactivityTimer()
         stderr += chunk.toString()
       })
 
@@ -347,7 +384,7 @@ export class ClaudeCodeManager {
           // User-initiated abort — not an error
           conv.aborted = false
           settle('reject', new Error('aborted'))
-        } else if (code === null || code === 0) {
+        } else if (code === 0) {
           // Normal exit — emit message_complete
           this.emit({
             type: 'message_complete',
@@ -356,7 +393,12 @@ export class ClaudeCodeManager {
           })
           settle('resolve')
         } else {
-          const errorMsg = stderr.trim() || `Claude Code exited with code ${code}`
+          // Non-zero exit or signal kill (code === null) — emit error
+          // and message_complete so the renderer always leaves generating state
+          const errorMsg =
+            code === null
+              ? stderr.trim() || 'Claude Code process was killed unexpectedly'
+              : stderr.trim() || `Claude Code exited with code ${code}`
           this.emit({
             type: 'error',
             conversationId: conv.id,

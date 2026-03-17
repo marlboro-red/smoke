@@ -17,7 +17,10 @@ export function useAiStream(): void {
   useEffect(() => {
     const handleStreamEvent = (event: AiStreamEvent): void => {
       const agentId = (event as { agentId?: string }).agentId
-      if (!agentId) return
+      if (!agentId) {
+        console.warn('[useAiStream] Received stream event with no agentId:', event.type)
+        return
+      }
 
       const store = agentStore.getState()
 
