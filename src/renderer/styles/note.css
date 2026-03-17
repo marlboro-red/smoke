@@ -129,6 +129,54 @@
   color: var(--text-placeholder);
 }
 
+/* Syntax-highlighted code view in note */
+.note-highlighted {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  cursor: default;
+  user-select: text;
+}
+
+.note-highlighted pre {
+  margin: 0;
+  padding: var(--space-sm);
+  background: transparent !important;
+  overflow: visible;
+}
+
+.note-highlighted code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.note-highlighted .line {
+  display: block;
+}
+
+/* Edit toggle button in source bar */
+.note-edit-toggle {
+  float: right;
+  background: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  padding: 1px 6px;
+  line-height: 1.4;
+  transition: color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.note-edit-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
 /* Source reference link bar */
 .note-source-bar {
   padding: 0 0 var(--space-sm) 0;

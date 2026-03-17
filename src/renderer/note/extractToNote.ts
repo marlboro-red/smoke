@@ -75,10 +75,12 @@ export function extractSelectionToNote(): void {
   // Detect line range for file viewer sessions
   let lineRange: { start: number; end: number } | null = null
   let filePath: string | undefined
+  let language: string | undefined
 
   if (sourceSession.type === 'file') {
     const fileSession = sourceSession as FileViewerSession
     filePath = fileSession.filePath
+    language = fileSession.language
 
     const sessionEl = document.querySelector(`[data-session-id="${focusedId}"]`)
     if (sessionEl) {
@@ -117,6 +119,7 @@ export function extractSelectionToNote(): void {
     sourceRef,
     title: sourceLabel,
     size: { ...note.size, width: NOTE_WIDTH, height: NOTE_HEIGHT },
+    ...(language ? { language } : {}),
   })
 
   // Add a connector from source to note

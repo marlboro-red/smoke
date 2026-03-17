@@ -94,6 +94,7 @@ describe('extractSelectionToNote', () => {
     expect(note.sourceRef).toBeDefined()
     expect(note.sourceRef?.sourceSessionId).toBe(file.id)
     expect(note.sourceRef?.filePath).toBe('/tmp/project/src/index.ts')
+    expect(note.language).toBe('typescript')
 
     // Selection should be cleared
     expect(mockRemoveAllRanges).toHaveBeenCalled()
@@ -187,6 +188,7 @@ describe('extractSelectionToNote', () => {
     expect(extractedNote.content).toContain('some output')
     expect(extractedNote.sourceRef?.sourceSessionId).toBe(sourceNote.id)
     expect(extractedNote.sourceRef?.filePath).toBeUndefined()
+    expect(extractedNote.language).toBeUndefined()
   })
 
   it('includes source label in the note content', () => {

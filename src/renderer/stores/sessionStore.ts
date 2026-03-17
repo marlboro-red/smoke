@@ -56,6 +56,7 @@ export interface NoteSession extends BaseSession {
   content: string
   color: string
   sourceRef?: SourceRef
+  language?: string
 }
 
 export interface WebviewSession extends BaseSession {
