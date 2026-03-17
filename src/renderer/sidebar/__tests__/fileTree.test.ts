@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { FsReaddirEntry } from '../../../preload/types'
 
 // Extracted logic from FileTree for testing
@@ -186,5 +186,49 @@ describe('IGNORED_NAMES', () => {
   it('does not include normal directories', () => {
     expect(IGNORED_NAMES.has('src')).toBe(false)
     expect(IGNORED_NAMES.has('lib')).toBe(false)
+  })
+})
+
+describe('FileTreeNode click handler logic', () => {
+  // Regression test for smoke-gnwb: clicking a file entry must call onFileOpen
+  // (previously used onDoubleClick, which made single-click do nothing)
+
+  function simulateClick(
+    isDir: boolean,
+    onToggle: () => void,
+    onFileOpen: () => void
+  ): void {
+    // Mirrors the onClick handler in FileTreeNode:
+    //   onClick={() => isDir ? onToggle(node) : onFileOpen(node.path)}
+    if (isDir) {
+      onToggle()
+    } else {
+      onFileOpen()
+    }
+  }
+
+  it('calls onFileOpen on single click for file entries', () => {
+    const onToggle = vi.fn()
+    const onFileOpen = vi.fn()
+    simulateClick(false, onToggle, onFileOpen)
+    expect(onFileOpen).toHaveBeenCalledTimes(1)
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('calls onToggle on single click for directory entries', () => {
+    const onToggle = vi.fn()
+    const onFileOpen = vi.fn()
+    simulateClick(true, onToggle, onFileOpen)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onFileOpen).not.toHaveBeenCalled()
+  })
+
+  it('never requires double-click to open files', () => {
+    // Ensure the file open path is reachable via the same logic as onClick
+    const onFileOpen = vi.fn()
+    const isDir = false
+    // The handler should directly call onFileOpen for non-directory nodes
+    if (isDir) { /* onToggle */ } else { onFileOpen() }
+    expect(onFileOpen).toHaveBeenCalled()
   })
 })

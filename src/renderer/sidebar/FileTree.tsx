@@ -93,8 +93,7 @@ const FileTreeNode = React.memo(function FileTreeNode({
       <div
         className={`ft-node ${typeClass}${isDir ? ' ft-expandable' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
-        onClick={() => isDir && onToggle(node)}
-        onDoubleClick={() => !isDir && onFileOpen(node.path)}
+        onClick={() => isDir ? onToggle(node) : onFileOpen(node.path)}
       >
         {isDir && (
           <span className={`ft-arrow${node.expanded ? ' expanded' : ''}`}>▶</span>

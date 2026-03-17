@@ -681,17 +681,13 @@
   align-items: center;
   gap: var(--space-xs);
   padding: 3px var(--space-md);
-  cursor: default;
+  cursor: pointer;
   font-size: var(--font-size-md);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: background var(--duration-fast);
-}
-
-.ft-node.ft-expandable {
-  cursor: pointer;
 }
 
 .ft-node:hover {
