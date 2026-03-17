@@ -15,6 +15,7 @@ import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from '../fileviewer/useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
+import { useCrispWindowZoom, crispWindowStyles } from '../canvas/useCrispWindowZoom'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import NoteColorPicker, { resolveNoteColors } from './NoteColorPicker'
@@ -48,6 +49,7 @@ export default React.memo(function NoteWindow({
   const [editing, setEditing] = useState(false)
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
 
+  const crispZoom = useCrispWindowZoom()
   const focusModeActiveIds = useFocusModeActiveIds()
   const themePref = usePreference('theme')
   const shikiTheme = getTheme(themePref || 'dark').shikiTheme
@@ -222,6 +224,7 @@ export default React.memo(function NoteWindow({
         zIndex: session.zIndex,
         background: colors.bg,
         borderColor: isFocused ? undefined : colors.border,
+        ...crispWindowStyles(crispZoom),
       }}
       onPointerDown={handlePointerDown}
     >
