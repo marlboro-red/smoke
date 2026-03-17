@@ -77,6 +77,7 @@
 {"created_at":"2026-03-15T10:05:05Z","created_by":"marlboro-red","depends_on_id":"smoke-u2t","issue_id":"smoke-7db","type":"blocks"}
 {"created_at":"2026-03-15T14:10:55Z","created_by":"marlboro-red","depends_on_id":"smoke-3rx","issue_id":"smoke-8ef","type":"blocks"}
 {"created_at":"2026-03-15T14:10:55Z","created_by":"marlboro-red","depends_on_id":"smoke-oyb","issue_id":"smoke-8ef","type":"blocks"}
+{"created_at":"2026-03-17T11:18:21Z","created_by":"Chanjun Park","depends_on_id":"smoke-8bc","issue_id":"smoke-952","type":"blocked-by"}
 {"created_at":"2026-03-15T23:39:52Z","created_by":"marlboro-red","depends_on_id":"smoke-03p","issue_id":"smoke-9h2","type":"parent-child"}
 {"created_at":"2026-03-15T23:39:58Z","created_by":"marlboro-red","depends_on_id":"smoke-5g0","issue_id":"smoke-9h2","type":"blocks"}
 {"created_at":"2026-03-15T10:55:48Z","created_by":"marlboro-red","depends_on_id":"smoke-9os","issue_id":"smoke-aeu","type":"blocks"}
