@@ -199,7 +199,7 @@ export interface AiStreamMessageComplete {
   type: 'message_complete'
   conversationId: string
   agentId?: string
-  stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence' | 'abort'
+  stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence' | 'abort' | 'error'
 }
 
 export interface AiStreamError {
