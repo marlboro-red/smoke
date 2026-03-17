@@ -19,6 +19,7 @@ import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
 import { usePreference } from '../stores/preferencesStore'
 import { getTheme } from '../themes/themes'
+import { useCrispWindowZoom, crispWindowStyles } from '../canvas/useCrispWindowZoom'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import '../styles/snippet.css'
@@ -65,6 +66,8 @@ export default React.memo(function SnippetWindow({
   const contentRef = useRef(session.content)
   const themePref = usePreference('theme')
   const themeConfig = getTheme(themePref || 'dark')
+
+  const crispZoom = useCrispWindowZoom()
 
   const isFocused = focusedId === session.id
   const isHighlighted = highlightedId === session.id
@@ -216,6 +219,7 @@ export default React.memo(function SnippetWindow({
         width: session.size.width,
         height: session.size.height,
         zIndex: session.zIndex,
+        ...crispWindowStyles(crispZoom),
       }}
       onPointerDown={handlePointerDown}
     >
