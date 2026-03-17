@@ -445,6 +445,10 @@ export async function registerIpcHandlers(
     const filePath = path.resolve(request.path)
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
 
+    // Safety: reject absolute paths outside the user's home directory
+    const homedir = require('os').homedir()
+    await assertWithinHome(filePath, homedir)
+
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {
       throw new Error(`File too large: ${stat.size} bytes (max ${maxSize})`)
@@ -468,6 +472,10 @@ export async function registerIpcHandlers(
   ipcMain.handle(FS_READFILE_BASE64, async (_event, request: FsReadfileBase64Request): Promise<FsReadfileBase64Response> => {
     const filePath = path.resolve(request.path)
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
+
+    // Safety: reject absolute paths outside the user's home directory
+    const homedir = require('os').homedir()
+    await assertWithinHome(filePath, homedir)
 
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {

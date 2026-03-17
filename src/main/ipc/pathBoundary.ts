@@ -72,6 +72,6 @@ export async function assertWithinHome(
   const realHome = await resolveNearestReal(homedir)
 
   if (!isWithinBoundary(realPath, realHome)) {
-    throw new Error('Write denied: path must be within the user home directory')
+    throw new Error('Access denied: path must be within the user home directory')
   }
 }
