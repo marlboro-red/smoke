@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useSessionList, type Session } from '../stores/sessionStore'
 import {
   type Group,
@@ -41,13 +41,13 @@ function computeBounds(members: Session[]): GroupBounds | null {
   }
 }
 
-export default function GroupContainer({ group }: { group: Group }): JSX.Element | null {
+export default React.memo(function GroupContainer({ group }: { group: Group }): JSX.Element | null {
   const sessions = useSessionList()
 
-  const members = useMemo(
-    () => sessions.filter((s) => group.memberIds.includes(s.id)),
-    [sessions, group.memberIds]
-  )
+  const members = useMemo(() => {
+    const memberSet = new Set(group.memberIds)
+    return sessions.filter((s) => memberSet.has(s.id))
+  }, [sessions, group.memberIds])
 
   // Keep the store's bounding box in sync when members move
   useEffect(() => {
@@ -114,4 +114,4 @@ export default function GroupContainer({ group }: { group: Group }): JSX.Element
       </div>
     </div>
   )
-}
+})

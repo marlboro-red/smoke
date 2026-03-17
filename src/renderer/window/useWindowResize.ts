@@ -26,6 +26,7 @@ export function useWindowResize({
   const startSizeRef = useRef({ width: 0, height: 0 })
   const directionRef = useRef<ResizeDirection>('se')
   const windowElRef = useRef<HTMLElement | null>(null)
+  const liveSizeRef = useRef({ width: 0, height: 0 })
 
   const onPointerMove = useCallback(
     (e: PointerEvent) => {
@@ -50,15 +51,14 @@ export function useWindowResize({
       newWidth = Math.max(minWidth, newWidth)
       newHeight = Math.max(minHeight, newHeight)
 
-      sessionStore.getState().updateSession(sessionId, {
-        size: {
-          width: newWidth,
-          height: newHeight,
-          // Keep cols/rows during live resize — update on release
-          cols: sessionStore.getState().sessions.get(sessionId)?.size.cols ?? 80,
-          rows: sessionStore.getState().sessions.get(sessionId)?.size.rows ?? 24,
-        },
-      })
+      liveSizeRef.current = { width: newWidth, height: newHeight }
+
+      // Update DOM directly to avoid Zustand re-renders during resize
+      const el = windowElRef.current
+      if (el) {
+        el.style.width = `${newWidth}px`
+        el.style.height = `${newHeight}px`
+      }
 
       // Show snap preview at the target grid size
       const session = sessionStore.getState().sessions.get(sessionId)
@@ -88,28 +88,22 @@ export function useWindowResize({
       // Hide snap preview
       snapPreviewStore.getState().hide()
 
-      // Snap size to grid and recalculate terminal dimensions
-      const session = sessionStore.getState().sessions.get(sessionId)
-      if (session) {
-        const snapped = snapSize(
-          { width: session.size.width, height: session.size.height },
-          gridSize
-        )
-        const dims = charDims()
-        const termSize = calculateTerminalSize(
-          snapped.width,
-          snapped.height - CHROME_HEIGHT,
-          dims.width,
-          dims.height
-        )
-        sessionStore.getState().updateSession(sessionId, {
-          size: { ...snapped, cols: termSize.cols, rows: termSize.rows },
-        })
+      // Snap final size to grid and recalculate terminal dimensions
+      const snapped = snapSize(liveSizeRef.current, gridSize)
+      const dims = charDims()
+      const termSize = calculateTerminalSize(
+        snapped.width,
+        snapped.height - CHROME_HEIGHT,
+        dims.width,
+        dims.height
+      )
+      sessionStore.getState().updateSession(sessionId, {
+        size: { ...snapped, cols: termSize.cols, rows: termSize.rows },
+      })
 
-        // Resize PTY
-        if (window.smokeAPI?.pty?.resize) {
-          window.smokeAPI.pty.resize(sessionId, termSize.cols, termSize.rows)
-        }
+      // Resize PTY
+      if (window.smokeAPI?.pty?.resize) {
+        window.smokeAPI.pty.resize(sessionId, termSize.cols, termSize.rows)
       }
 
       document.removeEventListener('pointermove', onPointerMove)
@@ -132,6 +126,7 @@ export function useWindowResize({
         width: session.size.width,
         height: session.size.height,
       }
+      liveSizeRef.current = { width: session.size.width, height: session.size.height }
 
       const windowEl = (e.currentTarget as HTMLElement).closest('.terminal-window') as HTMLElement
       windowElRef.current = windowEl

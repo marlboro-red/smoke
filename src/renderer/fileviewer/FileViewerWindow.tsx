@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { EditorView } from '@codemirror/view'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
@@ -34,7 +34,7 @@ interface FileViewerWindowProps {
   className?: string
 }
 
-export default function FileViewerWindow({
+export default React.memo(function FileViewerWindow({
   session,
   zoom,
   gridSize,
@@ -454,4 +454,4 @@ export default function FileViewerWindow({
       )}
     </div>
   )
-}
+})

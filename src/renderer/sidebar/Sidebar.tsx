@@ -78,13 +78,16 @@ export default function Sidebar(): JSX.Element {
 
   // Build a set of all grouped session IDs and map groupId -> sessions
   const { groupedSessions, ungrouped } = useMemo(() => {
+    const sessionMap = new Map<string, Session>()
+    for (const s of sortedSessions) sessionMap.set(s.id, s)
+
     const memberSet = new Set<string>()
     const groupSessionMap = new Map<string, Session[]>()
 
     for (const group of groups) {
       const members: Session[] = []
       for (const memberId of group.memberIds) {
-        const session = sortedSessions.find((s) => s.id === memberId)
+        const session = sessionMap.get(memberId)
         if (session) {
           members.push(session)
           memberSet.add(memberId)

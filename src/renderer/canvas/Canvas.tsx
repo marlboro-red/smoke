@@ -313,19 +313,19 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
     [readOnly]
   )
 
-  // Separate pinned and unpinned sessions
+  // Separate pinned and unpinned sessions, pre-filtering collapsed/clustered
   const { pinnedSessions, unpinnedSessions } = useMemo(() => {
     const pinned: Session[] = []
     const unpinned: Session[] = []
     for (const session of sessions) {
       if (session.isPinned) {
         pinned.push(session)
-      } else {
+      } else if (!collapsedMemberIds.has(session.id) && !clusteredSessionIds.has(session.id)) {
         unpinned.push(session)
       }
     }
     return { pinnedSessions: pinned, unpinnedSessions: unpinned }
-  }, [sessions])
+  }, [sessions, collapsedMemberIds, clusteredSessionIds])
 
   return (
     <div
@@ -345,12 +345,7 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
         {groups.map((group) => (
           <GroupContainer key={group.id} group={group} />
         ))}
-        {unpinnedSessions.map((session) => {
-          if (collapsedMemberIds.has(session.id)) return null
-          if (clusteredSessionIds.has(session.id)) return null
-          const isVis = visibleIds.has(session.id)
-          return renderSessionElement(session, isVis)
-        })}
+        {unpinnedSessions.map((session) => renderSessionElement(session, visibleIds.has(session.id)))}
         {directoryClusters.map((cluster) => (
           <DirectoryClusterCard key={cluster.id} cluster={cluster} />
         ))}

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useCallback, useRef, useEffect, useMemo } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { sessionStore, useFocusedId, useHighlightedId, useSelectedIds, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
 import { useFocusModeActiveIds } from '../stores/focusModeStore'
@@ -26,7 +26,7 @@ interface TerminalWindowProps {
   hidden?: boolean
 }
 
-export default function TerminalWindow({
+export default React.memo(function TerminalWindow({
   session,
   zoom,
   gridSize,
@@ -242,4 +242,4 @@ export default function TerminalWindow({
       <ResizeHandle direction="se" onResizeStart={onResizeStart} />
     </div>
   )
-}
+})

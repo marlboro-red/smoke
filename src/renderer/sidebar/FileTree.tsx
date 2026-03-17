@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { usePreferencesStore } from '../stores/preferencesStore'
 import type { FsReaddirEntry } from '../../preload/types'
 
@@ -73,7 +73,7 @@ function sortEntries(entries: FsReaddirEntry[]): FsReaddirEntry[] {
   })
 }
 
-function FileTreeNode({
+const FileTreeNode = React.memo(function FileTreeNode({
   node,
   depth,
   onToggle,
@@ -115,7 +115,7 @@ function FileTreeNode({
       )}
     </>
   )
-}
+})
 
 export default function FileTree({ onFileOpen }: { onFileOpen: (filePath: string) => void }): JSX.Element {
   const launchCwd = usePreferencesStore((s) => s.launchCwd)

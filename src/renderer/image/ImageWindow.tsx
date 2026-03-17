@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import React, { useCallback } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
@@ -21,7 +21,7 @@ interface ImageWindowProps {
   gridSize: number
 }
 
-export default function ImageWindow({
+export default React.memo(function ImageWindow({
   session,
   zoom,
   gridSize,
@@ -144,4 +144,4 @@ export default function ImageWindow({
       <ResizeHandle direction="se" onResizeStart={onResizeStart} />
     </div>
   )
-}
+})
