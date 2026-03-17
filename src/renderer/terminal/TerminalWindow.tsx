@@ -10,7 +10,7 @@ import { useWindowDrag } from '../window/useWindowDrag'
 import { useWindowResize } from '../window/useWindowResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
 import { closeSession } from '../session/useSessionClose'
-import { useCrispWindowZoom } from '../canvas/useCrispWindowZoom'
+import { useCrispWindowZoom, crispWindowStyles } from '../canvas/useCrispWindowZoom'
 import WindowChrome from '../window/WindowChrome'
 import ResizeHandle from '../window/ResizeHandle'
 import TerminalWidget from './TerminalWidget'
@@ -194,6 +194,7 @@ export default React.memo(function TerminalWindow({
         zIndex: session.zIndex,
         visibility: hidden ? 'hidden' : undefined,
         pointerEvents: hidden ? 'none' : undefined,
+        ...crispWindowStyles(crispZoom),
       }}
       onPointerDown={handlePointerDown}
     >
