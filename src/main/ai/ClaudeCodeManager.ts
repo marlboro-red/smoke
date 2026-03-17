@@ -308,7 +308,8 @@ export class ClaudeCodeManager {
     if (isFirstMessage) {
       args.push('--system-prompt', systemPrompt)
     } else {
-      args.push('--resume')
+      // --fork-session is required when combining --session-id with --resume
+      args.push('--resume', '--fork-session')
     }
 
     // The message is the positional argument
