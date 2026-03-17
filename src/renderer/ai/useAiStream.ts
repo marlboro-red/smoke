@@ -13,14 +13,25 @@ import { addToast } from '../stores/toastStore'
  */
 export function useAiStream(): void {
   const currentMessageIds = useRef<Map<string, string>>(new Map())
+  const eventCountRef = useRef(0)
 
   useEffect(() => {
     const handleStreamEvent = (event: AiStreamEvent): void => {
       const agentId = (event as { agentId?: string }).agentId
+      eventCountRef.current++
+
       if (!agentId) {
-        console.warn('[useAiStream] Received stream event with no agentId:', event.type)
+        console.warn(
+          `[useAiStream] Dropped event #${eventCountRef.current} — missing agentId`,
+          { type: event.type, conversationId: event.conversationId }
+        )
         return
       }
+
+      console.debug(
+        `[useAiStream] Event #${eventCountRef.current}: ${event.type}`,
+        { agentId: agentId.slice(0, 8), conversationId: event.conversationId?.slice(0, 8) }
+      )
 
       const store = agentStore.getState()
 
@@ -42,6 +53,10 @@ export function useAiStream(): void {
           }
           const msgId = currentMessageIds.current.get(agentId)
           if (msgId) {
+            console.debug(`[useAiStream] Tool use: ${event.toolName}`, {
+              agentId: agentId.slice(0, 8),
+              toolUseId: event.toolUseId,
+            })
             store.addToolUse(agentId, msgId, {
               id: event.toolUseId,
               name: event.toolName,
@@ -53,7 +68,13 @@ export function useAiStream(): void {
 
         case 'tool_result': {
           const msgId = currentMessageIds.current.get(agentId)
-          if (!msgId) break
+          if (!msgId) {
+            console.warn(`[useAiStream] Dropped tool_result — no current message for agent`, {
+              agentId: agentId.slice(0, 8),
+              toolUseId: event.toolUseId,
+            })
+            break
+          }
           store.addToolResult(agentId, msgId, {
             tool_use_id: event.toolUseId,
             content: typeof event.result === 'string' ? event.result : JSON.stringify(event.result),
@@ -63,6 +84,10 @@ export function useAiStream(): void {
         }
 
         case 'message_complete': {
+          console.debug(`[useAiStream] Generation complete`, {
+            agentId: agentId.slice(0, 8),
+            stopReason: event.stopReason,
+          })
           store.completeGeneration(agentId)
           currentMessageIds.current.delete(agentId)
           addToast('AI task completed', 'success')
@@ -70,13 +95,22 @@ export function useAiStream(): void {
         }
 
         case 'error': {
+          console.error(`[useAiStream] Error from agent`, {
+            agentId: agentId.slice(0, 8),
+            error: event.error,
+          })
           store.setError(agentId, event.error)
           currentMessageIds.current.delete(agentId)
           addToast(`AI error: ${event.error}`, 'error')
           break
         }
 
-        // canvas_action events are handled by useAiCanvasActions
+        default: {
+          // Unknown event type — log for diagnostics
+          console.warn(`[useAiStream] Unknown event type: ${(event as { type: string }).type}`, {
+            agentId: agentId.slice(0, 8),
+          })
+        }
       }
     }
 

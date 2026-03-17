@@ -25,6 +25,7 @@ import type { AiStreamEvent } from '../../preload/types'
 import { McpBridge } from './McpBridge'
 import { terminalOutputBuffer } from './TerminalOutputBuffer'
 import { configStore, defaultPreferences } from '../config/ConfigStore'
+import { aiLogger } from './AiLogger'
 
 interface ConversationState {
   id: string
@@ -75,6 +76,7 @@ export class ClaudeCodeManager {
     const convId = conversationId ?? uuid()
     let conv = this.conversations.get(convId)
 
+    const isNew = !conv
     if (!conv) {
       conv = {
         id: convId,
@@ -87,23 +89,48 @@ export class ClaudeCodeManager {
       this.evictOldConversations()
     }
 
+    aiLogger.info('subprocess', `sendMessage (${isNew ? 'new' : 'existing'} conversation)`, {
+      agentId: this.agentId,
+      conversationId: convId,
+      meta: { messageLength: message.length, messageCount: conv.messageCount },
+    })
+
     // Kill any existing process for this conversation
     if (conv.process) {
+      aiLogger.warn('subprocess', 'Killing existing subprocess before new send', {
+        agentId: this.agentId,
+        conversationId: convId,
+      })
       conv.process.kill('SIGTERM')
       conv.process = null
     }
 
     const isFirstMessage = conv.messageCount === 0
     conv.messageCount++
+    const startTime = Date.now()
 
     try {
       await this.runClaude(conv, message, isFirstMessage)
+      aiLogger.info('subprocess', `sendMessage completed`, {
+        agentId: this.agentId,
+        conversationId: convId,
+        meta: { durationMs: Date.now() - startTime },
+      })
     } catch (err: unknown) {
       if (err instanceof Error && err.message === 'aborted') {
-        // User aborted — not an error
+        aiLogger.info('subprocess', 'sendMessage aborted by user', {
+          agentId: this.agentId,
+          conversationId: convId,
+          meta: { durationMs: Date.now() - startTime },
+        })
       } else {
         const errorMessage =
           err instanceof Error ? err.message : 'Unknown error'
+        aiLogger.error('subprocess', `sendMessage failed: ${errorMessage}`, {
+          agentId: this.agentId,
+          conversationId: convId,
+          meta: { durationMs: Date.now() - startTime },
+        })
         this.emit({
           type: 'error',
           conversationId: convId,
@@ -117,6 +144,10 @@ export class ClaudeCodeManager {
 
   /** Abort an in-progress generation. */
   abort(conversationId?: string): void {
+    aiLogger.info('subprocess', `abort (${conversationId ? 'single' : 'all'})`, {
+      agentId: this.agentId,
+      conversationId: conversationId ?? undefined,
+    })
     if (conversationId) {
       const conv = this.conversations.get(conversationId)
       if (conv?.process) {
@@ -137,6 +168,10 @@ export class ClaudeCodeManager {
 
   /** Clear conversation history by removing the session. */
   clear(conversationId?: string): void {
+    aiLogger.info('subprocess', `clear (${conversationId ? 'single' : 'all'})`, {
+      agentId: this.agentId,
+      conversationId: conversationId ?? undefined,
+    })
     if (conversationId) {
       this.abort(conversationId)
       this.conversations.delete(conversationId)
@@ -288,6 +323,13 @@ export class ClaudeCodeManager {
         else reject(value)
       }
 
+      aiLogger.info('subprocess', `Spawning: ${claudeCmd} ${args.join(' ')}`, {
+        agentId: this.agentId,
+        conversationId: conv.id,
+        meta: { isFirstMessage, model: this.model },
+      })
+      const spawnTime = Date.now()
+
       const proc = spawn(claudeCmd, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
@@ -298,6 +340,12 @@ export class ClaudeCodeManager {
       })
 
       conv.process = proc
+
+      aiLogger.debug('subprocess', `Subprocess spawned with PID ${proc.pid}`, {
+        agentId: this.agentId,
+        conversationId: conv.id,
+        meta: { pid: proc.pid },
+      })
 
       // Inactivity timeout — kill the process if it produces no output
       // for an extended period (likely hung).
@@ -316,14 +364,19 @@ export class ClaudeCodeManager {
 
       const onInactivityTimeout = (): void => {
         if (conv.process) {
-          console.warn(
-            `[ClaudeCodeManager] Subprocess for conversation ${conv.id} ` +
-            `inactive for ${SUBPROCESS_INACTIVITY_TIMEOUT_MS}ms — killing`
-          )
+          aiLogger.warn('subprocess', `Inactivity timeout (${SUBPROCESS_INACTIVITY_TIMEOUT_MS}ms) — killing`, {
+            agentId: this.agentId,
+            conversationId: conv.id,
+            meta: { pid: conv.process.pid, uptimeMs: Date.now() - spawnTime },
+          })
           conv.process.kill('SIGTERM')
           // If SIGTERM doesn't work, force-kill after 5s
           setTimeout(() => {
             if (conv.process) {
+              aiLogger.warn('subprocess', 'SIGTERM ineffective — sending SIGKILL', {
+                agentId: this.agentId,
+                conversationId: conv.id,
+              })
               conv.process.kill('SIGKILL')
             }
           }, 5000)
@@ -334,11 +387,20 @@ export class ClaudeCodeManager {
       // Track whether we received streaming text to avoid duplicating
       // the full text from assistant.message and result events.
       let hasStreamedText = false
+      let streamEventCount = 0
 
       const processLine = (line: string): void => {
         if (!line.trim()) return
         try {
           const event = JSON.parse(line)
+          streamEventCount++
+          const eventType = (event as Record<string, unknown>).type as string
+          const eventSubtype = (event as Record<string, unknown>).subtype as string | undefined
+          aiLogger.debug('stream', `Event #${streamEventCount}: ${eventType}${eventSubtype ? '/' + eventSubtype : ''}`, {
+            agentId: this.agentId,
+            conversationId: conv.id,
+            meta: { eventType, eventSubtype },
+          })
           this.processStreamEvent(conv, event, hasStreamedText)
           if (
             (event as Record<string, unknown>).type === 'assistant' &&
@@ -347,7 +409,11 @@ export class ClaudeCodeManager {
             hasStreamedText = true
           }
         } catch {
-          // Non-JSON line — ignore
+          // Non-JSON line — log as dropped
+          aiLogger.warn('stream', `Dropped non-JSON line: ${line.slice(0, 200)}`, {
+            agentId: this.agentId,
+            conversationId: conv.id,
+          })
         }
       }
 
@@ -371,6 +437,7 @@ export class ClaudeCodeManager {
 
       proc.on('close', (code) => {
         conv.process = null
+        const durationMs = Date.now() - spawnTime
 
         // Process any remaining stdout (may contain multiple lines)
         if (stdout.trim()) {
@@ -381,10 +448,20 @@ export class ClaudeCodeManager {
         }
 
         if (conv.aborted) {
+          aiLogger.info('subprocess', `Subprocess exited (aborted by user)`, {
+            agentId: this.agentId,
+            conversationId: conv.id,
+            meta: { code, durationMs, streamEvents: streamEventCount },
+          })
           // User-initiated abort — not an error
           conv.aborted = false
           settle('reject', new Error('aborted'))
         } else if (code === 0) {
+          aiLogger.info('subprocess', `Subprocess exited normally`, {
+            agentId: this.agentId,
+            conversationId: conv.id,
+            meta: { code, durationMs, streamEvents: streamEventCount },
+          })
           // Normal exit — emit message_complete
           this.emit({
             type: 'message_complete',
@@ -399,6 +476,11 @@ export class ClaudeCodeManager {
             code === null
               ? stderr.trim() || 'Claude Code process was killed unexpectedly'
               : stderr.trim() || `Claude Code exited with code ${code}`
+          aiLogger.error('subprocess', `Subprocess exited with error: ${errorMsg}`, {
+            agentId: this.agentId,
+            conversationId: conv.id,
+            meta: { code, durationMs, streamEvents: streamEventCount, stderr: stderr.slice(0, 500) },
+          })
           this.emit({
             type: 'error',
             conversationId: conv.id,
@@ -410,6 +492,11 @@ export class ClaudeCodeManager {
 
       proc.on('error', (err) => {
         conv.process = null
+        aiLogger.error('subprocess', `Failed to spawn: ${err.message}`, {
+          agentId: this.agentId,
+          conversationId: conv.id,
+          meta: { error: err.message },
+        })
         this.emit({
           type: 'error',
           conversationId: conv.id,
@@ -536,6 +623,12 @@ export class ClaudeCodeManager {
     if (win && !win.isDestroyed()) {
       const taggedEvent = { ...event, agentId: this.agentId }
       win.webContents.send(AI_STREAM, taggedEvent)
+    } else {
+      aiLogger.warn('stream', `Dropped event (no window): ${event.type}`, {
+        agentId: this.agentId,
+        conversationId: (event as { conversationId?: string }).conversationId,
+        meta: { eventType: event.type },
+      })
     }
   }
 }
