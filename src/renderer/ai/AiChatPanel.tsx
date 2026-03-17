@@ -43,20 +43,28 @@ export default function AiChatPanel(): JSX.Element {
   const handleSend = useCallback(
     (text: string) => {
       if (!activeAgentId) return
+      const agentId = activeAgentId
       const store = agentStore.getState()
-      store.addUserMessage(activeAgentId, text)
-      store.startGeneration(activeAgentId)
+      store.addUserMessage(agentId, text)
+      store.startGeneration(agentId)
       window.smokeAPI?.ai
-        .send(activeAgentId, text)
+        .send(agentId, text)
         .then((response) => {
           if (response?.error) {
             console.error('AI send error:', response.error)
-            agentStore.getState().setError(activeAgentId, response.error)
+            agentStore.getState().setError(agentId, response.error)
+          } else {
+            // Safety net: ensure generation completes even if stream events
+            // (message_complete) were missed due to IPC timing or window state.
+            // The IPC Promise resolves after the subprocess exits, so by this
+            // point message_complete should have arrived — but if it didn't,
+            // this prevents the UI from staying stuck on "Stop generating".
+            agentStore.getState().completeGeneration(agentId)
           }
         })
         .catch((err) => {
           console.error('AI send failed:', err)
-          agentStore.getState().setError(activeAgentId, 'Failed to send message')
+          agentStore.getState().setError(agentId, 'Failed to send message')
         })
     },
     [activeAgentId]
