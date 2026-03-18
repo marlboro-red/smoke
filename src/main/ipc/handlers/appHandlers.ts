@@ -25,11 +25,15 @@ import {
 
 const execFileAsync = promisify(execFile)
 
+export interface AppHandlersCleanup {
+  dispose: () => void
+}
+
 export function registerAppHandlers(
   getMainWindow: () => BrowserWindow | null,
   launchCwd: string,
   onMenuRebuild?: () => void,
-): void {
+): AppHandlersCleanup {
   // Canvas export handler — capture canvas area as PNG
   ipcMain.handle(CANVAS_EXPORT_PNG, async (_event, request: CanvasExportPngRequest): Promise<CanvasExportPngResponse> => {
     const win = getMainWindow()
@@ -213,4 +217,21 @@ export function registerAppHandlers(
     onMenuRebuild?.()
     return updated
   })
+
+  return {
+    dispose(): void {
+      ipcMain.removeHandler(CANVAS_EXPORT_PNG)
+      ipcMain.removeHandler(APP_GET_LAUNCH_CWD)
+      ipcMain.removeHandler(APP_GET_GIT_BRANCH)
+      ipcMain.removeHandler(WINDOW_MINIMIZE)
+      ipcMain.removeHandler(WINDOW_MAXIMIZE)
+      ipcMain.removeHandler(WINDOW_CLOSE)
+      ipcMain.removeHandler(WINDOW_IS_MAXIMIZED)
+      ipcMain.removeHandler(SHELL_LIST)
+      ipcMain.removeHandler(WORKSPACE_OPEN_DIALOG)
+      ipcMain.removeHandler(WORKSPACE_SET_TITLE)
+      ipcMain.removeHandler(WORKSPACE_GET_RECENT)
+      ipcMain.removeHandler(WORKSPACE_ADD_RECENT)
+    },
+  }
 }

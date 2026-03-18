@@ -16,9 +16,13 @@ import {
   type RecordingImportResponse,
 } from '../channels'
 
+export interface RecordingHandlersCleanup {
+  dispose: () => void
+}
+
 export function registerRecordingHandlers(
   getMainWindow: () => BrowserWindow | null,
-): void {
+): RecordingHandlersCleanup {
   // Recording handler — flush event log to disk
   ipcMain.handle(RECORDING_FLUSH, async (_event, request: RecordingFlushRequest): Promise<string> => {
     const { app } = await import('electron')
@@ -183,4 +187,14 @@ export function registerRecordingHandlers(
       durationMs,
     }
   })
+
+  return {
+    dispose(): void {
+      ipcMain.removeHandler(RECORDING_FLUSH)
+      ipcMain.removeHandler(RECORDING_LIST)
+      ipcMain.removeHandler(RECORDING_LOAD)
+      ipcMain.removeHandler(RECORDING_EXPORT)
+      ipcMain.removeHandler(RECORDING_IMPORT)
+    },
+  }
 }

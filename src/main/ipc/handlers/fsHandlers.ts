@@ -166,6 +166,12 @@ export function registerFsHandlers(
   return {
     dispose(): void {
       fileWatcher.dispose()
+      ipcMain.removeHandler(FS_READDIR)
+      ipcMain.removeHandler(FS_READFILE)
+      ipcMain.removeHandler(FS_READFILE_BASE64)
+      ipcMain.removeHandler(FS_WRITEFILE)
+      ipcMain.removeHandler(FS_WATCH)
+      ipcMain.removeHandler(FS_UNWATCH)
     },
   }
 }

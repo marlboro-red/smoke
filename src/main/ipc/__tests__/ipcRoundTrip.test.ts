@@ -106,6 +106,12 @@ vi.mock('electron', () => ({
     on: vi.fn((channel: string, handler: any) => {
       onHandlers[channel] = handler
     }),
+    removeHandler: vi.fn((channel: string) => {
+      delete handleHandlers[channel]
+    }),
+    removeListener: vi.fn((channel: string, _handler: any) => {
+      delete onHandlers[channel]
+    }),
   },
   ipcRenderer: {
     invoke: vi.fn(async (channel: string, ...args: any[]) => {

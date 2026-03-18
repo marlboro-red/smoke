@@ -63,6 +63,7 @@ import {
 export interface CodegraphInstances {
   searchIndex: SearchIndex
   structureAnalyzer: StructureAnalyzer
+  dispose: () => void
 }
 
 export function registerCodegraphHandlers(
@@ -229,5 +230,31 @@ export function registerCodegraphHandlers(
     }
   )
 
-  return { searchIndex, structureAnalyzer }
+  return {
+    searchIndex,
+    structureAnalyzer,
+    dispose(): void {
+      ipcMain.removeHandler(PROJECT_INDEX_BUILD)
+      ipcMain.removeHandler(PROJECT_INDEX_LOOKUP)
+      ipcMain.removeHandler(PROJECT_INDEX_STATS)
+      ipcMain.removeHandler(SEARCH_BUILD)
+      ipcMain.removeHandler(SEARCH_QUERY)
+      ipcMain.removeHandler(SEARCH_STATS)
+      ipcMain.removeHandler(STRUCTURE_ANALYZE)
+      ipcMain.removeHandler(STRUCTURE_GET)
+      ipcMain.removeHandler(STRUCTURE_GET_MODULE)
+      ipcMain.removeHandler(CODEGRAPH_BUILD)
+      ipcMain.removeHandler(CODEGRAPH_EXPAND)
+      ipcMain.removeHandler(CODEGRAPH_GET_IMPORTS)
+      ipcMain.removeHandler(CODEGRAPH_RESOLVE_IMPORT)
+      ipcMain.removeHandler(CODEGRAPH_INDEX_STATS)
+      ipcMain.removeHandler(CODEGRAPH_INVALIDATE)
+      ipcMain.removeHandler(CODEGRAPH_GET_DEPENDENTS)
+      ipcMain.removeHandler(CODEGRAPH_BUILD_DEPENDENTS)
+      ipcMain.removeHandler(TASK_PARSE)
+      ipcMain.removeHandler(RELEVANCE_SCORE)
+      ipcMain.removeHandler(CODEGRAPH_PLAN_WORKSPACE)
+      ipcMain.removeHandler(CONTEXT_COLLECT)
+    },
+  }
 }

@@ -29,6 +29,7 @@ import {
 
 export interface PluginInstances {
   pluginLoader: PluginLoader
+  dispose: () => void
 }
 
 function toPluginInfo(p: LoadedPlugin): PluginInfo {
@@ -187,5 +188,19 @@ export async function registerPluginHandlers(
     return configStore.get('disabledPlugins', [])
   })
 
-  return { pluginLoader }
+  return {
+    pluginLoader,
+    dispose(): void {
+      pluginLoader.stopWatching()
+      ipcMain.removeHandler(PLUGIN_LIST)
+      ipcMain.removeHandler(PLUGIN_GET)
+      ipcMain.removeHandler(PLUGIN_RELOAD)
+      ipcMain.removeHandler(PLUGIN_INSTALL)
+      ipcMain.removeHandler(PLUGIN_UNINSTALL)
+      ipcMain.removeHandler(PLUGIN_CONFIG_GET)
+      ipcMain.removeHandler(PLUGIN_CONFIG_SET)
+      ipcMain.removeHandler(PLUGIN_SET_ENABLED)
+      ipcMain.removeHandler(PLUGIN_GET_DISABLED)
+    },
+  }
 }
