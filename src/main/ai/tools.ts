@@ -34,6 +34,8 @@ export interface AgentScopeProvider {
   getAllowedSessionIds: () => Set<string> | null
   getAssignedGroupId: () => string | null
   addSessionToScope: (sessionId: string) => void
+  getAllowedPaths: () => Set<string> | null
+  addPathToScope: (dirPath: string) => void
   getColor: () => string
 }
 
@@ -207,6 +209,7 @@ export function createExecutors(
     // Auto-add to agent's scope and group if assigned
     if (scope) {
       scope.addSessionToScope(sessionId)
+      scope.addPathToScope(cwd)
     }
     const groupId = scope?.getAssignedGroupId() ?? null
     const agentId = scope?.agentId ?? null
@@ -317,6 +320,16 @@ export function createExecutors(
   executors.set('read_file', async (input) => {
     const filePath = path.resolve(input.path as string)
 
+    const allowedPaths = scope?.getAllowedPaths()
+    if (allowedPaths) {
+      const withinScope = [...allowedPaths].some(
+        (dir) => filePath === dir || filePath.startsWith(dir + path.sep)
+      )
+      if (!withinScope) {
+        throw new Error(`Path ${filePath} is outside this agent's assigned scope.`)
+      }
+    }
+
     const stat = await fs.stat(filePath)
     if (stat.size > MAX_FILE_SIZE) {
       throw new Error(
@@ -332,6 +345,16 @@ export function createExecutors(
 
   executors.set('list_directory', async (input) => {
     const dirPath = path.resolve(input.path as string)
+
+    const allowedPaths = scope?.getAllowedPaths()
+    if (allowedPaths) {
+      const withinScope = [...allowedPaths].some(
+        (dir) => dirPath === dir || dirPath.startsWith(dir + path.sep)
+      )
+      if (!withinScope) {
+        throw new Error(`Path ${dirPath} is outside this agent's assigned scope.`)
+      }
+    }
 
     const entries = await fs.readdir(dirPath, { withFileTypes: true })
     const results: Array<{
@@ -681,6 +704,7 @@ export function createExecutors(
 
         if (scope) {
           scope.addSessionToScope(sessionId)
+          scope.addPathToScope(dir)
         }
         const groupId = scope?.getAssignedGroupId() ?? null
         const agentId = scope?.agentId ?? null
