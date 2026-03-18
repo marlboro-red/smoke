@@ -21,7 +21,11 @@
     "create-plugin": "node scripts/create-plugin.js",
     "bench": "vitest bench",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
@@ -60,6 +64,7 @@
   "devDependencies": {
     "@electron/notarize": "^3.1.1",
     "@electron/rebuild": "^4.0.3",
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.58.2",
     "@types/dompurify": "^3.0.5",
     "@types/react": "^18.3.18",
@@ -70,8 +75,15 @@
     "electron": "^41.0.2",
     "electron-builder": "^26.8.1",
     "electron-vite": "^3.1.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.4.0",
     "jsdom": "^27.0.1",
+    "prettier": "^3.8.1",
     "typescript": "^5.7.3",
+    "typescript-eslint": "^8.57.1",
     "vite": "^6.4.1",
     "vitest": "^4.1.0"
   },
