@@ -577,6 +577,20 @@ describe('registerIpcHandlers', () => {
         handlers['fs:readdir']({}, { path: path.join(tmpDir, 'nope') })
       ).rejects.toThrow()
     })
+
+    it('rejects reading a directory outside allowed boundaries (smoke-07x regression)', async () => {
+      await expect(
+        handlers['fs:readdir']({}, { path: '/etc' })
+      ).rejects.toThrow('Access denied')
+    })
+
+    it('allows reading a directory inside defaultCwd workspace (smoke-07x regression)', async () => {
+      mockConfig.preferences.defaultCwd = tmpDir
+      const result = await handlers['fs:readdir']({}, { path: tmpDir })
+      const names = result.map((e: any) => e.name).sort()
+      expect(names).toContain('hello.txt')
+      mockConfig.preferences.defaultCwd = ''
+    })
   })
 
   describe('FS_READFILE', () => {
