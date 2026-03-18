@@ -148,6 +148,15 @@ export interface FsWritefileResult {
   size: number
 }
 
+export interface FsWatchResult {
+  success: boolean
+  error?: string
+}
+
+export interface FsUnwatchResult {
+  success: boolean
+}
+
 export type CanvasActionType =
   | 'session_created'
   | 'session_moved'
@@ -595,8 +604,8 @@ export interface SmokeAPI {
     readfile: (path: string, maxSize?: number) => Promise<FsReadfileResult>
     readfileBase64: (path: string, maxSize?: number) => Promise<FsReadfileBase64Result>
     writefile: (path: string, content: string) => Promise<FsWritefileResult>
-    watch: (path: string) => Promise<void>
-    unwatch: (path: string) => Promise<void>
+    watch: (path: string) => Promise<FsWatchResult>
+    unwatch: (path: string) => Promise<FsUnwatchResult>
     onFileChanged: (callback: (event: { path: string }) => void) => () => void
   }
   app: {
