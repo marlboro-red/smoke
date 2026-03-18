@@ -611,4 +611,62 @@ describe('ClaudeCodeManager', () => {
       }
     })
   })
+
+  describe('validateClaudeCommand (smoke-b3o)', () => {
+    it('accepts the default "claude" command', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('claude')).toBe('claude')
+    })
+
+    it('accepts "claude-code" variant', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('claude-code')).toBe('claude-code')
+    })
+
+    it('accepts absolute path to claude binary', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('/usr/local/bin/claude')).toBe('/usr/local/bin/claude')
+    })
+
+    it('accepts Windows-style path to claude.exe', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('C:\\Program Files\\claude\\claude.exe')).toBe('C:\\Program Files\\claude\\claude.exe')
+    })
+
+    it('rejects command with semicolon (command injection)', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('claude; rm -rf /')).toBe('claude')
+    })
+
+    it('rejects command with pipe', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('claude | malicious')).toBe('claude')
+    })
+
+    it('rejects command with backticks', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('`malicious`')).toBe('claude')
+    })
+
+    it('rejects command with $() subshell', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('$(rm -rf /)')).toBe('claude')
+    })
+
+    it('rejects command with && chaining', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('claude && malicious')).toBe('claude')
+    })
+
+    it('rejects non-claude binary name', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('python')).toBe('claude')
+    })
+
+    it('rejects path to non-claude binary', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('/usr/bin/bash')).toBe('claude')
+    })
+
+    it('rejects empty string', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('')).toBe('claude')
+    })
+
+    it('rejects whitespace-only string', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('   ')).toBe('claude')
+    })
+
+    it('trims whitespace from valid command', () => {
+      expect(ClaudeCodeManager.validateClaudeCommand('  claude  ')).toBe('claude')
+    })
+  })
 })
