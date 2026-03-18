@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ReverseIndex } from '../ReverseIndex'
-import { FilenameIndex } from '../FilenameIndex'
+import { FilenameIndex } from '../../index/FilenameIndex'
 import * as fs from 'fs/promises'
 import type { PathAliases } from '../importResolver'
 

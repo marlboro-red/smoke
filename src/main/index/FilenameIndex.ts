@@ -43,6 +43,7 @@ const BURST_LIMIT = 50
 
 export class FilenameIndex {
   private index = new Map<string, string[]>()
+  private allPaths = new Set<string>()
   private rootPath: string | null = null
   private watcher: fs.FSWatcher | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -52,7 +53,7 @@ export class FilenameIndex {
   private getWindow: () => BrowserWindow | null
   private building = false
 
-  constructor(getWindow: () => BrowserWindow | null) {
+  constructor(getWindow: () => BrowserWindow | null = () => null) {
     this.getWindow = getWindow
   }
 
@@ -79,6 +80,26 @@ export class FilenameIndex {
     return this.index.get(basename) ?? []
   }
 
+  /** Check if a specific absolute path is in the index. */
+  has(absolutePath: string): boolean {
+    return this.allPaths.has(absolutePath)
+  }
+
+  /** Get total number of indexed files. */
+  get size(): number {
+    return this.allPaths.size
+  }
+
+  /** Get the project root this index was built for. */
+  get root(): string {
+    return this.rootPath ?? ''
+  }
+
+  /** Iterate all indexed file paths. */
+  get paths(): ReadonlySet<string> {
+    return this.allPaths
+  }
+
   getStats(): { fileCount: number; basenameCount: number; rootPath: string | null } {
     return {
       fileCount: this.totalFiles(),
@@ -97,6 +118,7 @@ export class FilenameIndex {
       this.debounceTimer = null
     }
     this.index.clear()
+    this.allPaths.clear()
     this.pendingAdds.clear()
     this.pendingDeletes.clear()
     this.rootPath = null
@@ -139,6 +161,7 @@ export class FilenameIndex {
     } else {
       this.index.set(basename, [fullPath])
     }
+    this.allPaths.add(fullPath)
   }
 
   private removeFile(fullPath: string): void {
@@ -153,6 +176,7 @@ export class FilenameIndex {
         this.index.delete(basename)
       }
     }
+    this.allPaths.delete(fullPath)
   }
 
   private startWatching(): void {
@@ -253,10 +277,6 @@ export class FilenameIndex {
   }
 
   private totalFiles(): number {
-    let count = 0
-    for (const paths of this.index.values()) {
-      count += paths.length
-    }
-    return count
+    return this.allPaths.size
   }
 }
