@@ -268,13 +268,37 @@ export class ClaudeCodeManager {
     return parts.join('\n')
   }
 
+  /** Validate that a claude command string is safe to pass to spawn(). */
+  static validateClaudeCommand(cmd: string): string {
+    const DEFAULT = 'claude'
+    if (typeof cmd !== 'string' || cmd.trim() === '') return DEFAULT
+
+    // Reject shell metacharacters that could enable command injection
+    if (/[;|&`$(){}!<>\n\r]/.test(cmd)) {
+      aiLogger.warn('config', `Rejected unsafe claudeCommand: ${JSON.stringify(cmd)}`)
+      return DEFAULT
+    }
+
+    // Extract the basename (last path segment, without extension)
+    const basename = path.basename(cmd).replace(/\.exe$/i, '')
+
+    // The basename must start with "claude" (allows claude, claude-code, etc.)
+    if (!/^claude/i.test(basename)) {
+      aiLogger.warn('config', `Rejected claudeCommand with unexpected basename: ${JSON.stringify(cmd)}`)
+      return DEFAULT
+    }
+
+    return cmd.trim()
+  }
+
   /** Get the claude command from preferences. */
   private getClaudeCommand(): string {
     const prefs = configStore.get('preferences', defaultPreferences) as Record<
       string,
       unknown
     >
-    return (prefs.claudeCommand as string) || 'claude'
+    const raw = (prefs.claudeCommand as string) || 'claude'
+    return ClaudeCodeManager.validateClaudeCommand(raw)
   }
 
   /** Spawn Claude Code and process its stream-json output. */
