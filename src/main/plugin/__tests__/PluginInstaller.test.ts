@@ -203,4 +203,46 @@ describe('PluginInstaller', () => {
       expect(result[0].metadata.source).toBe('npm')
     })
   })
+
+  describe('downloadFile redirect limit', () => {
+    it('throws after exceeding max redirects', async () => {
+      const { net } = await import('electron')
+      const mockRequest = vi.mocked(net.request)
+
+      // Each request returns a 302 redirect back to the same URL (circular)
+      mockRequest.mockImplementation(() => {
+        const req = {
+          on: vi.fn((event: string, cb: (resp: unknown) => void) => {
+            if (event === 'response') {
+              // Fire the response callback asynchronously
+              queueMicrotask(() =>
+                cb({
+                  statusCode: 302,
+                  headers: { location: 'https://example.com/loop' },
+                  on: vi.fn(),
+                })
+              )
+            }
+            return req
+          }),
+          end: vi.fn(),
+          abort: vi.fn(),
+        }
+        return req as unknown as ReturnType<typeof net.request>
+      })
+
+      const { PluginInstaller } = await import('../PluginInstaller')
+      const installer = new PluginInstaller()
+
+      // Access private method via bracket notation
+      const downloadFile = (installer as unknown as Record<string, Function>)['downloadFile'].bind(installer)
+
+      await expect(downloadFile('https://example.com/loop', join(tempDir, 'out.tar.gz'))).rejects.toThrow(
+        /Too many redirects/
+      )
+
+      // Should have made at most MAX_REDIRECTS + 1 requests (0 through 5, then throw on 6th call)
+      expect(mockRequest.mock.calls.length).toBeLessThanOrEqual(7)
+    })
+  })
 })

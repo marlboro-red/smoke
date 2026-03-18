@@ -310,9 +310,14 @@ export class PluginInstaller {
     }
   }
 
-  private async downloadFile(url: string, destPath: string): Promise<void> {
+  private async downloadFile(url: string, destPath: string, redirectCount = 0): Promise<void> {
+    const MAX_REDIRECTS = 5
     const MAX_DOWNLOAD_SIZE = 50 * 1024 * 1024 // 50 MB
     const DOWNLOAD_TIMEOUT = 60_000 // 60 seconds
+
+    if (redirectCount > MAX_REDIRECTS) {
+      throw new Error(`Too many redirects (>${MAX_REDIRECTS}) downloading ${url}`)
+    }
 
     return new Promise((resolve, reject) => {
       const request = net.request(url)
@@ -345,7 +350,7 @@ export class PluginInstaller {
           const redirectUrl = Array.isArray(response.headers.location)
             ? response.headers.location[0]
             : response.headers.location
-          this.downloadFile(redirectUrl, destPath).then(resolve, reject)
+          this.downloadFile(redirectUrl, destPath, redirectCount + 1).then(resolve, reject)
           return
         }
 
