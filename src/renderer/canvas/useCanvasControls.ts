@@ -69,13 +69,14 @@ export function useCanvasControls(
   const rootRef = useRef<HTMLDivElement | null>(null)
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // viewportRef is a React ref with stable identity — safe to omit from deps
   const applyTransform = useCallback(() => {
     const el = viewportRef.current
     if (!el) return
     const { x, y } = panRef.current
     const z = zoomRef.current
     el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${z})`
-  }, [viewportRef])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const syncToStore = useCallback(() => {
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
@@ -86,17 +87,29 @@ export function useCanvasControls(
     }, 100)
   }, [])
 
-  const startPan = useCallback(
-    (clientX: number, clientY: number) => {
+  const flushSync = useCallback(() => {
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current)
+      syncTimeoutRef.current = null
+    }
+    const { x, y } = panRef.current
+    canvasStore.getState().setPan(x, y)
+    canvasStore.getState().setZoom(zoomRef.current)
+  }, [])
+
+  // Event listeners are attached once on mount and cleaned up on unmount.
+  // All handler logic accesses refs (stable), so no deps are needed.
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+
+    const startPan = (clientX: number, clientY: number): void => {
       isPanningRef.current = true
       lastPointerRef.current = { x: clientX, y: clientY }
-      rootRef.current?.classList.add('panning')
-    },
-    []
-  )
+      root.classList.add('panning')
+    }
 
-  const movePan = useCallback(
-    (clientX: number, clientY: number) => {
+    const movePan = (clientX: number, clientY: number): void => {
       if (!isPanningRef.current) return
       const dx = clientX - lastPointerRef.current.x
       const dy = clientY - lastPointerRef.current.y
@@ -104,20 +117,14 @@ export function useCanvasControls(
       panRef.current.x += dx
       panRef.current.y += dy
       applyTransform()
-    },
-    [applyTransform]
-  )
+    }
 
-  const endPan = useCallback(() => {
-    if (!isPanningRef.current) return
-    isPanningRef.current = false
-    rootRef.current?.classList.remove('panning')
-    syncToStore()
-  }, [syncToStore])
-
-  useEffect(() => {
-    const root = rootRef.current
-    if (!root) return
+    const endPan = (): void => {
+      if (!isPanningRef.current) return
+      isPanningRef.current = false
+      root.classList.remove('panning')
+      syncToStore()
+    }
 
     const onWheel = (e: WheelEvent): void => {
       // Let terminal containers handle their own scroll (xterm.js scrollback).
@@ -247,9 +254,15 @@ export function useCanvasControls(
       root.removeEventListener('pointerup', onPointerUp)
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('keyup', onKeyUp)
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
+      // Clean up panning state if unmounting mid-pan
+      if (isPanningRef.current) {
+        isPanningRef.current = false
+        root.classList.remove('panning')
+      }
+      // Flush pending debounced sync so final position is persisted
+      flushSync()
     }
-  }, [applyTransform, syncToStore, startPan, movePan, endPan])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize from store and expose module-level refs
   useEffect(() => {
@@ -271,7 +284,7 @@ export function useCanvasControls(
       _syncToStore = null
       _rootRef = null
     }
-  }, [applyTransform, syncToStore])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { panRef, zoomRef, rootRef }
 }
