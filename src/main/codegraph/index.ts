@@ -3,7 +3,7 @@
  */
 
 export { CodeGraph, type CodeNode, type CodeEdge } from './CodeGraph'
-export { parseImports, detectLanguage, type ParsedImport } from './importParser'
+export { parseImports, detectLanguage, type ParsedImport } from '../imports/importParser'
 export { FilenameIndex } from './FilenameIndex'
 export {
   resolveImport,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseImports, detectLanguage } from '../importParser'
+import { parseImports, detectLanguage } from '../../imports/importParser'
 
 describe('parseImports', () => {
   describe('TypeScript / JavaScript', () => {
@@ -10,29 +10,26 @@ import bar from '../bar'
 import './side-effect'
 `
       const result = parseImports(code, 'typescript')
-      expect(result).toEqual([
-        { specifier: './foo', type: 'import' },
-        { specifier: '../bar', type: 'import' },
-        { specifier: './side-effect', type: 'import' },
-      ])
+      expect(result.map(r => r.specifier)).toEqual(['./foo', '../bar', './side-effect'])
+      expect(result.every(r => r.type === 'import')).toBe(true)
     })
 
     it('parses dynamic imports', () => {
       const code = `const mod = import('./lazy')`
       const result = parseImports(code, 'typescript')
-      expect(result).toEqual([{ specifier: './lazy', type: 'import' }])
+      expect(result).toEqual([{ specifier: './lazy', type: 'import', line: 1 }])
     })
 
     it('parses require calls', () => {
       const code = `const x = require('lodash')`
       const result = parseImports(code, 'javascript')
-      expect(result).toEqual([{ specifier: 'lodash', type: 'require' }])
+      expect(result).toEqual([{ specifier: 'lodash', type: 'require', line: 1 }])
     })
 
     it('parses re-exports', () => {
       const code = `export { default } from './utils'`
       const result = parseImports(code, 'typescript')
-      expect(result).toEqual([{ specifier: './utils', type: 'import' }])
+      expect(result).toEqual([{ specifier: './utils', type: 'import', line: 1 }])
     })
 
     it('deduplicates', () => {
@@ -54,12 +51,8 @@ from pathlib import Path
 from os.path import join
 `
       const result = parseImports(code, 'python')
-      expect(result).toEqual([
-        { specifier: 'os', type: 'import' },
-        { specifier: 'sys', type: 'import' },
-        { specifier: 'pathlib', type: 'import' },
-        { specifier: 'os.path', type: 'import' },
-      ])
+      expect(result.map(r => r.specifier)).toEqual(['os', 'sys', 'pathlib', 'os.path'])
+      expect(result.every(r => r.type === 'import')).toBe(true)
     })
   })
 
@@ -73,25 +66,20 @@ import (
 )
 `
       const result = parseImports(code, 'go')
-      expect(result).toEqual([
-        { specifier: 'fmt', type: 'import' },
-        { specifier: 'os', type: 'import' },
-        { specifier: 'strings', type: 'import' },
-      ])
+      expect(result.map(r => r.specifier)).toEqual(['fmt', 'os', 'strings'])
+      expect(result.every(r => r.type === 'import')).toBe(true)
     })
   })
 
   describe('Rust', () => {
-    it('parses use statements and extracts crate name', () => {
+    it('parses use statements', () => {
       const code = `
 use std::collections::HashMap;
 use tokio::fs;
 `
       const result = parseImports(code, 'rust')
-      expect(result).toEqual([
-        { specifier: 'std', type: 'use' },
-        { specifier: 'tokio', type: 'use' },
-      ])
+      expect(result.map(r => r.specifier)).toEqual(['std::collections::HashMap', 'tokio::fs'])
+      expect(result.every(r => r.type === 'use')).toBe(true)
     })
   })
 
@@ -102,22 +90,20 @@ using System;
 using System.Collections.Generic;
 `
       const result = parseImports(code, 'csharp')
-      expect(result).toEqual([
-        { specifier: 'System', type: 'use' },
-        { specifier: 'System.Collections.Generic', type: 'use' },
-      ])
+      expect(result.map(r => r.specifier)).toEqual(['System', 'System.Collections.Generic'])
+      expect(result.every(r => r.type === 'use')).toBe(true)
     })
 
     it('parses using static', () => {
       const code = `using static System.Math;`
       const result = parseImports(code, 'csharp')
-      expect(result).toEqual([{ specifier: 'System.Math', type: 'use' }])
+      expect(result).toEqual([{ specifier: 'System.Math', type: 'use', line: 1 }])
     })
 
     it('parses using alias', () => {
       const code = `using MyList = System.Collections.Generic.List<int>;`
       const result = parseImports(code, 'csharp')
-      expect(result).toEqual([{ specifier: 'System.Collections.Generic.List', type: 'use' }])
+      expect(result).toEqual([{ specifier: 'System.Collections.Generic.List', type: 'use', line: 1 }])
     })
 
     it('deduplicates', () => {
@@ -148,7 +134,7 @@ describe('detectLanguage', () => {
     expect(detectLanguage('/foo/bar.cs')).toBe('csharp')
   })
 
-  it('returns text for unknown extensions', () => {
-    expect(detectLanguage('/foo/bar.xyz')).toBe('text')
+  it('returns null for unknown extensions', () => {
+    expect(detectLanguage('/foo/bar.xyz')).toBeNull()
   })
 })

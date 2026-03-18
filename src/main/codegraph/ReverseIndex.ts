@@ -8,7 +8,7 @@
  */
 
 import * as fs from 'fs/promises'
-import { parseImports, detectLanguage } from './importParser'
+import { parseImports, detectLanguage } from '../imports/importParser'
 import { resolveAllImports, type PathAliases } from './importResolver'
 import type { FilenameIndex } from './FilenameIndex'
 
@@ -165,7 +165,7 @@ export class ReverseIndex {
         const content = buf.toString('utf-8', 0, bytesRead)
 
         const language = detectLanguage(filePath)
-        if (language === 'text') return null
+        if (!language) return null
 
         const parsed = parseImports(content, language)
         const resolved = resolveAllImports(parsed, filePath, language, index, aliases)

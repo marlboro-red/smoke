@@ -71,11 +71,11 @@ describe('importParser throughput', () => {
   const csharp100 = generateCSharpSource(100)
 
   bench('parseImports JS — 50 imports', () => {
-    parseImports(js50, 'js')
+    parseImports(js50, 'javascript')
   })
 
   bench('parseImports JS — 100 imports', () => {
-    parseImports(js100, 'js')
+    parseImports(js100, 'javascript')
   })
 
   bench('parseImports Python — 100 imports', () => {
@@ -104,7 +104,7 @@ describe('importParser batch throughput', () => {
     else if (i % 5 === 1) sources.push({ source: generateGoSource(20), lang: 'go' })
     else if (i % 5 === 2) sources.push({ source: generateRustSource(20), lang: 'rust' })
     else if (i % 5 === 3) sources.push({ source: generateCSharpSource(20), lang: 'csharp' })
-    else sources.push({ source: generateJSSource(20), lang: 'ts' })
+    else sources.push({ source: generateJSSource(20), lang: 'typescript' })
   }
 
   bench('parse 200 mixed-language files (20 imports each)', () => {
