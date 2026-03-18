@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import * as path from 'path'
 import type { BrowserWindow } from 'electron'
 import { createExecutors, type CodegraphDeps, type PluginDeps } from '../tools'
 import { terminalOutputBuffer } from '../TerminalOutputBuffer'
@@ -796,6 +797,75 @@ describe('AI Tools', () => {
         key: 'nonexistent',
       })
       expect(result).toContain('State key "nonexistent" not found')
+    })
+  })
+
+  describe('scope enforcement on file tools', () => {
+    // Use path.resolve to get platform-appropriate absolute paths
+    const projectDir = path.resolve('/home/user/project')
+    const outsideDir = path.resolve('/etc')
+
+    function createScopedExecutors(allowedPaths: Set<string>) {
+      const scope = {
+        agentId: 'agent-1',
+        getAllowedSessionIds: () => new Set(['existing-session']),
+        getAssignedGroupId: () => 'group-1',
+        addSessionToScope: vi.fn(),
+        getAllowedPaths: () => allowedPaths,
+        addPathToScope: vi.fn((p: string) => allowedPaths.add(p)),
+        getColor: () => '#61afef',
+      }
+      return { executors: createExecutors(ptyManager, () => mockWindow, scope), scope }
+    }
+
+    it('read_file rejects paths outside scope', async () => {
+      const { executors: scoped } = createScopedExecutors(new Set([projectDir]))
+      const executor = scoped.get('read_file')!
+      await expect(executor({ path: path.join(outsideDir, 'passwd') })).rejects.toThrow(
+        'outside this agent\'s assigned scope'
+      )
+    })
+
+    it('read_file allows paths within scope', async () => {
+      const { executors: scoped } = createScopedExecutors(new Set([projectDir]))
+      const executor = scoped.get('read_file')!
+      const result = await executor({ path: path.join(projectDir, 'src', 'index.ts') })
+      expect(result).toBe('file content here')
+    })
+
+    it('list_directory rejects paths outside scope', async () => {
+      const { executors: scoped } = createScopedExecutors(new Set([projectDir]))
+      const executor = scoped.get('list_directory')!
+      await expect(executor({ path: outsideDir })).rejects.toThrow(
+        'outside this agent\'s assigned scope'
+      )
+    })
+
+    it('list_directory allows paths within scope', async () => {
+      const { executors: scoped } = createScopedExecutors(new Set([projectDir]))
+      const executor = scoped.get('list_directory')!
+      const result = JSON.parse(await executor({ path: path.join(projectDir, 'src') }))
+      expect(result).toHaveLength(3)
+    })
+
+    it('unscoped executors allow any path for read_file', async () => {
+      const executor = executors.get('read_file')!
+      const result = await executor({ path: path.join(outsideDir, 'some-file') })
+      expect(result).toBe('file content here')
+    })
+
+    it('unscoped executors allow any path for list_directory', async () => {
+      const executor = executors.get('list_directory')!
+      const result = JSON.parse(await executor({ path: outsideDir }))
+      expect(result).toHaveLength(3)
+    })
+
+    it('spawn_terminal adds cwd to allowed paths', async () => {
+      const { executors: scoped, scope } = createScopedExecutors(new Set())
+      const executor = scoped.get('spawn_terminal')!
+      const cwd = path.resolve('/home/user/new-project')
+      await executor({ cwd })
+      expect(scope.addPathToScope).toHaveBeenCalledWith(cwd)
     })
   })
 

@@ -28,6 +28,7 @@ export interface AgentMeta {
   model: string | null
   color: string
   allowedSessionIds: Set<string> | null // null = unrestricted
+  allowedPaths: Set<string> | null // null = unrestricted
 }
 
 export interface AgentInfo {
@@ -108,6 +109,7 @@ export class AgentManager {
       model: null,
       color,
       allowedSessionIds: null,
+      allowedPaths: null,
     }
     this.agentMeta.set(agent.agentId, meta)
 
@@ -121,6 +123,13 @@ export class AgentManager {
           const m = this.agentMeta.get(agent.agentId)
           if (m?.allowedSessionIds) {
             m.allowedSessionIds.add(sessionId)
+          }
+        },
+        getAllowedPaths: () => this.agentMeta.get(agent.agentId)?.allowedPaths ?? null,
+        addPathToScope: (dirPath: string) => {
+          const m = this.agentMeta.get(agent.agentId)
+          if (m?.allowedPaths) {
+            m.allowedPaths.add(dirPath)
           }
         },
         getColor: () => this.agentMeta.get(agent.agentId)?.color ?? color,
@@ -169,8 +178,10 @@ export class AgentManager {
     meta.groupId = groupId
     if (groupId === null) {
       meta.allowedSessionIds = null
+      meta.allowedPaths = null
     } else {
       meta.allowedSessionIds = new Set(memberSessionIds ?? [])
+      meta.allowedPaths = new Set<string>()
     }
   }
 
