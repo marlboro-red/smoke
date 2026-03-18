@@ -28,6 +28,89 @@ import type { PluginManifest } from '../plugin/pluginManifest'
 
 export type ToolExecutor = (input: Record<string, unknown>) => Promise<string>
 
+// ── Input validation helpers ────────────────────────────────────────
+
+function requireString(input: Record<string, unknown>, field: string): string {
+  const val = input[field]
+  if (val === undefined || val === null) {
+    throw new Error(`Missing required field: ${field}`)
+  }
+  if (typeof val !== 'string') {
+    throw new Error(`Field "${field}" must be a string, got ${typeof val}`)
+  }
+  return val
+}
+
+function requireNumber(input: Record<string, unknown>, field: string): number {
+  const val = input[field]
+  if (val === undefined || val === null) {
+    throw new Error(`Missing required field: ${field}`)
+  }
+  if (typeof val !== 'number' || !Number.isFinite(val)) {
+    throw new Error(`Field "${field}" must be a finite number, got ${val}`)
+  }
+  return val
+}
+
+function optionalString(input: Record<string, unknown>, field: string, fallback?: string): string | undefined {
+  const val = input[field]
+  if (val === undefined || val === null) return fallback
+  if (typeof val !== 'string') {
+    throw new Error(`Field "${field}" must be a string, got ${typeof val}`)
+  }
+  return val
+}
+
+function optionalNumber(input: Record<string, unknown>, field: string, fallback?: number): number | undefined {
+  const val = input[field]
+  if (val === undefined || val === null) return fallback
+  if (typeof val !== 'number' || !Number.isFinite(val)) {
+    throw new Error(`Field "${field}" must be a finite number, got ${val}`)
+  }
+  return val
+}
+
+function optionalBoolean(input: Record<string, unknown>, field: string, fallback?: boolean): boolean | undefined {
+  const val = input[field]
+  if (val === undefined || val === null) return fallback
+  if (typeof val !== 'boolean') {
+    throw new Error(`Field "${field}" must be a boolean, got ${typeof val}`)
+  }
+  return val
+}
+
+function requirePosition(input: Record<string, unknown>, field: string): { x: number; y: number } {
+  const val = input[field]
+  if (val === undefined || val === null) {
+    throw new Error(`Missing required field: ${field}`)
+  }
+  if (
+    typeof val !== 'object' ||
+    typeof (val as Record<string, unknown>).x !== 'number' ||
+    typeof (val as Record<string, unknown>).y !== 'number'
+  ) {
+    throw new Error(`Field "${field}" must be an object with numeric x and y properties`)
+  }
+  return val as { x: number; y: number }
+}
+
+function optionalPosition(
+  input: Record<string, unknown>,
+  field: string,
+  fallback: { x: number; y: number }
+): { x: number; y: number } {
+  const val = input[field]
+  if (val === undefined || val === null) return fallback
+  if (
+    typeof val !== 'object' ||
+    typeof (val as Record<string, unknown>).x !== 'number' ||
+    typeof (val as Record<string, unknown>).y !== 'number'
+  ) {
+    throw new Error(`Field "${field}" must be an object with numeric x and y properties`)
+  }
+  return val as { x: number; y: number }
+}
+
 /** Context for scope-aware tool execution. */
 export interface AgentScopeProvider {
   agentId: string
@@ -143,8 +226,8 @@ export function createExecutors(
   // ── read_terminal_output ──────────────────────────────────────
 
   executors.set('read_terminal_output', async (input) => {
-    const sessionId = input.session_id as string
-    const lines = (input.lines as number) ?? 100
+    const sessionId = requireString(input, 'session_id')
+    const lines = optionalNumber(input, 'lines', 100)!
 
     const allowed = scope?.getAllowedSessionIds()
     if (allowed && !allowed.has(sessionId)) {
@@ -166,13 +249,10 @@ export function createExecutors(
       unknown
     >
     const cwd =
-      (input.cwd as string) || (prefs.defaultCwd as string) || process.cwd()
-    const position = (input.position as { x: number; y: number }) ?? {
-      x: 100,
-      y: 100,
-    }
-    const cols = (input.cols as number) ?? 80
-    const rows = (input.rows as number) ?? 24
+      optionalString(input, 'cwd') || (prefs.defaultCwd as string) || process.cwd()
+    const position = optionalPosition(input, 'position', { x: 100, y: 100 })
+    const cols = optionalNumber(input, 'cols', 80)!
+    const rows = optionalNumber(input, 'rows', 24)!
     const sessionId = uuid()
 
     const shell =
@@ -230,8 +310,8 @@ export function createExecutors(
   // ── write_to_terminal ─────────────────────────────────────────
 
   executors.set('write_to_terminal', async (input) => {
-    const sessionId = input.session_id as string
-    const text = input.text as string
+    const sessionId = requireString(input, 'session_id')
+    const text = requireString(input, 'text')
 
     const allowed = scope?.getAllowedSessionIds()
     if (allowed && !allowed.has(sessionId)) {
@@ -250,7 +330,7 @@ export function createExecutors(
   // ── close_terminal ────────────────────────────────────────────
 
   executors.set('close_terminal', async (input) => {
-    const sessionId = input.session_id as string
+    const sessionId = requireString(input, 'session_id')
 
     const allowed = scope?.getAllowedSessionIds()
     if (allowed && !allowed.has(sessionId)) {
@@ -273,8 +353,8 @@ export function createExecutors(
   // ── move_element ──────────────────────────────────────────────
 
   executors.set('move_element', async (input) => {
-    const sessionId = input.session_id as string
-    const position = input.position as { x: number; y: number }
+    const sessionId = requireString(input, 'session_id')
+    const position = requirePosition(input, 'position')
 
     const allowed = scope?.getAllowedSessionIds()
     if (allowed && !allowed.has(sessionId)) {
@@ -289,11 +369,11 @@ export function createExecutors(
   // ── resize_element ────────────────────────────────────────────
 
   executors.set('resize_element', async (input) => {
-    const sessionId = input.session_id as string
-    const cols = input.cols as number
-    const rows = input.rows as number
-    const width = (input.width as number) ?? cols * CHAR_WIDTH
-    const height = (input.height as number) ?? rows * CHAR_HEIGHT
+    const sessionId = requireString(input, 'session_id')
+    const cols = requireNumber(input, 'cols')
+    const rows = requireNumber(input, 'rows')
+    const width = optionalNumber(input, 'width', cols * CHAR_WIDTH)!
+    const height = optionalNumber(input, 'height', rows * CHAR_HEIGHT)!
 
     const allowed = scope?.getAllowedSessionIds()
     if (allowed && !allowed.has(sessionId)) {
@@ -318,7 +398,7 @@ export function createExecutors(
   // ── read_file ─────────────────────────────────────────────────
 
   executors.set('read_file', async (input) => {
-    const filePath = path.resolve(input.path as string)
+    const filePath = path.resolve(requireString(input, 'path'))
 
     const allowedPaths = scope?.getAllowedPaths()
     if (allowedPaths) {
@@ -344,7 +424,7 @@ export function createExecutors(
   // ── list_directory ────────────────────────────────────────────
 
   executors.set('list_directory', async (input) => {
-    const dirPath = path.resolve(input.path as string)
+    const dirPath = path.resolve(requireString(input, 'path'))
 
     const allowedPaths = scope?.getAllowedPaths()
     if (allowedPaths) {
@@ -390,7 +470,7 @@ export function createExecutors(
   // ── edit_file ───────────────────────────────────────────────
 
   executors.set('edit_file', async (input) => {
-    const filePath = path.resolve(input.path as string)
+    const filePath = path.resolve(requireString(input, 'path'))
 
     // Safety: reject paths outside the user's home directory
     const homedir = require('os').homedir()
@@ -403,7 +483,7 @@ export function createExecutors(
       throw new Error('Write denied: cannot write to hidden config directories')
     }
 
-    const content = input.content as string
+    const content = requireString(input, 'content')
     const contentBytes = Buffer.from(content, 'utf-8')
     if (contentBytes.length > MAX_FILE_SIZE) {
       throw new Error(
@@ -413,10 +493,7 @@ export function createExecutors(
 
     await fs.writeFile(filePath, content, 'utf-8')
 
-    const position = (input.position as { x: number; y: number }) ?? {
-      x: 100,
-      y: 100,
-    }
+    const position = optionalPosition(input, 'position', { x: 100, y: 100 })
 
     // Detect language from file extension
     const ext = filePath.split('.').pop()?.toLowerCase() || ''
@@ -450,8 +527,8 @@ export function createExecutors(
   // ── pan_canvas ────────────────────────────────────────────────
 
   executors.set('pan_canvas', async (input) => {
-    const x = input.x as number
-    const y = input.y as number
+    const x = requireNumber(input, 'x')
+    const y = requireNumber(input, 'y')
 
     emitCanvasAction('viewport_panned', { panX: x, panY: y })
 
@@ -461,12 +538,9 @@ export function createExecutors(
   // ── create_note ────────────────────────────────────────────────
 
   executors.set('create_note', async (input) => {
-    const text = input.text as string
-    const position = (input.position as { x: number; y: number }) ?? {
-      x: 100,
-      y: 100,
-    }
-    const color = (input.color as string) ?? 'yellow'
+    const text = requireString(input, 'text')
+    const position = optionalPosition(input, 'position', { x: 100, y: 100 })
+    const color = optionalString(input, 'color', 'yellow')!
     const noteId = uuid()
 
     emitCanvasAction('note_created', { noteId, text, position, color })
@@ -477,10 +551,10 @@ export function createExecutors(
   // ── create_arrow ───────────────────────────────────────────────
 
   executors.set('create_arrow', async (input) => {
-    const fromId = input.from_id as string
-    const toId = input.to_id as string
-    const label = input.label as string | undefined
-    const color = input.color as string | undefined
+    const fromId = requireString(input, 'from_id')
+    const toId = requireString(input, 'to_id')
+    const label = optionalString(input, 'label')
+    const color = optionalString(input, 'color')
     const connectorId = uuid()
 
     emitCanvasAction('connector_created', {
@@ -497,8 +571,8 @@ export function createExecutors(
   // ── create_group ────────────────────────────────────────────────
 
   executors.set('create_group', async (input) => {
-    const name = input.name as string
-    const color = input.color as string | undefined
+    const name = requireString(input, 'name')
+    const color = optionalString(input, 'color')
     const groupId = uuid()
 
     emitCanvasAction('group_created', { groupId, name, color })
@@ -509,8 +583,8 @@ export function createExecutors(
   // ── add_to_group ────────────────────────────────────────────────
 
   executors.set('add_to_group', async (input) => {
-    const elementId = input.element_id as string
-    const groupId = input.group_id as string
+    const elementId = requireString(input, 'element_id')
+    const groupId = requireString(input, 'group_id')
 
     emitCanvasAction('group_member_added', { groupId, elementId })
 
@@ -520,8 +594,8 @@ export function createExecutors(
   // ── broadcast_to_group ──────────────────────────────────────────
 
   executors.set('broadcast_to_group', async (input) => {
-    const groupId = input.group_id as string
-    const command = input.command as string
+    const groupId = requireString(input, 'group_id')
+    const command = requireString(input, 'command')
 
     emitCanvasAction('group_broadcast', { groupId, command })
 
@@ -535,11 +609,11 @@ export function createExecutors(
       throw new Error('Workspace assembly is not available: codegraph dependencies not configured.')
     }
 
-    const taskDescription = input.task_description as string
+    const taskDescription = requireString(input, 'task_description')
     const prefs = configStore.get('preferences', defaultPreferences) as Record<string, unknown>
-    const projectRoot = (input.project_root as string) || (prefs.defaultCwd as string) || process.cwd()
-    const maxFiles = (input.max_files as number) ?? 15
-    const spawnTerminals = (input.spawn_terminals as boolean) ?? true
+    const projectRoot = optionalString(input, 'project_root') || (prefs.defaultCwd as string) || process.cwd()
+    const maxFiles = optionalNumber(input, 'max_files', 15)!
+    const spawnTerminals = optionalBoolean(input, 'spawn_terminals', true)!
 
     // Step 1: Collect relevant files via the full pipeline
     const contextResult = await collectContext(
@@ -781,8 +855,8 @@ export function createExecutors(
   // ── create_plugin_element ───────────────────────────────────
 
   executors.set('create_plugin_element', async (input) => {
-    const pluginName = input.plugin_name as string
-    const position = (input.position as { x: number; y: number }) ?? { x: 100, y: 100 }
+    const pluginName = requireString(input, 'plugin_name')
+    const position = optionalPosition(input, 'position', { x: 100, y: 100 })
     const pluginData = (input.plugin_data as Record<string, unknown>) ?? {}
 
     if (!pluginDeps) {
@@ -826,8 +900,8 @@ export function createExecutors(
   // ── read_plugin_state ───────────────────────────────────────
 
   executors.set('read_plugin_state', async (input) => {
-    const pluginId = input.plugin_id as string
-    const key = input.key as string | undefined
+    const pluginId = requireString(input, 'plugin_id')
+    const key = optionalString(input, 'key')
 
     const stateDir = path.join(app.getPath('userData'), 'plugin-state', pluginId)
 
@@ -863,8 +937,8 @@ export function createExecutors(
   // ── explore_imports ──────────────────────────────────────────
 
   executors.set('explore_imports', async (input) => {
-    const filePath = path.resolve(input.file_path as string)
-    const depth = (input.depth as number) ?? 2
+    const filePath = path.resolve(requireString(input, 'file_path'))
+    const depth = optionalNumber(input, 'depth', 2)!
 
     // Determine project root from config or cwd
     const prefs = configStore.get('preferences', defaultPreferences) as Record<
