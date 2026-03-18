@@ -4,6 +4,7 @@ import * as path from 'path'
 import * as os from 'os'
 import { PluginPermissionManager } from '../PluginPermissionManager'
 import { resolveNearestReal, isWithinBoundary } from '../../ipc/pathBoundary'
+import { validatePluginCommand, ALLOWED_PLUGIN_COMMANDS } from '../pluginIpcHandlers'
 
 // We test the sandbox path resolution and permission enforcement logic
 // directly rather than mocking ipcMain, since the handler bodies are
@@ -195,5 +196,60 @@ describe('Plugin sandbox file operations (integration)', () => {
     const entries = await fs.readdir(sandboxDir, { withFileTypes: true })
     const names = entries.map(e => e.name).sort()
     expect(names).toEqual(['data', 'readme.txt'])
+  })
+})
+
+describe('Plugin command execution validation', () => {
+  it('allows commands on the allowlist', () => {
+    expect(() => validatePluginCommand('git')).not.toThrow()
+    expect(() => validatePluginCommand('node')).not.toThrow()
+    expect(() => validatePluginCommand('npm')).not.toThrow()
+    expect(() => validatePluginCommand('docker')).not.toThrow()
+    expect(() => validatePluginCommand('python3')).not.toThrow()
+    expect(() => validatePluginCommand('cargo')).not.toThrow()
+  })
+
+  it('rejects commands not on the allowlist', () => {
+    expect(() => validatePluginCommand('rm')).toThrow('not allowed')
+    expect(() => validatePluginCommand('shutdown')).toThrow('not allowed')
+    expect(() => validatePluginCommand('passwd')).toThrow('not allowed')
+    expect(() => validatePluginCommand('reboot')).toThrow('not allowed')
+  })
+
+  it('rejects absolute paths to binaries (Unix)', () => {
+    expect(() => validatePluginCommand('/usr/bin/rm')).toThrow('bare command name')
+    expect(() => validatePluginCommand('/bin/sh')).toThrow('bare command name')
+    expect(() => validatePluginCommand('/etc/../bin/bash')).toThrow('bare command name')
+  })
+
+  it('rejects absolute paths to binaries (Windows)', () => {
+    expect(() => validatePluginCommand('C:\\Windows\\System32\\cmd.exe')).toThrow('bare command name')
+    expect(() => validatePluginCommand('..\\..\\cmd.exe')).toThrow('bare command name')
+  })
+
+  it('rejects relative paths with separators', () => {
+    expect(() => validatePluginCommand('./malicious')).toThrow('bare command name')
+    expect(() => validatePluginCommand('../escape/binary')).toThrow('bare command name')
+    expect(() => validatePluginCommand('subdir/binary')).toThrow('bare command name')
+  })
+
+  it('rejects empty command', () => {
+    expect(() => validatePluginCommand('')).toThrow('must not be empty')
+    expect(() => validatePluginCommand('  ')).toThrow('must not be empty')
+  })
+
+  it('allowlist contains expected common commands', () => {
+    const expected = ['git', 'node', 'npm', 'npx', 'docker', 'python', 'python3', 'go', 'cargo', 'curl']
+    for (const cmd of expected) {
+      expect(ALLOWED_PLUGIN_COMMANDS.has(cmd)).toBe(true)
+    }
+  })
+
+  it('allowlist does NOT contain dangerous commands', () => {
+    const dangerous = ['rm', 'del', 'rmdir', 'shutdown', 'reboot', 'format', 'fdisk', 'dd', 'mkfs',
+      'passwd', 'su', 'sudo', 'chmod', 'chown', 'kill', 'killall', 'powershell', 'cmd', 'bash', 'sh']
+    for (const cmd of dangerous) {
+      expect(ALLOWED_PLUGIN_COMMANDS.has(cmd)).toBe(false)
+    }
   })
 })

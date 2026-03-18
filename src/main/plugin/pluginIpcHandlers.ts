@@ -53,6 +53,62 @@ const MAX_PLUGIN_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const COMMAND_TIMEOUT_MS = 30_000 // 30 seconds
 
 /**
+ * Allowlist of commands that plugins may execute.
+ * Only bare command names are permitted — no absolute paths, no path separators.
+ * The OS will resolve these via PATH, scoped to the plugin's sandbox cwd.
+ */
+export const ALLOWED_PLUGIN_COMMANDS: ReadonlySet<string> = new Set([
+  // Version control
+  'git',
+  // Node.js ecosystem
+  'node', 'npm', 'npx', 'yarn', 'pnpm',
+  // Build tools
+  'make', 'cmake',
+  // Common utilities
+  'echo', 'cat', 'ls', 'dir', 'find', 'grep', 'head', 'tail', 'wc', 'sort', 'uniq',
+  'cp', 'mv', 'mkdir', 'touch',
+  // Docker
+  'docker', 'docker-compose',
+  // Python
+  'python', 'python3', 'pip', 'pip3',
+  // Rust
+  'cargo', 'rustc',
+  // Go
+  'go',
+  // Other runtimes
+  'deno', 'bun', 'ruby', 'java', 'javac',
+  // Misc
+  'curl', 'wget', 'jq', 'tar', 'gzip', 'unzip',
+])
+
+/**
+ * Validate a command name against the allowlist.
+ * Rejects absolute paths, path separators, and commands not on the allowlist.
+ */
+export function validatePluginCommand(command: string): void {
+  // Reject empty commands
+  if (!command || command.trim().length === 0) {
+    throw new Error('Plugin command must not be empty')
+  }
+
+  // Reject commands containing path separators (absolute or relative paths to binaries)
+  if (command.includes('/') || command.includes('\\')) {
+    throw new Error(
+      `Plugin command must be a bare command name, not a path: "${command}". ` +
+      `Allowed commands: ${[...ALLOWED_PLUGIN_COMMANDS].join(', ')}`
+    )
+  }
+
+  // Reject commands not on the allowlist
+  if (!ALLOWED_PLUGIN_COMMANDS.has(command)) {
+    throw new Error(
+      `Plugin command "${command}" is not allowed. ` +
+      `Allowed commands: ${[...ALLOWED_PLUGIN_COMMANDS].join(', ')}`
+    )
+  }
+}
+
+/**
  * Resolve a relative path within a plugin's sandbox, ensuring it doesn't
  * escape via `..`, absolute paths, or symlinks.
  *
@@ -222,6 +278,9 @@ export function registerPluginIpcHandlers(
       if (!pluginPermissionManager.hasPermission(pluginId, 'shell:execute')) {
         denyPermission(pluginId, 'shell:execute')
       }
+
+      // Validate command against allowlist before execution
+      validatePluginCommand(command)
 
       const sandboxRoot = pluginPermissionManager.getSandboxRoot(pluginId)
       if (!sandboxRoot) throw new Error(`Plugin "${pluginId}" is not registered`)
