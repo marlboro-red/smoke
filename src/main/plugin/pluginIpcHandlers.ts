@@ -146,6 +146,26 @@ function denyPermission(pluginId: string, permission: ContextPermission): never 
 }
 
 /**
+ * Validate a plugin state key to prevent path traversal.
+ * Keys must be simple identifiers — no path separators or `..` sequences.
+ */
+export function validateStateKey(key: string): void {
+  if (!key || key.trim().length === 0) {
+    throw new Error('Plugin state key must not be empty')
+  }
+  if (key.includes('/') || key.includes('\\')) {
+    throw new Error(
+      `Plugin state key must not contain path separators: "${key}"`
+    )
+  }
+  if (key.includes('..')) {
+    throw new Error(
+      `Plugin state key must not contain path traversal sequences: "${key}"`
+    )
+  }
+}
+
+/**
  * Get or create the plugin state directory.
  * Plugin state is stored at: <userData>/plugin-state/<pluginId>/
  */
@@ -318,6 +338,8 @@ export function registerPluginIpcHandlers(
         throw new Error(`Plugin "${pluginId}" is not registered`)
       }
 
+      validateStateKey(key)
+
       const stateDir = getPluginStateDir(pluginId)
       const filePath = path.join(stateDir, `${key}.json`)
 
@@ -338,6 +360,8 @@ export function registerPluginIpcHandlers(
       if (!pluginPermissionManager.isRegistered(pluginId)) {
         throw new Error(`Plugin "${pluginId}" is not registered`)
       }
+
+      validateStateKey(key)
 
       const stateDir = getPluginStateDir(pluginId)
       await fs.mkdir(stateDir, { recursive: true })

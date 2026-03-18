@@ -4,7 +4,7 @@ import * as path from 'path'
 import * as os from 'os'
 import { PluginPermissionManager } from '../PluginPermissionManager'
 import { resolveNearestReal, isWithinBoundary } from '../../ipc/pathBoundary'
-import { validatePluginCommand, ALLOWED_PLUGIN_COMMANDS } from '../pluginIpcHandlers'
+import { validatePluginCommand, validateStateKey, ALLOWED_PLUGIN_COMMANDS } from '../pluginIpcHandlers'
 
 // We test the sandbox path resolution and permission enforcement logic
 // directly rather than mocking ipcMain, since the handler bodies are
@@ -251,5 +251,41 @@ describe('Plugin command execution validation', () => {
     for (const cmd of dangerous) {
       expect(ALLOWED_PLUGIN_COMMANDS.has(cmd)).toBe(false)
     }
+  })
+})
+
+describe('Plugin state key validation', () => {
+  it('allows simple alphanumeric keys', () => {
+    expect(() => validateStateKey('settings')).not.toThrow()
+    expect(() => validateStateKey('my-config')).not.toThrow()
+    expect(() => validateStateKey('counter_v2')).not.toThrow()
+    expect(() => validateStateKey('PREFS')).not.toThrow()
+  })
+
+  it('rejects keys with forward slashes (path traversal)', () => {
+    expect(() => validateStateKey('../../etc/passwd')).toThrow('path separators')
+    expect(() => validateStateKey('subdir/secret')).toThrow('path separators')
+    expect(() => validateStateKey('/absolute')).toThrow('path separators')
+  })
+
+  it('rejects keys with backslashes (Windows path traversal)', () => {
+    expect(() => validateStateKey('..\\..\\Windows\\System32')).toThrow('path separators')
+    expect(() => validateStateKey('subdir\\secret')).toThrow('path separators')
+  })
+
+  it('rejects keys with .. sequences', () => {
+    expect(() => validateStateKey('..')).toThrow('path traversal')
+    expect(() => validateStateKey('..data')).toThrow('path traversal')
+    expect(() => validateStateKey('foo..bar')).toThrow('path traversal')
+  })
+
+  it('rejects empty keys', () => {
+    expect(() => validateStateKey('')).toThrow('must not be empty')
+    expect(() => validateStateKey('  ')).toThrow('must not be empty')
+  })
+
+  it('allows keys with single dots', () => {
+    expect(() => validateStateKey('config.v2')).not.toThrow()
+    expect(() => validateStateKey('.hidden')).not.toThrow()
   })
 })
