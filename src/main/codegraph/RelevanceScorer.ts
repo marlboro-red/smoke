@@ -16,7 +16,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { ensureIndex } from './graphBuilder'
 import { CodeGraph } from './CodeGraph'
-import { parseImports, detectLanguage } from './importParser'
+import { parseImports, detectLanguage } from '../imports/importParser'
 import { resolveAllImports, loadPathAliases, type PathAliases } from './importResolver'
 
 // ---------------------------------------------------------------------------

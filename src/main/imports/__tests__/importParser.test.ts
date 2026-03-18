@@ -6,17 +6,17 @@ import { parseImports, detectLanguage, extractImportsFromFile } from '../importP
 
 describe('detectLanguage', () => {
   it('detects JS extensions', () => {
-    expect(detectLanguage('foo.js')).toBe('js')
-    expect(detectLanguage('foo.jsx')).toBe('js')
-    expect(detectLanguage('foo.mjs')).toBe('js')
-    expect(detectLanguage('foo.cjs')).toBe('js')
+    expect(detectLanguage('foo.js')).toBe('javascript')
+    expect(detectLanguage('foo.jsx')).toBe('jsx')
+    expect(detectLanguage('foo.mjs')).toBe('javascript')
+    expect(detectLanguage('foo.cjs')).toBe('javascript')
   })
 
   it('detects TS extensions', () => {
-    expect(detectLanguage('foo.ts')).toBe('ts')
-    expect(detectLanguage('foo.tsx')).toBe('ts')
-    expect(detectLanguage('foo.mts')).toBe('ts')
-    expect(detectLanguage('foo.cts')).toBe('ts')
+    expect(detectLanguage('foo.ts')).toBe('typescript')
+    expect(detectLanguage('foo.tsx')).toBe('tsx')
+    expect(detectLanguage('foo.mts')).toBe('typescript')
+    expect(detectLanguage('foo.cts')).toBe('typescript')
   })
 
   it('detects Python', () => {
@@ -43,7 +43,7 @@ describe('detectLanguage', () => {
   })
 
   it('is case-insensitive', () => {
-    expect(detectLanguage('FOO.TS')).toBe('ts')
+    expect(detectLanguage('FOO.TS')).toBe('typescript')
     expect(detectLanguage('bar.PY')).toBe('python')
   })
 })
@@ -56,24 +56,31 @@ import { foo } from './foo'
 import bar from '../bar'
 import * as baz from 'baz'
 `
-      const result = parseImports(code, 'ts')
+      const result = parseImports(code, 'typescript')
       expect(result.map(r => r.specifier)).toEqual(['./foo', '../bar', 'baz'])
     })
 
     it('parses side-effect imports', () => {
-      const result = parseImports(`import './styles.css'`, 'js')
-      expect(result).toEqual([{ specifier: './styles.css', line: 1 }])
+      const result = parseImports(`import './styles.css'`, 'javascript')
+      expect(result).toEqual([{ specifier: './styles.css', type: 'import', line: 1 }])
+    })
+
+    it('parses dynamic imports', () => {
+      const result = parseImports(`const mod = import('./dynamic')`, 'typescript')
+      expect(result).toEqual([{ specifier: './dynamic', type: 'import', line: 1 }])
     })
 
     it('parses require calls', () => {
       const code = `const fs = require('fs')\nconst path = require('path')`
-      const result = parseImports(code, 'js')
+      const result = parseImports(code, 'javascript')
       expect(result.map(r => r.specifier)).toEqual(['fs', 'path'])
+      expect(result.every(r => r.type === 'require')).toBe(true)
     })
 
     it('parses re-exports', () => {
-      const result = parseImports(`export { default } from './re-exported'`, 'ts')
+      const result = parseImports(`export { default } from './re-exported'`, 'typescript')
       expect(result[0].specifier).toBe('./re-exported')
+      expect(result[0].type).toBe('import')
     })
 
     it('deduplicates specifiers', () => {
@@ -81,20 +88,27 @@ import * as baz from 'baz'
 import { a } from './shared'
 import { b } from './shared'
 `
-      const result = parseImports(code, 'ts')
+      const result = parseImports(code, 'typescript')
       expect(result).toHaveLength(1)
       expect(result[0].specifier).toBe('./shared')
     })
 
     it('handles double-quoted imports', () => {
-      const result = parseImports(`import foo from "bar"`, 'js')
+      const result = parseImports(`import foo from "bar"`, 'javascript')
       expect(result[0].specifier).toBe('bar')
     })
 
     it('tracks line numbers', () => {
       const code = `import a from 'a'\nimport b from 'b'\nimport c from 'c'`
-      const result = parseImports(code, 'ts')
+      const result = parseImports(code, 'typescript')
       expect(result.map(r => r.line)).toEqual([1, 2, 3])
+    })
+
+    it('accepts short language aliases', () => {
+      const result = parseImports(`import a from 'a'`, 'ts')
+      expect(result[0].specifier).toBe('a')
+      const result2 = parseImports(`import b from 'b'`, 'js')
+      expect(result2[0].specifier).toBe('b')
     })
   })
 

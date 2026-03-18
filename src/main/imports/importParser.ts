@@ -3,24 +3,27 @@ import { openSync, readSync, closeSync } from 'fs'
 /** Maximum bytes to read from each file (imports are at the top) */
 const READ_LIMIT = 4096
 
-export type Language = 'js' | 'ts' | 'python' | 'go' | 'rust' | 'csharp'
+export type Language =
+  | 'typescript' | 'javascript' | 'tsx' | 'jsx'
+  | 'python' | 'go' | 'rust' | 'csharp'
 
 export interface ParsedImport {
   specifier: string
+  type: 'import' | 'require' | 'use'
   line: number
 }
 
 // --- Language detection ---
 
 const EXT_MAP: Record<string, Language> = {
-  '.js': 'js',
-  '.jsx': 'js',
-  '.mjs': 'js',
-  '.cjs': 'js',
-  '.ts': 'ts',
-  '.tsx': 'ts',
-  '.mts': 'ts',
-  '.cts': 'ts',
+  '.js': 'javascript',
+  '.jsx': 'jsx',
+  '.mjs': 'javascript',
+  '.cjs': 'javascript',
+  '.ts': 'typescript',
+  '.tsx': 'tsx',
+  '.mts': 'typescript',
+  '.cts': 'typescript',
   '.py': 'python',
   '.pyw': 'python',
   '.go': 'go',
@@ -50,24 +53,29 @@ function extractJS(source: string): ParsedImport[] {
   const results: ParsedImport[] = []
   const seen = new Set<string>()
 
-  function collect(regex: RegExp): void {
-    regex.lastIndex = 0
-    let match: RegExpExecArray | null
-    while ((match = regex.exec(source)) !== null) {
-      const specifier = match[1]
-      if (!seen.has(specifier)) {
-        seen.add(specifier)
-        results.push({ specifier, line: lineAt(source, match.index) })
-      }
+  function add(specifier: string, type: ParsedImport['type'], index: number): void {
+    if (!seen.has(specifier)) {
+      seen.add(specifier)
+      results.push({ specifier, type, line: lineAt(source, index) })
     }
   }
 
   // ES import: import ... from 'specifier'  |  import 'specifier'
-  collect(/import\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g)
-  // CommonJS require
-  collect(/require\s*\(\s*['"]([^'"]+)['"]\s*\)/g)
-  // Re-exports: export ... from 'specifier'
-  collect(/export\s+(?:[\s\S]*?\s+from\s+)['"]([^'"]+)['"]/g)
+  const esImportRe = /import\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g
+  let m: RegExpExecArray | null
+  while ((m = esImportRe.exec(source)) !== null) add(m[1], 'import', m.index)
+
+  // Dynamic import: import('specifier')
+  const dynamicRe = /import\(\s*['"]([^'"]+)['"]\s*\)/g
+  while ((m = dynamicRe.exec(source)) !== null) add(m[1], 'import', m.index)
+
+  // CommonJS require: require('specifier')
+  const requireRe = /require\(\s*['"]([^'"]+)['"]\s*\)/g
+  while ((m = requireRe.exec(source)) !== null) add(m[1], 'require', m.index)
+
+  // Re-export: export ... from 'specifier'
+  const reExportRe = /export\s+[\s\S]*?\s+from\s+['"]([^'"]+)['"]/g
+  while ((m = reExportRe.exec(source)) !== null) add(m[1], 'import', m.index)
 
   return results
 }
@@ -76,20 +84,19 @@ function extractPython(source: string): ParsedImport[] {
   const results: ParsedImport[] = []
   const seen = new Set<string>()
 
-  function collect(regex: RegExp): void {
-    regex.lastIndex = 0
-    let match: RegExpExecArray | null
-    while ((match = regex.exec(source)) !== null) {
-      const specifier = match[1]
-      if (!seen.has(specifier)) {
-        seen.add(specifier)
-        results.push({ specifier, line: lineAt(source, match.index) })
-      }
+  function add(specifier: string, index: number): void {
+    if (!seen.has(specifier)) {
+      seen.add(specifier)
+      results.push({ specifier, type: 'import', line: lineAt(source, index) })
     }
   }
 
-  collect(/^import\s+([\w.]+)/gm)
-  collect(/^from\s+([\w.]+)\s+import/gm)
+  const importRe = /^import\s+([\w.]+)/gm
+  let m: RegExpExecArray | null
+  while ((m = importRe.exec(source)) !== null) add(m[1], m.index)
+
+  const fromRe = /^from\s+([\w.]+)\s+import/gm
+  while ((m = fromRe.exec(source)) !== null) add(m[1], m.index)
 
   return results
 }
@@ -98,36 +105,32 @@ function extractGo(source: string): ParsedImport[] {
   const results: ParsedImport[] = []
   const seen = new Set<string>()
 
-  // Single import: import "pkg" or import alias "pkg"
-  const singleRe = /import\s+(?:\w+\s+)?"([^"]+)"/g
-  singleRe.lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = singleRe.exec(source)) !== null) {
-    // Skip if inside a group import block
-    const before = source.slice(Math.max(0, match.index - 20), match.index)
-    if (before.includes('(')) continue
-    const specifier = match[1]
+  function add(specifier: string, index: number): void {
     if (!seen.has(specifier)) {
       seen.add(specifier)
-      results.push({ specifier, line: lineAt(source, match.index) })
+      results.push({ specifier, type: 'import', line: lineAt(source, index) })
     }
+  }
+
+  // Single import: import "pkg" or import alias "pkg"
+  const singleRe = /import\s+(?:\w+\s+)?"([^"]+)"/g
+  let m: RegExpExecArray | null
+  while ((m = singleRe.exec(source)) !== null) {
+    // Skip if inside a group import block
+    const before = source.slice(Math.max(0, m.index - 20), m.index)
+    if (before.includes('(')) continue
+    add(m[1], m.index)
   }
 
   // Group import: import ( ... )
   const groupRe = /import\s*\(([\s\S]*?)\)/g
-  groupRe.lastIndex = 0
-  while ((match = groupRe.exec(source)) !== null) {
-    const groupContent = match[1]
-    const groupStart = match.index + source.slice(match.index).indexOf('(') + 1
+  while ((m = groupRe.exec(source)) !== null) {
+    const groupContent = m[1]
+    const groupStart = m.index + source.slice(m.index).indexOf('(') + 1
     const lineRe = /(?:\w+\s+)?"([^"]+)"/g
-    lineRe.lastIndex = 0
     let inner: RegExpExecArray | null
     while ((inner = lineRe.exec(groupContent)) !== null) {
-      const specifier = inner[1]
-      if (!seen.has(specifier)) {
-        seen.add(specifier)
-        results.push({ specifier, line: lineAt(source, groupStart + inner.index) })
-      }
+      add(inner[1], groupStart + inner.index)
     }
   }
 
@@ -139,13 +142,12 @@ function extractRust(source: string): ParsedImport[] {
   const seen = new Set<string>()
 
   const useRe = /^use\s+([\w:]+(?:::\{[^}]*\})?(?:::\*)?)\s*;/gm
-  useRe.lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = useRe.exec(source)) !== null) {
-    const specifier = match[1]
+  let m: RegExpExecArray | null
+  while ((m = useRe.exec(source)) !== null) {
+    const specifier = m[1]
     if (!seen.has(specifier)) {
       seen.add(specifier)
-      results.push({ specifier, line: lineAt(source, match.index) })
+      results.push({ specifier, type: 'use', line: lineAt(source, m.index) })
     }
   }
 
@@ -156,15 +158,13 @@ function extractCSharp(source: string): ParsedImport[] {
   const results: ParsedImport[] = []
   const seen = new Set<string>()
 
-  // using System; using static System.Math; using MyAlias = Some.Namespace;
   const usingRe = /^using\s+(?:static\s+)?(?:\w+\s*=\s*)?([\w.]+)(?:<[^>]*>)?\s*;/gm
-  usingRe.lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = usingRe.exec(source)) !== null) {
-    const specifier = match[1]
+  let m: RegExpExecArray | null
+  while ((m = usingRe.exec(source)) !== null) {
+    const specifier = m[1]
     if (specifier && !seen.has(specifier)) {
       seen.add(specifier)
-      results.push({ specifier, line: lineAt(source, match.index) })
+      results.push({ specifier, type: 'use', line: lineAt(source, m.index) })
     }
   }
 
@@ -175,11 +175,16 @@ function extractCSharp(source: string): ParsedImport[] {
 
 /**
  * Parse import specifiers from a source string.
+ * Accepts both short ('js', 'ts') and full ('javascript', 'typescript') language names.
  */
-export function parseImports(source: string, language: Language): ParsedImport[] {
+export function parseImports(source: string, language: string): ParsedImport[] {
   switch (language) {
     case 'js':
+    case 'javascript':
+    case 'jsx':
     case 'ts':
+    case 'typescript':
+    case 'tsx':
       return extractJS(source)
     case 'python':
       return extractPython(source)
@@ -189,6 +194,8 @@ export function parseImports(source: string, language: Language): ParsedImport[]
       return extractRust(source)
     case 'csharp':
       return extractCSharp(source)
+    default:
+      return []
   }
 }
 

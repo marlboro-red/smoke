@@ -115,14 +115,14 @@ describe('importParser regression thresholds', () => {
   it('parse 100 JS imports < 5ms', () => {
     const source = generateJSSource(100)
     const start = performance.now()
-    parseImports(source, 'js')
+    parseImports(source, 'javascript')
     expect(performance.now() - start).toBeLessThan(5)
   })
 
   it('parse 200 mixed-language files < 50ms', () => {
     const sources: Array<{ source: string; lang: Language }> = []
     for (let i = 0; i < 200; i++) {
-      sources.push({ source: generateJSSource(20), lang: 'ts' })
+      sources.push({ source: generateJSSource(20), lang: 'typescript' })
     }
     const start = performance.now()
     for (const { source, lang } of sources) parseImports(source, lang)

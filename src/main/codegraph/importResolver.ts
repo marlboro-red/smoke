@@ -9,7 +9,7 @@
 import * as path from 'path'
 import * as fs from 'fs/promises'
 import type { FilenameIndex } from './FilenameIndex'
-import type { ParsedImport } from './importParser'
+import type { ParsedImport } from '../imports/importParser'
 
 const JS_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']
 const INDEX_BASENAMES = JS_EXTENSIONS.map((ext) => `index${ext}`)
