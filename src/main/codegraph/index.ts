@@ -4,7 +4,7 @@
 
 export { CodeGraph, type CodeNode, type CodeEdge } from './CodeGraph'
 export { parseImports, detectLanguage, type ParsedImport } from '../imports/importParser'
-export { FilenameIndex } from './FilenameIndex'
+export { FilenameIndex } from '../index/FilenameIndex'
 export {
   resolveImport,
   resolveAllImports,

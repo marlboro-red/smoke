@@ -8,7 +8,7 @@
 
 import * as path from 'path'
 import * as fs from 'fs/promises'
-import type { FilenameIndex } from './FilenameIndex'
+import type { FilenameIndex } from '../index/FilenameIndex'
 import type { ParsedImport } from '../imports/importParser'
 
 const JS_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']

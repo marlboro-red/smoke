@@ -14,7 +14,7 @@ import * as fs from 'fs/promises'
 import { CodeGraph } from './CodeGraph'
 import { parseImports, detectLanguage } from '../imports/importParser'
 import { resolveAllImports, loadPathAliases, type PathAliases } from './importResolver'
-import { FilenameIndex } from './FilenameIndex'
+import { FilenameIndex } from '../index/FilenameIndex'
 import { ReverseIndex } from './ReverseIndex'
 
 const DEFAULT_MAX_DEPTH = 3

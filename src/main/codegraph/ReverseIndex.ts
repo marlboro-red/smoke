@@ -10,7 +10,7 @@
 import * as fs from 'fs/promises'
 import { parseImports, detectLanguage } from '../imports/importParser'
 import { resolveAllImports, type PathAliases } from './importResolver'
-import type { FilenameIndex } from './FilenameIndex'
+import type { FilenameIndex } from '../index/FilenameIndex'
 
 const FILE_READ_LIMIT = 4096
 
