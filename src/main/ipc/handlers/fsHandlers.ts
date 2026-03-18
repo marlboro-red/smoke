@@ -162,20 +162,17 @@ export function registerFsHandlers(
     return { size: content.length }
   })
 
-  // File watcher handlers
-  const fileWatcher = new FileWatcher(getMainWindow)
-
-  ipcMain.handle(FS_WATCH, async (_event, request: FsWatchRequest): Promise<FsWatchResponse> => {
-    const filePath = path.resolve(request.path)
-
-    // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
+  // File watcher handlers — pass allowed boundaries for defense-in-depth validation
+  const fileWatcher = new FileWatcher(getMainWindow, () => {
     const homedir = require('os').homedir()
     const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
     const allowed = [homedir, launchCwd]
     if (defaultCwd) allowed.push(defaultCwd)
-    await assertWithinAny(filePath, allowed)
+    return allowed
+  })
 
-    return fileWatcher.watch(filePath)
+  ipcMain.handle(FS_WATCH, async (_event, request: FsWatchRequest): Promise<FsWatchResponse> => {
+    return fileWatcher.watch(request.path)
   })
 
   ipcMain.handle(FS_UNWATCH, (_event, request: FsUnwatchRequest): FsUnwatchResponse => {
