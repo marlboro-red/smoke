@@ -40,6 +40,7 @@ import {
   type PluginRequestPermissionRequest,
 } from '../ipc/channels'
 import { configStore } from '../config/ConfigStore'
+import { resolveNearestReal, isWithinBoundary } from '../ipc/pathBoundary'
 
 /** Shared permission manager instance — exported for testing. */
 export const pluginPermissionManager = new PluginPermissionManager()
@@ -53,9 +54,12 @@ const COMMAND_TIMEOUT_MS = 30_000 // 30 seconds
 
 /**
  * Resolve a relative path within a plugin's sandbox, ensuring it doesn't
- * escape via `..` or absolute paths.
+ * escape via `..`, absolute paths, or symlinks.
+ *
+ * Uses fs.realpath (via resolveNearestReal) to resolve symlinks before
+ * checking containment, preventing symlink-based sandbox escapes.
  */
-function resolveSandboxPath(sandboxRoot: string, relativePath: string): string {
+async function resolveSandboxPath(sandboxRoot: string, relativePath: string): Promise<string> {
   // Reject absolute paths
   if (path.isAbsolute(relativePath)) {
     throw new Error('Absolute paths are not allowed — use paths relative to plugin root')
@@ -63,8 +67,12 @@ function resolveSandboxPath(sandboxRoot: string, relativePath: string): string {
 
   const resolved = path.resolve(sandboxRoot, relativePath)
 
-  // Ensure the resolved path is still within the sandbox
-  if (!resolved.startsWith(sandboxRoot + path.sep) && resolved !== sandboxRoot) {
+  // Resolve symlinks on both the target and the sandbox root
+  const realResolved = await resolveNearestReal(resolved)
+  const realSandbox = await resolveNearestReal(sandboxRoot)
+
+  // Ensure the real path is still within the real sandbox
+  if (!isWithinBoundary(realResolved, realSandbox)) {
     throw new Error('Path escapes plugin sandbox')
   }
 
@@ -127,7 +135,7 @@ export function registerPluginIpcHandlers(
       const sandboxRoot = pluginPermissionManager.getSandboxRoot(pluginId)
       if (!sandboxRoot) throw new Error(`Plugin "${pluginId}" is not registered`)
 
-      const filePath = resolveSandboxPath(sandboxRoot, relativePath)
+      const filePath = await resolveSandboxPath(sandboxRoot, relativePath)
       const stat = await fs.stat(filePath)
       if (stat.size > MAX_PLUGIN_FILE_SIZE) {
         throw new Error(`File too large: ${stat.size} bytes (max ${MAX_PLUGIN_FILE_SIZE})`)
@@ -150,7 +158,7 @@ export function registerPluginIpcHandlers(
       const sandboxRoot = pluginPermissionManager.getSandboxRoot(pluginId)
       if (!sandboxRoot) throw new Error(`Plugin "${pluginId}" is not registered`)
 
-      const filePath = resolveSandboxPath(sandboxRoot, relativePath)
+      const filePath = await resolveSandboxPath(sandboxRoot, relativePath)
       const buf = Buffer.from(content, 'utf-8')
       if (buf.length > MAX_PLUGIN_FILE_SIZE) {
         throw new Error(`Content too large: ${buf.length} bytes (max ${MAX_PLUGIN_FILE_SIZE})`)
@@ -175,7 +183,7 @@ export function registerPluginIpcHandlers(
       const sandboxRoot = pluginPermissionManager.getSandboxRoot(pluginId)
       if (!sandboxRoot) throw new Error(`Plugin "${pluginId}" is not registered`)
 
-      const dirPath = resolveSandboxPath(sandboxRoot, relativePath)
+      const dirPath = await resolveSandboxPath(sandboxRoot, relativePath)
       const entries = await fs.readdir(dirPath, { withFileTypes: true })
       const results: PluginFsReadDirEntry[] = []
 
