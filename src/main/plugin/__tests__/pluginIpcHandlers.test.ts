@@ -3,51 +3,84 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as os from 'os'
 import { PluginPermissionManager } from '../PluginPermissionManager'
+import { resolveNearestReal, isWithinBoundary } from '../../ipc/pathBoundary'
 
 // We test the sandbox path resolution and permission enforcement logic
 // directly rather than mocking ipcMain, since the handler bodies are
 // straightforward delegations once permission and path checks pass.
 
-describe('Plugin IPC sandbox path resolution', () => {
-  // Replicate the resolveSandboxPath helper from pluginIpcHandlers.ts
-  function resolveSandboxPath(sandboxRoot: string, relativePath: string): string {
-    if (path.isAbsolute(relativePath)) {
-      throw new Error('Absolute paths are not allowed — use paths relative to plugin root')
-    }
-    const resolved = path.resolve(sandboxRoot, relativePath)
-    if (!resolved.startsWith(sandboxRoot + path.sep) && resolved !== sandboxRoot) {
-      throw new Error('Path escapes plugin sandbox')
-    }
-    return resolved
+/**
+ * Mirror of the resolveSandboxPath helper from pluginIpcHandlers.ts.
+ * Uses resolveNearestReal + isWithinBoundary for symlink-safe containment.
+ */
+async function resolveSandboxPath(sandboxRoot: string, relativePath: string): Promise<string> {
+  if (path.isAbsolute(relativePath)) {
+    throw new Error('Absolute paths are not allowed — use paths relative to plugin root')
   }
+  const resolved = path.resolve(sandboxRoot, relativePath)
+  const realResolved = await resolveNearestReal(resolved)
+  const realSandbox = await resolveNearestReal(sandboxRoot)
+  if (!isWithinBoundary(realResolved, realSandbox)) {
+    throw new Error('Path escapes plugin sandbox')
+  }
+  return resolved
+}
 
-  const sandbox = '/home/user/.smoke/plugins/my-plugin'
+describe('Plugin IPC sandbox path resolution', () => {
+  let sandbox: string
 
-  it('resolves a simple relative path', () => {
-    expect(resolveSandboxPath(sandbox, 'data/config.json')).toBe(
+  beforeEach(async () => {
+    sandbox = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-sandbox-'))
+  })
+
+  afterEach(async () => {
+    await fs.rm(sandbox, { recursive: true, force: true })
+  })
+
+  it('resolves a simple relative path', async () => {
+    expect(await resolveSandboxPath(sandbox, 'data/config.json')).toBe(
       path.join(sandbox, 'data/config.json')
     )
   })
 
-  it('resolves the sandbox root itself', () => {
-    expect(resolveSandboxPath(sandbox, '.')).toBe(sandbox)
+  it('resolves the sandbox root itself', async () => {
+    expect(await resolveSandboxPath(sandbox, '.')).toBe(sandbox)
   })
 
-  it('rejects absolute paths', () => {
-    expect(() => resolveSandboxPath(sandbox, '/etc/passwd')).toThrow('Absolute paths')
+  it('rejects absolute paths', async () => {
+    await expect(resolveSandboxPath(sandbox, '/etc/passwd')).rejects.toThrow('Absolute paths')
   })
 
-  it('rejects parent traversal', () => {
-    expect(() => resolveSandboxPath(sandbox, '../other-plugin/secret')).toThrow('Path escapes')
+  it('rejects parent traversal', async () => {
+    await expect(resolveSandboxPath(sandbox, '../other-plugin/secret')).rejects.toThrow('Path escapes')
   })
 
-  it('rejects sneaky traversal with intervening dirs', () => {
-    expect(() => resolveSandboxPath(sandbox, 'data/../../other/file')).toThrow('Path escapes')
+  it('rejects sneaky traversal with intervening dirs', async () => {
+    await expect(resolveSandboxPath(sandbox, 'data/../../other/file')).rejects.toThrow('Path escapes')
   })
 
-  it('allows nested paths within sandbox', () => {
-    const result = resolveSandboxPath(sandbox, 'a/b/c/d.txt')
+  it('allows nested paths within sandbox', async () => {
+    const result = await resolveSandboxPath(sandbox, 'a/b/c/d.txt')
     expect(result).toBe(path.join(sandbox, 'a/b/c/d.txt'))
+  })
+
+  it('rejects symlink that escapes sandbox', async () => {
+    // Create an outside directory with a secret file
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-outside-'))
+    try {
+      await fs.writeFile(path.join(outsideDir, 'secret.txt'), 'sensitive data')
+
+      // Create a symlink inside the sandbox pointing outside
+      await fs.symlink(outsideDir, path.join(sandbox, 'escape-link'))
+
+      // The symlink-unaware check would allow this since the logical path
+      // is inside the sandbox, but the real path points outside
+      await expect(
+        resolveSandboxPath(sandbox, 'escape-link/secret.txt')
+      ).rejects.toThrow('Path escapes')
+    } finally {
+      await fs.rm(outsideDir, { recursive: true, force: true })
+    }
   })
 })
 
