@@ -36,6 +36,12 @@ vi.mock('electron', () => ({
   },
 }))
 
+// Mock pathBoundary — allow all paths by default; tests override per-case
+const mockAssertWithinHome = vi.fn().mockResolvedValue(undefined)
+vi.mock('../../ipc/pathBoundary', () => ({
+  assertWithinHome: (...args: unknown[]) => mockAssertWithinHome(...args),
+}))
+
 // Mock codegraph buildCodeGraph, collectContext, computeWorkspaceLayout
 vi.mock('../../codegraph', () => ({
   buildCodeGraph: vi.fn().mockResolvedValue({
@@ -866,6 +872,71 @@ describe('AI Tools', () => {
       const cwd = path.resolve('/home/user/new-project')
       await executor({ cwd })
       expect(scope.addPathToScope).toHaveBeenCalledWith(cwd)
+    })
+  })
+
+  describe('path boundary checks on file tools', () => {
+    it('read_file calls assertWithinHome', async () => {
+      const executor = executors.get('read_file')!
+      await executor({ path: '/tmp/test.txt' })
+      expect(mockAssertWithinHome).toHaveBeenCalledWith(
+        path.resolve('/tmp/test.txt'),
+        expect.any(String)
+      )
+    })
+
+    it('read_file rejects paths outside home directory', async () => {
+      mockAssertWithinHome.mockRejectedValueOnce(
+        new Error('Access denied: path must be within the user home directory')
+      )
+      const executor = executors.get('read_file')!
+      await expect(executor({ path: '/etc/passwd' })).rejects.toThrow(
+        'Access denied: path must be within the user home directory'
+      )
+    })
+
+    it('list_directory calls assertWithinHome', async () => {
+      const executor = executors.get('list_directory')!
+      await executor({ path: '/tmp' })
+      expect(mockAssertWithinHome).toHaveBeenCalledWith(
+        path.resolve('/tmp'),
+        expect.any(String)
+      )
+    })
+
+    it('list_directory rejects paths outside home directory', async () => {
+      mockAssertWithinHome.mockRejectedValueOnce(
+        new Error('Access denied: path must be within the user home directory')
+      )
+      const executor = executors.get('list_directory')!
+      await expect(executor({ path: '/etc' })).rejects.toThrow(
+        'Access denied: path must be within the user home directory'
+      )
+    })
+
+    it('read_file boundary check runs before file I/O', async () => {
+      mockAssertWithinHome.mockRejectedValueOnce(
+        new Error('Access denied: path must be within the user home directory')
+      )
+      const executor = executors.get('read_file')!
+      await expect(executor({ path: '/root/.ssh/id_rsa' })).rejects.toThrow('Access denied')
+      // fs.stat should NOT have been called — boundary check rejected first
+      const { stat } = await import('fs/promises')
+      expect(stat).not.toHaveBeenCalled()
+    })
+
+    it('list_directory boundary check runs before readdir', async () => {
+      mockAssertWithinHome.mockRejectedValueOnce(
+        new Error('Access denied: path must be within the user home directory')
+      )
+      const executor = executors.get('list_directory')!
+      await expect(executor({ path: '/root/.ssh' })).rejects.toThrow('Access denied')
+      // fs.readdir should NOT have been called for this invocation
+      const { readdir } = await import('fs/promises')
+      // readdir may have been called in beforeEach setup, but not for this path
+      const calls = (readdir as ReturnType<typeof vi.fn>).mock.calls
+      const sshCalls = calls.filter((c: unknown[]) => String(c[0]).includes('.ssh'))
+      expect(sshCalls).toHaveLength(0)
     })
   })
 

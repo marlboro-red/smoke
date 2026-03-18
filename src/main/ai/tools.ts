@@ -400,6 +400,10 @@ export function createExecutors(
   executors.set('read_file', async (input) => {
     const filePath = path.resolve(requireString(input, 'path'))
 
+    // Safety: reject paths outside the user's home directory
+    const homedir = require('os').homedir()
+    await assertWithinHome(filePath, homedir)
+
     const allowedPaths = scope?.getAllowedPaths()
     if (allowedPaths) {
       const withinScope = [...allowedPaths].some(
@@ -425,6 +429,10 @@ export function createExecutors(
 
   executors.set('list_directory', async (input) => {
     const dirPath = path.resolve(requireString(input, 'path'))
+
+    // Safety: reject paths outside the user's home directory
+    const homedir = require('os').homedir()
+    await assertWithinHome(dirPath, homedir)
 
     const allowedPaths = scope?.getAllowedPaths()
     if (allowedPaths) {
