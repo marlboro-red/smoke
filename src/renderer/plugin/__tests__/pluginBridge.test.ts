@@ -179,4 +179,28 @@ describe('getPluginBootstrapSource', () => {
     expect(src).toContain('try { handlers[i](payload); } catch(e)')
     expect(src).toContain('[Plugin] Handler error')
   })
+
+  it('storage methods include timeout cleanup to prevent handler leaks', () => {
+    const src = getPluginBootstrapSource()
+    // Each storage method should set a timeout that cleans up the handler
+    expect(src).toContain('setTimeout')
+    expect(src).toContain('clearTimeout')
+    // Timeout should delete the handler from messageHandlers
+    expect(src).toContain('delete messageHandlers[handlerKey]')
+  })
+
+  it('storage timeout rejects the promise with a descriptive error', () => {
+    const src = getPluginBootstrapSource()
+    expect(src).toContain('Plugin storage get timed out')
+    expect(src).toContain('Plugin storage set timed out')
+    expect(src).toContain('Plugin storage delete timed out')
+  })
+
+  it('storage methods use 30-second timeout', () => {
+    const src = getPluginBootstrapSource()
+    // All three storage methods should use 30000ms timeout
+    const matches = src.match(/30000/g)
+    expect(matches).not.toBeNull()
+    expect(matches!.length).toBe(3)
+  })
 })

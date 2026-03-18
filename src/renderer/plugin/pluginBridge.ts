@@ -145,37 +145,55 @@ export function getPluginBootstrapSource(): string {
 
     storage: {
       get: function(key) {
-        return new Promise(function(resolve) {
+        return new Promise(function(resolve, reject) {
           var reqId = Math.random().toString(36).slice(2);
+          var handlerKey = '__storage:result:' + reqId;
+          var timer = setTimeout(function() {
+            delete messageHandlers[handlerKey];
+            reject(new Error('Plugin storage get timed out for key: ' + key));
+          }, 30000);
           var handler = function(payload) {
             if (payload && payload.reqId === reqId) {
-              delete messageHandlers['__storage:result:' + reqId];
+              clearTimeout(timer);
+              delete messageHandlers[handlerKey];
               resolve(payload.value);
             }
           };
-          messageHandlers['__storage:result:' + reqId] = [handler];
+          messageHandlers[handlerKey] = [handler];
           sendToHost('__storage:get', { key: key, reqId: reqId });
         });
       },
       set: function(key, value) {
-        return new Promise(function(resolve) {
+        return new Promise(function(resolve, reject) {
           var reqId = Math.random().toString(36).slice(2);
+          var handlerKey = '__storage:result:' + reqId;
+          var timer = setTimeout(function() {
+            delete messageHandlers[handlerKey];
+            reject(new Error('Plugin storage set timed out for key: ' + key));
+          }, 30000);
           var handler = function() {
-            delete messageHandlers['__storage:result:' + reqId];
+            clearTimeout(timer);
+            delete messageHandlers[handlerKey];
             resolve();
           };
-          messageHandlers['__storage:result:' + reqId] = [handler];
+          messageHandlers[handlerKey] = [handler];
           sendToHost('__storage:set', { key: key, value: value, reqId: reqId });
         });
       },
       delete: function(key) {
-        return new Promise(function(resolve) {
+        return new Promise(function(resolve, reject) {
           var reqId = Math.random().toString(36).slice(2);
+          var handlerKey = '__storage:result:' + reqId;
+          var timer = setTimeout(function() {
+            delete messageHandlers[handlerKey];
+            reject(new Error('Plugin storage delete timed out for key: ' + key));
+          }, 30000);
           var handler = function() {
-            delete messageHandlers['__storage:result:' + reqId];
+            clearTimeout(timer);
+            delete messageHandlers[handlerKey];
             resolve();
           };
-          messageHandlers['__storage:result:' + reqId] = [handler];
+          messageHandlers[handlerKey] = [handler];
           sendToHost('__storage:delete', { key: key, reqId: reqId });
         });
       }
