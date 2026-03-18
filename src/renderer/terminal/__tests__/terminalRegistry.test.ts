@@ -15,13 +15,20 @@ interface MockTerminalEntry {
 }
 
 // Minimal re-implementation of registry logic for testing
+// Mirrors the idempotent markHidden/markVisible from terminalRegistry.ts
 function createRegistry() {
   const registry = new Map<string, MockTerminalEntry>()
   const disposeTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  const hiddenUnsubs = new Map<string, () => void>()
+  let listenerCount = 0
 
   return {
     get: (id: string) => registry.get(id),
     size: () => registry.size,
+    /** Number of active hidden-buffer listeners (for leak detection) */
+    activeListenerCount: () => hiddenUnsubs.size,
+    /** Total listeners ever created (for verifying idempotency) */
+    totalListenersCreated: () => listenerCount,
 
     register: (
       id: string,
@@ -46,14 +53,36 @@ function createRegistry() {
         clearTimeout(timer)
         disposeTimers.delete(id)
       }
+      const unsub = hiddenUnsubs.get(id)
+      if (unsub) {
+        unsub()
+        hiddenUnsubs.delete(id)
+      }
     },
 
     markHidden: (id: string) => {
       const entry = registry.get(id)
       if (!entry) return
+
+      // Idempotency: already hidden — avoid duplicate listeners/timers
+      if (entry.hiddenAt !== null) return
+
       entry.hiddenAt = Date.now()
 
+      // Simulate hidden-buffer listener registration
+      const existingUnsub = hiddenUnsubs.get(id)
+      if (existingUnsub) {
+        existingUnsub()
+        hiddenUnsubs.delete(id)
+      }
+      listenerCount++
+      hiddenUnsubs.set(id, () => { /* mock unsub */ })
+
       if (entry.webglAddon) {
+        // Clear any existing timer to prevent orphaned timers
+        const existingTimer = disposeTimers.get(id)
+        if (existingTimer) clearTimeout(existingTimer)
+
         const timer = setTimeout(() => {
           const current = registry.get(id)
           if (current?.webglAddon && current.hiddenAt !== null) {
@@ -69,7 +98,17 @@ function createRegistry() {
     markVisible: (id: string) => {
       const entry = registry.get(id)
       if (!entry) return
+
+      // Idempotency: already visible — nothing to clean up
+      if (entry.hiddenAt === null) return
+
       entry.hiddenAt = null
+
+      const unsub = hiddenUnsubs.get(id)
+      if (unsub) {
+        unsub()
+        hiddenUnsubs.delete(id)
+      }
 
       const timer = disposeTimers.get(id)
       if (timer) {
@@ -270,5 +309,98 @@ describe('terminalRegistry', () => {
     registry.register('s1', { disposed: false }, null, { width: 8, height: 16 })
     registry.register('s2', { disposed: false }, null, { width: 8, height: 16 })
     expect(registry.size()).toBe(2)
+  })
+})
+
+describe('hidden-buffer race condition (regression: smoke-xiv)', () => {
+  let registry: ReturnType<typeof createRegistry>
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    registry = createRegistry()
+    registry.register('s1', { disposed: false }, null, { width: 8, height: 16 })
+  })
+
+  it('markHidden is idempotent — calling twice does not create duplicate listeners', () => {
+    registry.markHidden('s1')
+    registry.markHidden('s1')
+
+    // Should have created exactly one listener (second call is a no-op)
+    expect(registry.totalListenersCreated()).toBe(1)
+    expect(registry.activeListenerCount()).toBe(1)
+  })
+
+  it('markVisible is idempotent — calling twice does not error', () => {
+    registry.markHidden('s1')
+    registry.markVisible('s1')
+    registry.markVisible('s1')
+
+    expect(registry.get('s1')?.hiddenAt).toBeNull()
+    expect(registry.activeListenerCount()).toBe(0)
+  })
+
+  it('rapid hidden→visible→hidden cycle creates exactly 2 listeners total', () => {
+    registry.markHidden('s1')   // listener 1
+    registry.markVisible('s1')  // unsub listener 1
+    registry.markHidden('s1')   // listener 2
+
+    expect(registry.totalListenersCreated()).toBe(2)
+    expect(registry.activeListenerCount()).toBe(1)
+  })
+
+  it('rapid 10-cycle toggle leaves exactly one active listener when ending hidden', () => {
+    for (let i = 0; i < 10; i++) {
+      registry.markHidden('s1')
+      registry.markVisible('s1')
+    }
+    registry.markHidden('s1')
+
+    // 10 cycles + final hide = 11 listeners created, but only 1 active
+    expect(registry.totalListenersCreated()).toBe(11)
+    expect(registry.activeListenerCount()).toBe(1)
+  })
+
+  it('rapid 10-cycle toggle leaves zero active listeners when ending visible', () => {
+    for (let i = 0; i < 10; i++) {
+      registry.markHidden('s1')
+      registry.markVisible('s1')
+    }
+
+    expect(registry.activeListenerCount()).toBe(0)
+  })
+
+  it('unregister cleans up hidden listener', () => {
+    registry.markHidden('s1')
+    expect(registry.activeListenerCount()).toBe(1)
+
+    registry.unregister('s1')
+    expect(registry.activeListenerCount()).toBe(0)
+  })
+
+  it('markHidden on already-hidden terminal with WebGL does not orphan timer', () => {
+    const webgl = mockWebglAddon()
+    registry.register('s2', { disposed: false }, webgl, { width: 8, height: 16 })
+
+    registry.markHidden('s2')
+    registry.markHidden('s2')  // idempotent — should not create second timer
+
+    // After 60s, WebGL should be disposed exactly once (not double-fired)
+    vi.advanceTimersByTime(WEBGL_DISPOSE_TIMEOUT)
+    expect(webgl.disposed).toBe(true)
+  })
+
+  it('rapid toggle with WebGL does not leak timers', () => {
+    const webgl = mockWebglAddon()
+    registry.register('s2', { disposed: false }, webgl, { width: 8, height: 16 })
+
+    // Rapid toggle 5 times
+    for (let i = 0; i < 5; i++) {
+      registry.markHidden('s2')
+      registry.markVisible('s2')
+    }
+
+    // After all toggles ending visible, advancing past 60s should NOT dispose WebGL
+    vi.advanceTimersByTime(WEBGL_DISPOSE_TIMEOUT + 1000)
+    expect(webgl.disposed).toBe(false)
   })
 })
