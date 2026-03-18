@@ -88,16 +88,30 @@ export function unregisterTerminal(sessionId: string): void {
 export function markHidden(sessionId: string): void {
   const entry = registry.get(sessionId)
   if (!entry) return
+
+  // Idempotency: already hidden — avoid duplicate listeners/timers
+  if (entry.hiddenAt !== null) return
+
   entry.hiddenAt = Date.now()
 
   // Start buffering PTY data while the terminal is off-screen.
   // The component's usePty listener gets torn down on unmount, so without
   // this buffer any data from active processes would be lost.
-  if (window.smokeAPI?.pty?.onData && !hiddenUnsubs.has(sessionId)) {
+  if (window.smokeAPI?.pty?.onData) {
+    // Defensive: clean up any stale listener before registering a new one
+    const existingUnsub = hiddenUnsubs.get(sessionId)
+    if (existingUnsub) {
+      existingUnsub()
+      hiddenUnsubs.delete(sessionId)
+    }
+
     const buffer: HiddenBuffer = { chunks: [], totalChars: 0 }
     hiddenBuffers.set(sessionId, buffer)
     const unsub = window.smokeAPI.pty.onData((event) => {
       if (event.id === sessionId) {
+        // Staleness guard: if this listener was orphaned (unsub removed
+        // from map but IPC removal was delayed), skip the write.
+        if (!hiddenUnsubs.has(sessionId)) return
         appendToHiddenBuffer(buffer, event.data)
         activityStore.getState().markActive(sessionId)
       }
@@ -107,6 +121,10 @@ export function markHidden(sessionId: string): void {
 
   // Schedule WebGL addon disposal after 60s off-screen
   if (entry.webglAddon) {
+    // Clear any existing timer to prevent orphaned timers
+    const existingTimer = disposeTimers.get(sessionId)
+    if (existingTimer) clearTimeout(existingTimer)
+
     const timer = setTimeout(() => {
       const current = registry.get(sessionId)
       if (current?.webglAddon && current.hiddenAt !== null) {
@@ -126,6 +144,10 @@ export function markHidden(sessionId: string): void {
 export function markVisible(sessionId: string): void {
   const entry = registry.get(sessionId)
   if (!entry) return
+
+  // Idempotency: already visible — nothing to clean up
+  if (entry.hiddenAt === null) return
+
   entry.hiddenAt = null
 
   // Clear activity indicator — the user can now see this terminal
