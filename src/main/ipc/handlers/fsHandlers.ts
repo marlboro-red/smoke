@@ -35,6 +35,14 @@ export function registerFsHandlers(
 
   ipcMain.handle(FS_READDIR, async (_event, request: FsReaddirRequest): Promise<FsReaddirEntry[]> => {
     const dirPath = path.resolve(request.path)
+
+    // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
+    const homedir = require('os').homedir()
+    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
+    const allowed = [homedir, launchCwd]
+    if (defaultCwd) allowed.push(defaultCwd)
+    await assertWithinAny(dirPath, allowed)
+
     const entries = await fs.readdir(dirPath, { withFileTypes: true })
     const CONCURRENCY = 16
 
