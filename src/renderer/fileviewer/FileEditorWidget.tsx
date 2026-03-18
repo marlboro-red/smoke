@@ -33,61 +33,67 @@ export default function FileEditorWidget({
 
   useEffect(() => {
     if (!containerRef.current) return
+    const parent = containerRef.current
+    let view: EditorView | null = null
 
-    const saveKeymap = keymap.of([
-      indentWithTab,
-      {
-        key: 'Mod-s',
-        run: (view) => {
-          onSaveRef.current(view.state.doc.toString())
-          return true
+    getLanguageExtension(language).then((langExt) => {
+      if (!parent.isConnected) return
+
+      const saveKeymap = keymap.of([
+        indentWithTab,
+        {
+          key: 'Mod-s',
+          run: (v) => {
+            onSaveRef.current(v.state.doc.toString())
+            return true
+          },
         },
-      },
-    ])
+      ])
 
-    const changeListener = EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        onChangeRef.current?.(update.state.doc.toString())
-      }
+      const changeListener = EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onChangeRef.current?.(update.state.doc.toString())
+        }
+      })
+
+      const cmThemeExtensions: Extension[] = themeConfig.isDark ? [oneDark] : []
+
+      const state = EditorState.create({
+        doc: content,
+        extensions: [
+          saveKeymap,
+          basicSetup,
+          ...cmThemeExtensions,
+          ...langExt,
+          changeListener,
+          EditorView.theme({
+            '&': {
+              height: '100%',
+              fontSize: 'var(--font-size-lg)',
+            },
+            '.cm-scroller': {
+              fontFamily: 'var(--font-mono)',
+              lineHeight: 'var(--line-height-code)',
+            },
+            '.cm-content': {
+              caretColor: 'var(--text-primary)',
+            },
+          }),
+        ],
+      })
+
+      view = new EditorView({
+        state,
+        parent,
+      })
+
+      if (editorViewRef) editorViewRef.current = view
+      view.focus()
     })
-
-    const cmThemeExtensions: Extension[] = themeConfig.isDark ? [oneDark] : []
-
-    const state = EditorState.create({
-      doc: content,
-      extensions: [
-        saveKeymap,
-        basicSetup,
-        ...cmThemeExtensions,
-        ...getLanguageExtension(language),
-        changeListener,
-        EditorView.theme({
-          '&': {
-            height: '100%',
-            fontSize: 'var(--font-size-lg)',
-          },
-          '.cm-scroller': {
-            fontFamily: 'var(--font-mono)',
-            lineHeight: 'var(--line-height-code)',
-          },
-          '.cm-content': {
-            caretColor: 'var(--text-primary)',
-          },
-        }),
-      ],
-    })
-
-    const view = new EditorView({
-      state,
-      parent: containerRef.current,
-    })
-
-    if (editorViewRef) editorViewRef.current = view
-    view.focus()
 
     return () => {
       if (editorViewRef) editorViewRef.current = null
-      view.destroy()
+      if (view) view.destroy()
     }
   }, [language, themeConfig.id]) // Only recreate on language or theme change, not content
 

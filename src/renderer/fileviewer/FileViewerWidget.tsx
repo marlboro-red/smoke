@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { codeToHtml } from 'shiki'
+import { codeToHtml } from '../shiki/highlighter'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { usePreference } from '../stores/preferencesStore'

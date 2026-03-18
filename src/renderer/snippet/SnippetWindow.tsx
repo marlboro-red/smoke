@@ -139,49 +139,55 @@ export default React.memo(function SnippetWindow({
 
   useEffect(() => {
     if (!containerRef.current) return
+    const parent = containerRef.current
+    let view: EditorView | null = null
 
-    const changeListener = EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        const newContent = update.state.doc.toString()
-        sessionStore.getState().updateSession(session.id, { content: newContent })
-      }
+    getLanguageExtension(session.language).then((langExt) => {
+      if (!parent.isConnected) return
+
+      const changeListener = EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          const newContent = update.state.doc.toString()
+          sessionStore.getState().updateSession(session.id, { content: newContent })
+        }
+      })
+
+      const cmThemeExtensions: Extension[] = themeConfig.isDark ? [oneDark] : []
+
+      const state = EditorState.create({
+        doc: session.content,
+        extensions: [
+          keymap.of([indentWithTab]),
+          basicSetup,
+          ...cmThemeExtensions,
+          ...langExt,
+          changeListener,
+          EditorView.theme({
+            '&': {
+              height: '100%',
+              fontSize: 'var(--font-size-lg)',
+            },
+            '.cm-scroller': {
+              fontFamily: 'var(--font-mono)',
+              lineHeight: 'var(--line-height-code)',
+            },
+            '.cm-content': {
+              caretColor: 'var(--text-primary)',
+            },
+          }),
+        ],
+      })
+
+      view = new EditorView({
+        state,
+        parent,
+      })
+
+      viewRef.current = view
     })
-
-    const cmThemeExtensions: Extension[] = themeConfig.isDark ? [oneDark] : []
-
-    const state = EditorState.create({
-      doc: session.content,
-      extensions: [
-        keymap.of([indentWithTab]),
-        basicSetup,
-        ...cmThemeExtensions,
-        ...getLanguageExtension(session.language),
-        changeListener,
-        EditorView.theme({
-          '&': {
-            height: '100%',
-            fontSize: 'var(--font-size-lg)',
-          },
-          '.cm-scroller': {
-            fontFamily: 'var(--font-mono)',
-            lineHeight: 'var(--line-height-code)',
-          },
-          '.cm-content': {
-            caretColor: 'var(--text-primary)',
-          },
-        }),
-      ],
-    })
-
-    const view = new EditorView({
-      state,
-      parent: containerRef.current,
-    })
-
-    viewRef.current = view
 
     return () => {
-      view.destroy()
+      if (view) view.destroy()
       viewRef.current = null
     }
   }, [session.language, themeConfig.id]) // Recreate on language or theme change
