@@ -18,10 +18,14 @@ import {
   type PtyKillMessage,
 } from '../channels'
 
+export interface PtyHandlersCleanup {
+  dispose: () => void
+}
+
 export function registerPtyHandlers(
   ptyManager: PtyManager,
   getMainWindow: () => BrowserWindow | null,
-): void {
+): PtyHandlersCleanup {
   // PTY data batcher: accumulates data chunks per session over a short window
   // and sends them as a single IPC message. Applies backpressure when the
   // renderer falls behind.
@@ -41,9 +45,10 @@ export function registerPtyHandlers(
   })
 
   // Renderer acknowledges receipt of a batched data message
-  ipcMain.on(PTY_DATA_ACK, (_event, message: { id: string }) => {
+  const onDataAck = (_event: Electron.IpcMainEvent, message: { id: string }): void => {
     ptyBatcher.ack(message.id)
-  })
+  }
+  ipcMain.on(PTY_DATA_ACK, onDataAck)
 
   ipcMain.handle(PTY_SPAWN, (_event, request: PtySpawnRequest): PtySpawnResponse => {
     const preferences = configStore.get('preferences', defaultPreferences)
@@ -117,27 +122,40 @@ export function registerPtyHandlers(
     return { id: pty.id, pid: pty.pid }
   })
 
-  ipcMain.on(PTY_DATA_TO_PTY, (_event, message: PtyDataToPty) => {
+  const onDataToPty = (_event: Electron.IpcMainEvent, message: PtyDataToPty): void => {
     try {
       ptyManager.write(message.id, message.data)
     } catch (err) {
       console.error('[pty:data:to-pty] Error writing to PTY:', err)
     }
-  })
+  }
+  ipcMain.on(PTY_DATA_TO_PTY, onDataToPty)
 
-  ipcMain.on(PTY_RESIZE, (_event, message: PtyResizeMessage) => {
+  const onResize = (_event: Electron.IpcMainEvent, message: PtyResizeMessage): void => {
     try {
       ptyManager.resize(message.id, message.cols, message.rows)
     } catch (err) {
       console.error('[pty:resize] Error resizing PTY:', err)
     }
-  })
+  }
+  ipcMain.on(PTY_RESIZE, onResize)
 
-  ipcMain.on(PTY_KILL, (_event, message: PtyKillMessage) => {
+  const onKill = (_event: Electron.IpcMainEvent, message: PtyKillMessage): void => {
     try {
       ptyManager.gracefulKill(message.id)
     } catch (err) {
       console.error('[pty:kill] Error killing PTY:', err)
     }
-  })
+  }
+  ipcMain.on(PTY_KILL, onKill)
+
+  return {
+    dispose(): void {
+      ipcMain.removeListener(PTY_DATA_ACK, onDataAck)
+      ipcMain.removeHandler(PTY_SPAWN)
+      ipcMain.removeListener(PTY_DATA_TO_PTY, onDataToPty)
+      ipcMain.removeListener(PTY_RESIZE, onResize)
+      ipcMain.removeListener(PTY_KILL, onKill)
+    },
+  }
 }

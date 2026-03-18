@@ -57,6 +57,12 @@ vi.mock('electron', () => ({
     on: vi.fn((channel: string, handler: any) => {
       listeners[channel] = handler
     }),
+    removeHandler: vi.fn((channel: string) => {
+      delete handlers[channel]
+    }),
+    removeListener: vi.fn((channel: string, _handler: any) => {
+      delete listeners[channel]
+    }),
   },
   BrowserWindow: vi.fn(),
   app: {
@@ -539,6 +545,20 @@ describe('registerIpcHandlers', () => {
 
     it('dispose can be called without throwing', () => {
       expect(() => cleanup.dispose()).not.toThrow()
+    })
+
+    it('dispose removes all registered ipcMain handlers and listeners', () => {
+      // Before dispose: handlers and listeners should be populated
+      const handlerCount = Object.keys(handlers).length
+      const listenerCount = Object.keys(listeners).length
+      expect(handlerCount).toBeGreaterThan(0)
+      expect(listenerCount).toBeGreaterThan(0)
+
+      cleanup.dispose()
+
+      // After dispose: all handlers and listeners should be removed
+      expect(Object.keys(handlers).length).toBe(0)
+      expect(Object.keys(listeners).length).toBe(0)
     })
   })
 

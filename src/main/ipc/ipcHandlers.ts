@@ -33,15 +33,17 @@ export async function registerIpcHandlers(
   await agentManager.setPtyManager(ptyManager)
   agentManagerInstance = agentManager
 
-  // Register domain-specific IPC handlers
-  registerPtyHandlers(ptyManager, getMainWindow)
-  registerConfigHandlers()
+  // Register domain-specific IPC handlers and collect cleanup handles
+  const ptyCleanup = registerPtyHandlers(ptyManager, getMainWindow)
+  const configCleanup = registerConfigHandlers()
   const fsCleanup = registerFsHandlers(getMainWindow, launchCwd)
-  const { searchIndex, structureAnalyzer } = registerCodegraphHandlers(getMainWindow)
-  registerAiHandlers(agentManager)
-  registerRecordingHandlers(getMainWindow)
-  registerAppHandlers(getMainWindow, launchCwd, onMenuRebuild)
-  const { pluginLoader } = await registerPluginHandlers(getMainWindow, launchCwd)
+  const codegraphCleanup = registerCodegraphHandlers(getMainWindow)
+  const { searchIndex, structureAnalyzer } = codegraphCleanup
+  const aiCleanup = registerAiHandlers(agentManager)
+  const recordingCleanup = registerRecordingHandlers(getMainWindow)
+  const appCleanup = registerAppHandlers(getMainWindow, launchCwd, onMenuRebuild)
+  const pluginCleanup = await registerPluginHandlers(getMainWindow, launchCwd)
+  const { pluginLoader } = pluginCleanup
 
   // Wire cross-domain dependencies
   agentManager.setCodegraphDeps({ searchIndex, structureAnalyzer })
@@ -51,11 +53,19 @@ export async function registerIpcHandlers(
   })
 
   // Plugin IPC bridge handlers (sandboxed plugin API)
-  registerPluginIpcHandlers(getMainWindow)
+  const pluginIpcCleanup = registerPluginIpcHandlers(getMainWindow)
 
   return {
     dispose(): void {
+      ptyCleanup.dispose()
+      configCleanup.dispose()
       fsCleanup.dispose()
+      codegraphCleanup.dispose()
+      aiCleanup.dispose()
+      recordingCleanup.dispose()
+      appCleanup.dispose()
+      pluginCleanup.dispose()
+      pluginIpcCleanup.dispose()
     },
   }
 }

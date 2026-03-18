@@ -22,7 +22,11 @@ import {
   type TabStateData,
 } from '../channels'
 
-export function registerConfigHandlers(): void {
+export interface ConfigHandlersCleanup {
+  dispose: () => void
+}
+
+export function registerConfigHandlers(): ConfigHandlersCleanup {
   // Layout persistence handlers
   ipcMain.handle(LAYOUT_SAVE, (_event, request: LayoutSaveRequest): void => {
     if (request.name === '__default__') {
@@ -100,4 +104,20 @@ export function registerConfigHandlers(): void {
     configStore.set('tabs', state.tabs)
     configStore.set('activeTabId', state.activeTabId)
   })
+
+  return {
+    dispose(): void {
+      ipcMain.removeHandler(LAYOUT_SAVE)
+      ipcMain.removeHandler(LAYOUT_LOAD)
+      ipcMain.removeHandler(LAYOUT_LIST)
+      ipcMain.removeHandler(LAYOUT_DELETE)
+      ipcMain.removeHandler(BOOKMARK_SAVE)
+      ipcMain.removeHandler(BOOKMARK_LIST)
+      ipcMain.removeHandler(BOOKMARK_DELETE)
+      ipcMain.removeHandler(CONFIG_GET)
+      ipcMain.removeHandler(CONFIG_SET)
+      ipcMain.removeHandler(TAB_GET_STATE)
+      ipcMain.removeHandler(TAB_SAVE_STATE)
+    },
+  }
 }

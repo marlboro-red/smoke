@@ -177,9 +177,13 @@ function getPluginStateDir(pluginId: string): string {
 // Registration
 // ---------------------------------------------------------------------------
 
+export interface PluginIpcCleanup {
+  dispose: () => void
+}
+
 export function registerPluginIpcHandlers(
   getMainWindow: () => BrowserWindow | null
-): void {
+): PluginIpcCleanup {
   // -- Plugin registration / unregistration --------------------------------
 
   ipcMain.handle(
@@ -409,4 +413,18 @@ export function registerPluginIpcHandlers(
       return false
     }
   )
+
+  return {
+    dispose(): void {
+      ipcMain.removeHandler(PLUGIN_REGISTER)
+      ipcMain.removeHandler(PLUGIN_UNREGISTER)
+      ipcMain.removeHandler(PLUGIN_FS_READ_FILE)
+      ipcMain.removeHandler(PLUGIN_FS_WRITE_FILE)
+      ipcMain.removeHandler(PLUGIN_FS_READ_DIR)
+      ipcMain.removeHandler(PLUGIN_EXECUTE_COMMAND)
+      ipcMain.removeHandler(PLUGIN_GET_STATE)
+      ipcMain.removeHandler(PLUGIN_SET_STATE)
+      ipcMain.removeHandler(PLUGIN_REQUEST_PERMISSION)
+    },
+  }
 }

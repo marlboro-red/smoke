@@ -32,9 +32,13 @@ import {
   type TerminalBufferReadLinesRequest,
 } from '../channels'
 
+export interface AiHandlersCleanup {
+  dispose: () => void
+}
+
 export function registerAiHandlers(
   agentManager: AgentManager,
-): void {
+): AiHandlersCleanup {
   // Terminal output buffer handlers (AI orchestrator)
   ipcMain.handle(TERMINAL_BUFFER_READ, (_event, request: TerminalBufferReadRequest): string => {
     return terminalOutputBuffer.read(request.sessionId)
@@ -146,4 +150,22 @@ export function registerAiHandlers(
       return aiLogger.getEntries(filter)
     }
   )
+
+  return {
+    dispose(): void {
+      ipcMain.removeHandler(TERMINAL_BUFFER_READ)
+      ipcMain.removeHandler(TERMINAL_BUFFER_READ_LINES)
+      ipcMain.removeHandler(AGENT_CREATE)
+      ipcMain.removeHandler(AGENT_REMOVE)
+      ipcMain.removeHandler(AGENT_LIST)
+      ipcMain.removeHandler(AGENT_ASSIGN_GROUP)
+      ipcMain.removeHandler(AGENT_SET_ROLE)
+      ipcMain.removeHandler(AGENT_SET_MODEL)
+      ipcMain.removeHandler(AGENT_UPDATE_SCOPE)
+      ipcMain.removeHandler(AI_SEND)
+      ipcMain.removeHandler(AI_ABORT)
+      ipcMain.removeHandler(AI_CLEAR)
+      ipcMain.removeHandler(AI_DIAGNOSTICS)
+    },
+  }
 }
