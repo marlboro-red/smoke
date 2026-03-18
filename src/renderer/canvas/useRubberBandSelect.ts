@@ -122,6 +122,8 @@ export function useRubberBandSelect(
     const onPointerDown = (e: PointerEvent): void => {
       // Only left button
       if (e.button !== 0) return
+      // Don't activate if already tracking a pointer interaction
+      if (pointerIdRef.current !== null) return
       // Don't activate when clicking on a window element
       if ((e.target as HTMLElement).closest('.terminal-window')) return
       // Don't activate when space is held (pan mode)
