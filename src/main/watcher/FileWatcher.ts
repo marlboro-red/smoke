@@ -17,9 +17,9 @@ export class FileWatcher {
     this.getWindow = getWindow
   }
 
-  watch(filePath: string): void {
+  watch(filePath: string): { success: boolean; error?: string } {
     const resolved = path.resolve(filePath)
-    if (this.watchers.has(resolved)) return
+    if (this.watchers.has(resolved)) return { success: true }
 
     try {
       const watcher = fs.watch(resolved, { persistent: false }, (eventType) => {
@@ -44,8 +44,11 @@ export class FileWatcher {
       })
 
       this.watchers.set(resolved, { watcher, debounceTimer: null })
+      return { success: true }
     } catch (err) {
-      console.warn(`[FileWatcher] Failed to watch ${resolved}:`, err)
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn(`[FileWatcher] Failed to watch ${resolved}:`, message)
+      return { success: false, error: message }
     }
   }
 

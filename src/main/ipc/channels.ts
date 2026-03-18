@@ -271,8 +271,17 @@ export interface FsWatchRequest {
   path: string
 }
 
+export interface FsWatchResponse {
+  success: boolean
+  error?: string
+}
+
 export interface FsUnwatchRequest {
   path: string
+}
+
+export interface FsUnwatchResponse {
+  success: boolean
 }
 
 export interface FsFileChangedEvent {

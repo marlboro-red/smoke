@@ -20,7 +20,9 @@ import {
   type FsWritefileRequest,
   type FsWritefileResponse,
   type FsWatchRequest,
+  type FsWatchResponse,
   type FsUnwatchRequest,
+  type FsUnwatchResponse,
 } from '../channels'
 
 export interface FsHandlersCleanup {
@@ -163,12 +165,22 @@ export function registerFsHandlers(
   // File watcher handlers
   const fileWatcher = new FileWatcher(getMainWindow)
 
-  ipcMain.handle(FS_WATCH, (_event, request: FsWatchRequest): void => {
-    fileWatcher.watch(request.path)
+  ipcMain.handle(FS_WATCH, async (_event, request: FsWatchRequest): Promise<FsWatchResponse> => {
+    const filePath = path.resolve(request.path)
+
+    // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
+    const homedir = require('os').homedir()
+    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
+    const allowed = [homedir, launchCwd]
+    if (defaultCwd) allowed.push(defaultCwd)
+    await assertWithinAny(filePath, allowed)
+
+    return fileWatcher.watch(filePath)
   })
 
-  ipcMain.handle(FS_UNWATCH, (_event, request: FsUnwatchRequest): void => {
+  ipcMain.handle(FS_UNWATCH, (_event, request: FsUnwatchRequest): FsUnwatchResponse => {
     fileWatcher.unwatch(request.path)
+    return { success: true }
   })
 
   return {

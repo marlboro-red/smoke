@@ -43,10 +43,12 @@ vi.mock('child_process', () => ({
   }),
 }))
 
-// Mock fs (sync methods used by ClaudeCodeManager for MCP config)
+// Mock fs (sync methods used by ClaudeCodeManager for MCP config, and fs.watch for FileWatcher)
+const mockFsWatcher = { on: vi.fn().mockReturnThis(), close: vi.fn() }
 vi.mock('fs', () => ({
   existsSync: vi.fn().mockReturnValue(false),
   writeFileSync: vi.fn(),
+  watch: vi.fn(() => mockFsWatcher),
 }))
 
 vi.mock('electron', () => ({
@@ -686,6 +688,61 @@ describe('registerIpcHandlers', () => {
       await expect(
         handlers['fs:readfile-base64']({}, { path: '/etc/passwd' })
       ).rejects.toThrow('Access denied')
+    })
+  })
+
+  describe('FS_WATCH', () => {
+    let tmpDir: string
+
+    beforeAll(async () => {
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'smoke-test-watch-'))
+      await fs.writeFile(path.join(tmpDir, 'watchme.txt'), 'initial')
+    })
+
+    afterAll(async () => {
+      // Dispose handlers first (cleans up file watchers)
+      cleanup.dispose()
+      await fs.rm(tmpDir, { recursive: true, force: true })
+    })
+
+    it('returns { success: true } for a valid watchable file (smoke-tjg regression)', async () => {
+      const filePath = path.join(tmpDir, 'watchme.txt')
+      const result = await handlers['fs:watch']({}, { path: filePath })
+      expect(result).toEqual({ success: true })
+    })
+
+    it('returns { success: true } when watching an already-watched path', async () => {
+      const filePath = path.join(tmpDir, 'watchme.txt')
+      // Watch same path twice — second call should still succeed (idempotent)
+      const result = await handlers['fs:watch']({}, { path: filePath })
+      expect(result).toEqual({ success: true })
+    })
+
+    it('returns { success: false } with error when fs.watch throws', async () => {
+      // Temporarily make the fs.watch mock throw to simulate a watch failure
+      const fsModule = await import('fs')
+      const watchMock = vi.mocked(fsModule.watch)
+      watchMock.mockImplementationOnce(() => { throw new Error('ENOENT: no such file') })
+
+      const filePath = path.join(tmpDir, 'will-fail.txt')
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = await handlers['fs:watch']({}, { path: filePath })
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('ENOENT')
+      consoleSpy.mockRestore()
+    })
+
+    it('rejects watching a path outside allowed directories (smoke-tjg regression)', async () => {
+      await expect(
+        handlers['fs:watch']({}, { path: '/etc/passwd' })
+      ).rejects.toThrow('Access denied')
+    })
+  })
+
+  describe('FS_UNWATCH', () => {
+    it('returns { success: true } (smoke-tjg regression)', () => {
+      const result = handlers['fs:unwatch']({}, { path: '/tmp/anything' })
+      expect(result).toEqual({ success: true })
     })
   })
 
