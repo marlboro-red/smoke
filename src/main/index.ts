@@ -1,3 +1,4 @@
+// Smoke main process entry
 import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'path'
 import { PtyManager } from './pty/PtyManager'
