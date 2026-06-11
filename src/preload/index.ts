@@ -143,6 +143,12 @@ const smokeAPI: SmokeAPI = {
     saveState: (state: TabState) => ipcRenderer.invoke('tab:save-state', state),
   },
 
+  taskHistory: {
+    get: () => ipcRenderer.invoke('task-history:get'),
+    set: (history: Array<{ description: string; timestamp: number }>) =>
+      ipcRenderer.invoke('task-history:set', history),
+  },
+
   agent: {
     create: (name) => ipcRenderer.invoke('agent:create', { name }),
     remove: (agentId) => ipcRenderer.invoke('agent:remove', { agentId }),

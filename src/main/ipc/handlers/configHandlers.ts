@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { deferredConfig, defaultPreferences } from '../../config/ConfigStore'
-import type { Layout, Bookmark, Preferences, SmokeConfig } from '../../config/ConfigStore'
+import type { Layout, Bookmark, Preferences, SmokeConfig, TaskHistoryEntry } from '../../config/ConfigStore'
 import {
   LAYOUT_SAVE,
   LAYOUT_LOAD,
@@ -13,6 +13,8 @@ import {
   CONFIG_SET,
   TAB_GET_STATE,
   TAB_SAVE_STATE,
+  TASK_HISTORY_GET,
+  TASK_HISTORY_SET,
   type LayoutSaveRequest,
   type LayoutLoadRequest,
   type LayoutDeleteRequest,
@@ -105,6 +107,17 @@ export function registerConfigHandlers(): ConfigHandlersCleanup {
     deferredConfig.set('activeTabId', state.activeTabId)
   })
 
+  // Task history (assembly task input) — stored here instead of renderer
+  // localStorage, whose first synchronous access blocks packaged apps for
+  // seconds (electron/electron#24441).
+  ipcMain.handle(TASK_HISTORY_GET, (): TaskHistoryEntry[] => {
+    return deferredConfig.get<TaskHistoryEntry[]>('taskHistory', [])
+  })
+
+  ipcMain.handle(TASK_HISTORY_SET, (_event, history: TaskHistoryEntry[]): void => {
+    deferredConfig.set('taskHistory', history)
+  })
+
   return {
     dispose(): void {
       ipcMain.removeHandler(LAYOUT_SAVE)
@@ -118,6 +131,8 @@ export function registerConfigHandlers(): ConfigHandlersCleanup {
       ipcMain.removeHandler(CONFIG_SET)
       ipcMain.removeHandler(TAB_GET_STATE)
       ipcMain.removeHandler(TAB_SAVE_STATE)
+      ipcMain.removeHandler(TASK_HISTORY_GET)
+      ipcMain.removeHandler(TASK_HISTORY_SET)
     },
   }
 }

@@ -682,6 +682,10 @@ export interface SmokeAPI {
     getState: () => Promise<TabState>
     saveState: (state: TabState) => Promise<void>
   }
+  taskHistory: {
+    get: () => Promise<Array<{ description: string; timestamp: number }>>
+    set: (history: Array<{ description: string; timestamp: number }>) => Promise<void>
+  }
   search: {
     build: (rootPath: string) => Promise<SearchBuildResult>
     query: (query: string, maxResults?: number) => Promise<SearchResponse>

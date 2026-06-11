@@ -73,6 +73,13 @@ export const PROJECT_INDEX_UPDATED = 'project:index-updated' as const
 export const TAB_GET_STATE = 'tab:get-state' as const
 export const TAB_SAVE_STATE = 'tab:save-state' as const
 
+// Task history channels (assembly task input). Persisted via electron-store
+// rather than localStorage: the first synchronous localStorage access in a
+// packaged Electron app can block the renderer for ~4-5s
+// (electron/electron#24441).
+export const TASK_HISTORY_GET = 'task-history:get' as const
+export const TASK_HISTORY_SET = 'task-history:set' as const
+
 // App channels
 export const APP_GET_LAUNCH_CWD = 'app:get-launch-cwd' as const
 export const APP_GET_GIT_BRANCH = 'app:get-git-branch' as const
@@ -547,6 +554,11 @@ export interface CodeGraphBuildDependentsRequest {
 export interface TabStateData {
   tabs: Array<{ id: string; name: string }>
   activeTabId: string
+}
+
+export interface TaskHistoryEntryData {
+  description: string
+  timestamp: number
 }
 
 // Task parsing message types

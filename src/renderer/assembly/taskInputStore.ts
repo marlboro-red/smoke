@@ -30,24 +30,14 @@ interface TaskInputStore {
   clearHistory: () => void
 }
 
-function loadHistory(): TaskHistoryEntry[] {
-  try {
-    const raw = localStorage.getItem('smoke:task-history')
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return parsed.slice(0, MAX_HISTORY)
-  } catch {
-    // ignore
-  }
-  return []
-}
-
+// History persists via the main process config store, NOT localStorage:
+// the first synchronous localStorage access in a packaged Electron app
+// blocks the renderer for ~4-5 seconds (electron/electron#24441), and this
+// module loads at startup.
 function saveHistory(history: TaskHistoryEntry[]): void {
-  try {
-    localStorage.setItem('smoke:task-history', JSON.stringify(history.slice(0, MAX_HISTORY)))
-  } catch {
-    // ignore
-  }
+  window.smokeAPI?.taskHistory?.set(history.slice(0, MAX_HISTORY)).catch(() => {
+    // best-effort persistence
+  })
 }
 
 function addToHistory(history: TaskHistoryEntry[], description: string): TaskHistoryEntry[] {
@@ -65,7 +55,7 @@ export const taskInputStore = createStore<TaskInputStore>((set, get) => ({
   query: '',
   loading: false,
   phase: null,
-  history: loadHistory(),
+  history: [],
 
   open: () => set({ isOpen: true, query: '', loading: false, phase: null }),
 
@@ -150,3 +140,18 @@ export const useTaskInputPhase = (): AssemblyPhase | null =>
 
 export const useTaskHistory = (): TaskHistoryEntry[] =>
   useStore(taskInputStore, useShallow((s) => s.history))
+
+// Hydrate history asynchronously — off the startup critical path
+// (typeof guard: this module also loads in node-environment tests)
+if (typeof window !== 'undefined') {
+  window.smokeAPI?.taskHistory
+    ?.get()
+    .then((history) => {
+      if (Array.isArray(history) && history.length > 0) {
+        taskInputStore.setState({ history: history.slice(0, MAX_HISTORY) })
+      }
+    })
+    .catch(() => {
+      // best-effort hydration
+    })
+}

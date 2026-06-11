@@ -83,6 +83,11 @@ export interface TabInfo {
   name: string
 }
 
+export interface TaskHistoryEntry {
+  description: string
+  timestamp: number
+}
+
 export interface SmokeConfig {
   defaultLayout: Layout | null
   namedLayouts: Record<string, Layout>
@@ -93,6 +98,7 @@ export interface SmokeConfig {
   pluginSettings: Record<string, Record<string, unknown>>
   disabledPlugins: string[]
   recentWorkspaces: string[]
+  taskHistory: TaskHistoryEntry[]
 }
 
 const storeOptions = {
@@ -107,6 +113,7 @@ const storeOptions = {
     pluginSettings: {} as Record<string, Record<string, unknown>>,
     disabledPlugins: [] as string[],
     recentWorkspaces: [] as string[],
+    taskHistory: [] as TaskHistoryEntry[],
   },
   // Allow E2E tests to redirect config to an isolated temp directory
   ...(process.env.SMOKE_E2E_CONFIG_DIR ? { cwd: process.env.SMOKE_E2E_CONFIG_DIR } : {}),
