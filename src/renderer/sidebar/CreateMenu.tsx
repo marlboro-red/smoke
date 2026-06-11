@@ -6,6 +6,19 @@ import { taskInputStore } from '../assembly/taskInputStore'
 import { usePlugins } from '../stores/pluginStore'
 import type { PluginInfo } from '../../preload/types'
 import ShellSelector from './ShellSelector'
+import {
+  shortcutBindingsStore,
+  formatBindingParts,
+  isMac,
+  type ShortcutAction,
+} from '../shortcuts/shortcutMap'
+
+/** Current (possibly rebound) shortcut for an action, formatted for display. */
+function shortcutHint(action: ShortcutAction): string | null {
+  const binding = shortcutBindingsStore.getState().bindings[action]
+  if (!binding) return null
+  return formatBindingParts(binding).join(isMac ? '' : '+')
+}
 
 interface CreateMenuProps {
   anchorRef: React.RefObject<HTMLButtonElement | null>
@@ -101,6 +114,9 @@ export default function CreateMenu({ anchorRef, onClose }: CreateMenuProps): JSX
         <button className="create-menu-item" onClick={handleNewTerminal}>
           <span className="create-menu-icon">&#9654;</span>
           <span className="create-menu-label">Terminal</span>
+          {shortcutHint('newSession') && (
+            <span className="create-menu-shortcut">{shortcutHint('newSession')}</span>
+          )}
           <button
             ref={shellBtnRef}
             className="create-menu-shell-btn"
@@ -128,6 +144,9 @@ export default function CreateMenu({ anchorRef, onClose }: CreateMenuProps): JSX
         <button className="create-menu-item" onClick={handleNewSnippet}>
           <span className="create-menu-icon">&lt;/&gt;</span>
           <span className="create-menu-label">Code Snippet</span>
+          {shortcutHint('newSnippet') && (
+            <span className="create-menu-shortcut">{shortcutHint('newSnippet')}</span>
+          )}
         </button>
       </div>
       {plugins.length > 0 && (
@@ -158,7 +177,9 @@ export default function CreateMenu({ anchorRef, onClose }: CreateMenuProps): JSX
         <button className="create-menu-item" onClick={handleAssemble}>
           <span className="create-menu-icon">&#9883;</span>
           <span className="create-menu-label">Assemble</span>
-          <span className="create-menu-shortcut">&#8984;&#8679;A</span>
+          {shortcutHint('assembleWorkspace') && (
+            <span className="create-menu-shortcut">{shortcutHint('assembleWorkspace')}</span>
+          )}
         </button>
       </div>
     </div>

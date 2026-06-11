@@ -12,6 +12,7 @@ import { performAutoLayout } from '../layout/autoLayout'
 import { applyTheme } from '../themes/applyTheme'
 import { createFileViewerSession } from '../fileviewer/useFileViewerCreation'
 import { getSortedSessionIds } from '../shortcuts/shortcutMap'
+import { executeShortcut } from '../shortcuts/useKeyboardShortcuts'
 import { presentationStore } from '../presentation/presentationStore'
 import { regionStore } from '../stores/regionStore'
 import { openWorkspaceDialog, openWorkspacePath } from '../workspace/openWorkspace'
@@ -213,6 +214,50 @@ function getActionItems(): PaletteItem[] {
       category: 'Help',
       icon: '?',
       action: () => shortcutsOverlayStore.getState().open(),
+    },
+    // Power features routed through the shortcut implementations — the
+    // palette is the one discoverable surface, so everything lives here.
+    {
+      id: 'action:split-horizontal',
+      title: 'Split Terminal Horizontally',
+      category: 'Action',
+      icon: '|',
+      action: () => executeShortcut('splitHorizontal'),
+    },
+    {
+      id: 'action:split-vertical',
+      title: 'Split Terminal Vertically',
+      category: 'Action',
+      icon: '-',
+      action: () => executeShortcut('splitVertical'),
+    },
+    {
+      id: 'action:close-pane',
+      title: 'Close Split Pane',
+      category: 'Action',
+      icon: 'x',
+      action: () => executeShortcut('closePane'),
+    },
+    {
+      id: 'action:toggle-focus-mode',
+      title: 'Toggle Focus Mode',
+      category: 'Canvas',
+      icon: 'o',
+      action: () => executeShortcut('toggleFocusMode'),
+    },
+    {
+      id: 'action:toggle-broadcast',
+      title: 'Toggle Broadcast to Group',
+      category: 'Action',
+      icon: '))',
+      action: () => executeShortcut('toggleBroadcast'),
+    },
+    {
+      id: 'action:show-dep-graph',
+      title: 'Show Import Graph for Focused File',
+      category: 'Tools',
+      icon: '%',
+      action: () => executeShortcut('showDepGraph'),
     },
     {
       id: 'action:add-bookmark',

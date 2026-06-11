@@ -72,14 +72,21 @@ describe('shortcutMap', () => {
       expect(resolveShortcut(e)).toBe('closeSession')
     })
 
-    it('resolves Cmd+Tab to cycleNextSession', () => {
-      const e = makeKeyEvent({ key: 'Tab', metaKey: true })
+    // Cycling lives on Ctrl+Tab on macOS — Cmd+Tab is the OS app switcher
+    // and never reaches the app.
+    it('resolves Ctrl+Tab to cycleNextSession', () => {
+      const e = makeKeyEvent({ key: 'Tab', ctrlKey: true })
       expect(resolveShortcut(e)).toBe('cycleNextSession')
     })
 
-    it('resolves Cmd+Shift+Tab to cyclePrevSession', () => {
-      const e = makeKeyEvent({ key: 'Tab', metaKey: true, shiftKey: true })
+    it('resolves Ctrl+Shift+Tab to cyclePrevSession', () => {
+      const e = makeKeyEvent({ key: 'Tab', ctrlKey: true, shiftKey: true })
       expect(resolveShortcut(e)).toBe('cyclePrevSession')
+    })
+
+    it('does not resolve Cmd+Tab (reserved by the macOS app switcher)', () => {
+      const e = makeKeyEvent({ key: 'Tab', metaKey: true })
+      expect(resolveShortcut(e)).toBeNull()
     })
 
     it('resolves Cmd+1 to focusSession1', () => {

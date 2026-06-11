@@ -80,7 +80,9 @@ function rebuildMenu(): void {
       label: 'Window',
       submenu: [
         { role: 'minimize' },
-        { role: 'close' },
+        // No role:'close' — its Cmd+W accelerator outranks the renderer's
+        // close-session shortcut on macOS and closed the whole app window
+        // with every session in it.
         { type: 'separator' },
         { role: 'front' }
       ]

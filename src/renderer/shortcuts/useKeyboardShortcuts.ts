@@ -18,6 +18,7 @@ import { presentationStore } from '../presentation/presentationStore'
 import { exportCanvasPng } from '../canvas/exportCanvas'
 import { buildDepGraph } from '../depgraph/buildDepGraph'
 import { goToLineStore } from '../fileviewer/goToLineStore'
+import { addToast } from '../stores/toastStore'
 import type { FileViewerSession, TerminalSession } from '../stores/sessionStore'
 import { preferencesStore } from '../stores/preferencesStore'
 import { terminalSearchStore } from '../terminal/terminalSearchStore'
@@ -26,7 +27,9 @@ import { taskInputStore } from '../assembly/taskInputStore'
 import { openWorkspaceDialog } from '../workspace/openWorkspace'
 import { extractSelectionToNote } from '../note/extractToNote'
 
-function executeShortcut(action: ShortcutAction): void {
+// Exported so the command palette can reuse the exact same action
+// implementations instead of duplicating them.
+export function executeShortcut(action: ShortcutAction): void {
   const state = sessionStore.getState()
 
   switch (action) {
@@ -97,6 +100,7 @@ function executeShortcut(action: ShortcutAction): void {
     case 'saveLayout': {
       const layout = serializeCurrentLayout('__default__')
       window.smokeAPI?.layout.save('__default__', layout)
+      addToast('Layout saved', 'success')
       break
     }
 
@@ -137,17 +141,16 @@ function executeShortcut(action: ShortcutAction): void {
       break
 
     case 'saveBookmark': {
-      const name = prompt('Bookmark name:')
-      if (name?.trim()) {
-        const pan = getCurrentPan()
-        const zoom = getCurrentZoom()
-        window.smokeAPI?.bookmark.save(name.trim(), {
-          name: name.trim(),
-          panX: pan.x,
-          panY: pan.y,
-          zoom,
-        })
-      }
+      // window.prompt() throws in Electron — auto-name the bookmark and
+      // confirm with a toast; it can be renamed in the Bookmarks panel.
+      const now = new Date()
+      const name = `Bookmark ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+      const pan = getCurrentPan()
+      const zoom = getCurrentZoom()
+      window.smokeAPI?.bookmark
+        .save(name, { name, panX: pan.x, panY: pan.y, zoom })
+        .then(() => addToast(`Saved "${name}"`, 'success'))
+        .catch(() => addToast('Failed to save bookmark', 'error'))
       break
     }
 
@@ -427,6 +430,14 @@ export function useKeyboardShortcuts(): void {
 
       const action = resolveShortcut(e)
       if (!action) return
+
+      // Bare Escape belongs to the terminal when one has keyboard focus —
+      // vim mode switches, fzf cancel, zsh vi-mode all depend on it.
+      // Canvas Escape semantics (deselect/unfocus) apply only outside.
+      if (action === 'escape') {
+        const active = document.activeElement
+        if (active && active.closest('.terminal-container')) return
+      }
 
       // Let Cmd+S fall through to CodeMirror when editing a file
       if (action === 'saveLayout') {

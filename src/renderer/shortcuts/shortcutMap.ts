@@ -61,6 +61,12 @@ export interface ShortcutBinding {
   mod: boolean
   shift: boolean
   alt: boolean
+  /**
+   * Control key on macOS (where `mod` means Cmd). Ignored on other
+   * platforms, where `mod` already maps to Ctrl. Lets defaults like
+   * Ctrl+Tab exist on Mac without colliding with the ⌘Tab app switcher.
+   */
+  ctrl?: boolean
 }
 
 export const isMac =
@@ -127,8 +133,14 @@ export const ACTION_LABELS: Record<ShortcutAction, string> = {
 export const DEFAULT_BINDINGS: Record<ShortcutAction, ShortcutBinding> = {
   newSession: { key: 'n', mod: true, shift: false, alt: false },
   closeSession: { key: 'w', mod: true, shift: false, alt: false },
-  cycleNextSession: { key: 'Tab', mod: true, shift: false, alt: false },
-  cyclePrevSession: { key: 'Tab', mod: true, shift: true, alt: false },
+  // Ctrl+Tab on macOS — Cmd+Tab is the OS app switcher and never reaches
+  // the app. Non-Mac keeps mod (Ctrl)+Tab, the browser/editor convention.
+  cycleNextSession: isMac
+    ? { key: 'Tab', mod: false, ctrl: true, shift: false, alt: false }
+    : { key: 'Tab', mod: true, shift: false, alt: false },
+  cyclePrevSession: isMac
+    ? { key: 'Tab', mod: false, ctrl: true, shift: true, alt: false }
+    : { key: 'Tab', mod: true, shift: true, alt: false },
   focusSession1: { key: '1', mod: true, shift: false, alt: false },
   focusSession2: { key: '2', mod: true, shift: false, alt: false },
   focusSession3: { key: '3', mod: true, shift: false, alt: false },
@@ -277,9 +289,10 @@ function normalizeKey(key: string): string {
 
 export function formatBindingParts(binding: ShortcutBinding): string[] {
   const parts: string[] = []
+  if (binding.ctrl) parts.push(isMac ? '⌃' : 'Ctrl')
   if (binding.mod) parts.push(MOD_LABEL)
-  if (binding.alt) parts.push('Alt')
-  if (binding.shift) parts.push('Shift')
+  if (binding.alt) parts.push(isMac ? '⌥' : 'Alt')
+  if (binding.shift) parts.push(isMac ? '⇧' : 'Shift')
   let keyLabel = binding.key
   if (keyLabel === 'ArrowLeft') keyLabel = '\u2190'
   else if (keyLabel === 'ArrowRight') keyLabel = '\u2192'
@@ -307,18 +320,24 @@ const SYSTEM_SHORTCUTS: SystemShortcut[] = isMac
       { key: 'h', mod: true, shift: false, alt: true, label: 'Hide Others (⌘⌥H)' },
       { key: 'm', mod: true, shift: false, alt: false, label: 'Minimize (⌘M)' },
       { key: 'Tab', mod: false, shift: false, alt: true, label: 'Switch App (⌥Tab)' },
+      { key: 'Tab', mod: true, shift: false, alt: false, label: 'Switch App (⌘Tab)' },
+      { key: 'Tab', mod: true, shift: true, alt: false, label: 'Switch App (⌘⇧Tab)' },
     ]
   : [
       { key: 'F4', mod: false, shift: false, alt: true, label: 'Close Window (Alt+F4)' },
       { key: 'Tab', mod: false, shift: false, alt: true, label: 'Switch App (Alt+Tab)' },
     ]
 
-function bindingsMatch(a: ShortcutBinding, b: { key: string; mod: boolean; shift: boolean; alt: boolean }): boolean {
+function bindingsMatch(
+  a: ShortcutBinding,
+  b: { key: string; mod: boolean; shift: boolean; alt: boolean; ctrl?: boolean }
+): boolean {
   return (
     normalizeKey(a.key) === normalizeKey(b.key) &&
     a.mod === b.mod &&
     a.shift === b.shift &&
-    a.alt === b.alt
+    a.alt === b.alt &&
+    (a.ctrl ?? false) === (b.ctrl ?? false)
   )
 }
 
@@ -418,6 +437,8 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
   const mod = isMac ? e.metaKey : e.ctrlKey
   const shift = e.shiftKey
   const alt = e.altKey
+  // On Mac, Control is its own modifier (mod = Cmd); elsewhere it IS mod
+  const ctrl = isMac ? e.ctrlKey : false
   const eventKey = normalizeKey(e.key)
 
   const bindings = shortcutBindingsStore.getState().bindings
@@ -428,7 +449,8 @@ export function resolveShortcut(e: KeyboardEvent): ShortcutAction | null {
       normalizeKey(binding.key) === eventKey &&
       binding.mod === mod &&
       binding.shift === shift &&
-      binding.alt === alt
+      binding.alt === alt &&
+      (binding.ctrl ?? false) === ctrl
     ) {
       return action as ShortcutAction
     }

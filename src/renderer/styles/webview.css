@@ -64,6 +64,7 @@
 }
 
 .webview-body {
+  position: relative; /* anchor for .webview-error-panel */
   overflow: hidden;
 }
 
@@ -93,4 +94,53 @@
 
 .status-dot.webview {
   background: #4a9eff;
+}
+
+/* Themed error panel shown over the webview on did-fail-load —
+   without it a failed load left a bare white rectangle */
+.webview-error-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--bg-window);
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 16px;
+}
+
+.webview-error-title {
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.webview-error-desc {
+  font-size: var(--font-size-md);
+  color: var(--color-error, #ef4444);
+}
+
+.webview-error-url {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  word-break: break-all;
+  max-width: 90%;
+}
+
+.webview-error-retry {
+  margin-top: 8px;
+  padding: 4px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.webview-error-retry:hover {
+  background: var(--bg-hover);
 }

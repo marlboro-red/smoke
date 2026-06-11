@@ -78,6 +78,8 @@ function ShortcutRow({
         mod,
         shift: e.shiftKey,
         alt: e.altKey,
+        // Control is a distinct modifier on Mac only (mod = Cmd there)
+        ...(isMac && e.ctrlKey ? { ctrl: true } : {}),
       }
 
       onBindingCaptured(newBinding)

@@ -60,8 +60,10 @@ export default function TerminalWidget({ sessionId, cols, rows, isFocused: isFoc
       // Only intercept keydown, not keyup
       if (event.type !== 'keydown') return true
 
-      // Escape: unfocus terminal
-      if (event.key === 'Escape') {
+      // Shift+Escape: unfocus the terminal. Bare Escape must reach the
+      // shell — vim mode switches, fzf cancel, and zsh vi-mode depend
+      // on it.
+      if (event.key === 'Escape' && event.shiftKey) {
         sessionStore.getState().focusSession(null)
         return false
       }

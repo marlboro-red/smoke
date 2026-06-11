@@ -92,16 +92,28 @@ strange for a terminal app).
 - Layout autosave/restore — survived relaunches perfectly, including
   split-pane and group state.
 
-## Quick wins (<1 hour each)
+## Quick wins — ALL SHIPPED (functionally verified in the running app)
 
-1. Don't resolve bare Escape when focus is inside `.terminal-container`.
-2. Remove `role: 'close'` from the Window menu.
-3. Replace the bookmark `prompt()` with auto-name + toast.
-4. Rebind cycling to Ctrl+Tab; add ⌘Tab to SYSTEM_SHORTCUTS.
-5. `hidden={!isVisible}` for webviews instead of unmount (kills flicker).
-6. Empty-state hint when no sessions exist.
-7. Shortcut hints on all CreateMenu rows.
-8. "Layout saved" toast on ⌘S.
-9. Palette commands for split/focus-mode/broadcast/extract/presentation/
-   dep-graph.
-10. `did-fail-load` → themed error panel in webviews.
+1. ✅ Bare Escape reaches the shell: guarded in the global shortcut handler
+   AND in TerminalWidget's xterm key handler (a second Escape-unfocus
+   binding the review's diagnosis missed — found during verification).
+   Shift+Escape now unfocuses the terminal instead.
+2. ✅ `role: 'close'` removed from the Window menu — Cmd+W goes to the
+   renderer's close-session handler, not "close the whole app window".
+3. ✅ Cmd+K bookmark: auto-named (timestamp) + success toast; no more
+   silent `prompt()` exception. Rename in the Bookmarks panel.
+4. ✅ Session cycling rebound to ⌃Tab/⌃⇧Tab on macOS (binding model
+   extended with a Mac-only `ctrl` modifier); ⌘Tab/⌘⇧Tab added to
+   SYSTEM_SHORTCUTS so the conflict validator warns on rebinds.
+5. ✅ Webviews stay mounted (`hidden`) across culling AND thumbnail mode
+   — verified: panned 4000px away, <webview> stayed in the DOM with
+   `visibility: hidden`. No more reload flicker / lost page state.
+6. ✅ Empty-state hint on a blank canvas (double-click + ⌘N/⌘P/⌘/ keys).
+7. ✅ CreateMenu shortcut hints (⌘N, ⌘⇧K, ⌘⇧A) — live bindings, so they
+   follow rebinds.
+8. ✅ "Layout saved" toast on ⌘S.
+9. ✅ Palette commands added: Split Horizontal/Vertical, Close Pane,
+   Toggle Focus Mode, Toggle Broadcast, Show Import Graph — routed
+   through the shared shortcut implementations.
+10. ✅ `did-fail-load` → themed in-window error panel with retry (no more
+    white rectangle).

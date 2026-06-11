@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useMemo } from 'react'
 import { useCanvasControls, getCurrentPan, getCurrentZoom } from './useCanvasControls'
 import { useRubberBandSelect } from './useRubberBandSelect'
+import { isMac } from '../shortcuts/shortcutMap'
 import { useViewportCulling } from './useViewportCulling'
 import { useSessionList, sessionStore } from '../stores/sessionStore'
 import type { Session, TerminalSession, FileViewerSession } from '../stores/sessionStore'
@@ -117,18 +118,22 @@ const SessionElement = React.memo(function SessionElement({
       }
       break
     case 'webview':
-      if (!isVisible) return null
-      if (isThumbnailMode && !session.isPinned) {
-        element = <WebviewThumbnail session={session} />
-      } else {
-        element = (
+      // Keep the <webview> mounted across culling and thumbnail mode —
+      // unmounting destroys the guest page, so re-entry meant a full
+      // reload (white flash) and lost scroll/SPA/form state.
+      element = (
+        <>
+          {isVisible && isThumbnailMode && !session.isPinned && (
+            <WebviewThumbnail session={session} />
+          )}
           <WebviewWindow
             session={session}
             zoom={getZoom}
             gridSize={gridSize}
+            hidden={!isVisible || (isThumbnailMode && !session.isPinned)}
           />
-        )
-      }
+        </>
+      )
       break
     case 'image':
       if (!isVisible) return null
@@ -335,6 +340,19 @@ export default function Canvas({ readOnly = false }: { readOnly?: boolean }): JS
       onClick={handleClick}
     >
       <AlignmentToolbar />
+      {/* First-run empty state: the creation affordances (double-click,
+          sidebar "+") are otherwise invisible on a blank canvas */}
+      {unpinnedSessions.length === 0 && pinnedSessions.length === 0 && (
+        <div className="canvas-empty-state">
+          <div className="canvas-empty-title">Empty canvas</div>
+          <div className="canvas-empty-hint">Double-click anywhere to open a terminal</div>
+          <div className="canvas-empty-keys">
+            {isMac ? '⌘N' : 'Ctrl+N'} new terminal&ensp;·&ensp;
+            {isMac ? '⌘P' : 'Ctrl+P'} command palette&ensp;·&ensp;
+            {isMac ? '⌘/' : 'Ctrl+/'} shortcuts
+          </div>
+        </div>
+      )}
       <div className={`canvas-viewport${isResnapping ? ' grid-resnapping' : ''}`} ref={viewportRef}>
         {showGrid && <Grid zoom={storeZoom} gridSize={gridSize} />}
         <SnapPreview />

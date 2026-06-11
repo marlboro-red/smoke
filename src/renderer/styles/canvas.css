@@ -112,3 +112,33 @@
   border-color: var(--color-info, #3b82f6);
   box-shadow: 0 0 0 1px var(--color-info, #3b82f6), var(--shadow-window);
 }
+
+/* First-run empty state — shown when the canvas has no elements */
+.canvas-empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none; /* double-click passes through to the canvas */
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.canvas-empty-title {
+  font-size: 18px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.canvas-empty-hint {
+  font-size: var(--font-size-md);
+}
+
+.canvas-empty-keys {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  opacity: 0.8;
+}

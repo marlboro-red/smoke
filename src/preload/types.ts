@@ -105,6 +105,8 @@ export interface ShortcutBindingPref {
   mod: boolean
   shift: boolean
   alt: boolean
+  /** Control on macOS (mod = Cmd there); ignored elsewhere */
+  ctrl?: boolean
 }
 
 export interface Preferences {

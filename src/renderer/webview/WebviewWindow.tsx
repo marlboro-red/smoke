@@ -23,12 +23,16 @@ interface WebviewWindowProps {
   session: WebviewSession
   zoom: () => number
   gridSize: number
+  /** Keep mounted but invisible (culling / thumbnail mode) so the guest
+   * page survives instead of reloading on re-entry. */
+  hidden?: boolean
 }
 
 export default React.memo(function WebviewWindow({
   session,
   zoom,
   gridSize,
+  hidden,
 }: WebviewWindowProps): JSX.Element {
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
   // The webview src attribute is intentionally uncontrolled: it holds the
@@ -39,6 +43,7 @@ export default React.memo(function WebviewWindow({
   const [urlInput, setUrlInput] = useState(session.url)
   const [isLoading, setIsLoading] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<{ description: string; url: string } | null>(null)
 
   const isFocused = useIsFocused(session.id)
   const isHighlighted = useIsHighlighted(session.id)
@@ -165,6 +170,22 @@ export default React.memo(function WebviewWindow({
 
     const onDidStartLoading = (): void => {
       setIsLoading(true)
+      setLoadError(null)
+    }
+
+    const onDidFailLoad = (e: {
+      errorCode: number
+      errorDescription: string
+      validatedURL: string
+      isMainFrame: boolean
+    }): void => {
+      // -3 = ERR_ABORTED (navigation superseded) — not a real failure
+      if (e.errorCode === -3 || !e.isMainFrame) return
+      setIsLoading(false)
+      setLoadError({
+        description: e.errorDescription || `Error ${e.errorCode}`,
+        url: e.validatedURL || session.url,
+      })
     }
 
     const onDidStopLoading = (): void => {
@@ -193,6 +214,7 @@ export default React.memo(function WebviewWindow({
     wv.addEventListener('did-navigate-in-page', onDidNavigate)
     wv.addEventListener('did-start-loading', onDidStartLoading)
     wv.addEventListener('did-stop-loading', onDidStopLoading)
+    wv.addEventListener('did-fail-load', onDidFailLoad as unknown as EventListener)
     wv.addEventListener('will-navigate', onWillNavigate as EventListener)
 
     return () => {
@@ -200,6 +222,7 @@ export default React.memo(function WebviewWindow({
       wv.removeEventListener('did-navigate-in-page', onDidNavigate)
       wv.removeEventListener('did-start-loading', onDidStartLoading)
       wv.removeEventListener('did-stop-loading', onDidStopLoading)
+      wv.removeEventListener('did-fail-load', onDidFailLoad as unknown as EventListener)
       wv.removeEventListener('will-navigate', onWillNavigate as EventListener)
     }
   }, [session.id])
@@ -230,6 +253,8 @@ export default React.memo(function WebviewWindow({
         width: session.size.width,
         height: session.size.height,
         zIndex: session.zIndex,
+        visibility: hidden ? 'hidden' : undefined,
+        pointerEvents: hidden ? 'none' : undefined,
       }}
       onPointerDown={handlePointerDown}
     >
@@ -289,6 +314,16 @@ export default React.memo(function WebviewWindow({
           src={initialUrlRef.current}
           className="webview-frame"
         />
+        {loadError && (
+          <div className="webview-error-panel">
+            <div className="webview-error-title">Couldn&apos;t load page</div>
+            <div className="webview-error-desc">{loadError.description}</div>
+            <div className="webview-error-url">{loadError.url}</div>
+            <button className="webview-error-retry" onClick={handleRefresh}>
+              Retry
+            </button>
+          </div>
+        )}
       </div>
       <ResizeHandle direction="e" onResizeStart={onResizeStart} />
       <ResizeHandle direction="s" onResizeStart={onResizeStart} />
