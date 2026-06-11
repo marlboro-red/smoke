@@ -6,8 +6,9 @@
   pointer-events: auto;
   border-radius: var(--radius-md, 6px);
   border: 1px solid var(--border-subtle);
-  background: rgba(13, 13, 26, 0.85);
-  backdrop-filter: blur(8px);
+  /* More opaque instead of backdrop blur — the blur recomposited the
+     canvas region behind the minimap on every pan frame */
+  background: rgba(13, 13, 26, 0.95);
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: opacity 0.15s ease;

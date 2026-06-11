@@ -21,7 +21,6 @@
   max-width: 400px;
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  backdrop-filter: blur(12px);
   box-shadow: var(--shadow-dropdown);
   pointer-events: auto;
   animation: toast-in 0.25s var(--ease-out) forwards;

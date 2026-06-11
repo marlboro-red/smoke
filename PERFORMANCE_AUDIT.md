@@ -134,14 +134,14 @@ per context-collect. Read once into a shared map for the scoring pass.
 
 ### Compositing & CSS (paint cost while panning N windows)
 
-- **`backdrop-filter: blur(12px)` on every `.terminal-window`**
-  (`styles/window.css:6` via `--terminal-backdrop`): blur compositing per
-  window per frame while the viewport layer moves. The single most expensive
-  style on the canvas. Apply it only when terminal opacity < 1 (or replace
-  with a more opaque solid background).
-- **xterm `allowTransparency: true` unconditionally**
-  (`terminal/useTerminal.ts:111`): forces an alpha WebGL context and loses
-  fast-path text rendering even when opacity is 1. Make it conditional.
+- ~~`backdrop-filter` on every `.terminal-window`~~ **CORRECTED**: the
+  `--terminal-backdrop` token defaults to `none` and only becomes
+  `blur(12px)` when the user sets terminal opacity < 1 — already gated.
+  Translucent mode is still expensive by design; acceptable.
+- ~~xterm `allowTransparency: true` unconditionally~~ **CORRECTED**: this
+  is an intentional, documented tradeoff (`applyTheme.ts`) so opacity can
+  change at runtime without recreating every terminal's WebGL context.
+  Leave as-is.
 - **Grid re-snap animates `left/top/width/height`** (`styles/canvas.css:79-84`):
   layout+paint per frame for 300ms across all windows. Animate `transform`
   instead, or accept a snap without transition.
@@ -219,6 +219,15 @@ per context-collect. Read once into a shared map for the scoring pass.
   instead of re-reading files ContextCollector just read in the same
   request. Deferred (architectural): fusing the three full-repo walks
   behind one walker + shared watcher; SearchIndex resident-memory diet.
+- ✅ **Phase 5 shipped**: `contain: layout paint` on window elements (they
+  already clip via `overflow: hidden`, so containment is behavior-neutral
+  and lets the compositor skip subtrees during viewport pans); focus-mode
+  dimming drops the per-pixel `grayscale()` filter (imperceptible at 0.2
+  opacity); minimap and toasts use slightly more opaque solid backgrounds
+  instead of backdrop blur. Verified pixel-comparable on the restored
+  scene. Deliberately NOT changed: window box-shadows (visual identity),
+  cursorBlink/scrollback (UX), grid-resnap transitions (rare event),
+  sidebar width transition (rare event).
 - ✅ **Functionally verified** (Playwright-driven Electron, isolated config):
   PTY keystroke round-trip + 8k-line output flood, focus flipping, drag →
   autosave → write-behind flush on disk, two-session restore with seeded

@@ -7,6 +7,10 @@
   -webkit-backdrop-filter: var(--terminal-backdrop);
   box-sizing: border-box;
   overflow: hidden;
+  /* Windows are absolutely positioned with fixed bounds and already clip
+     (overflow: hidden) — containment lets the compositor skip the subtree
+     when panning the viewport layer with dozens of windows. */
+  contain: layout paint;
   box-shadow: var(--shadow-window);
   transition: border-color var(--duration-normal), box-shadow var(--duration-normal);
 }
@@ -26,9 +30,10 @@
 }
 
 .terminal-window.focus-mode-dimmed {
+  /* opacity alone — at 0.2 the grayscale() was imperceptible, but it cost
+     a per-pixel filter pass on every dimmed window each frame */
   opacity: 0.2;
-  filter: grayscale(0.6);
-  transition: opacity var(--duration-normal), filter var(--duration-normal),
+  transition: opacity var(--duration-normal),
     border-color var(--duration-normal), box-shadow var(--duration-normal);
 }
 
