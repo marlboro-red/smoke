@@ -35,8 +35,8 @@ every ~500ms with `atomically`-style async write, flush on quit).
 each window subscribes to `useFocusedId`, `useHighlightedId`, `useSelectedIds`,
 `useFocusModeActiveIds`, `useBroadcastGroupId`. One focus change re-runs
 selectors in all N windows; with 30+ windows each click pays N re-render checks.
-Fix: a per-session derived hook (`useWindowFlags(sessionId)`) returning a stable
-小 object via `useShallow`, or compute flags in Canvas and pass primitives.
+Fix: a per-session derived hook (`useWindowFlags(sessionId)`) returning a small
+stable object via `useShallow`, or compute flags in Canvas and pass primitives.
 
 ### 5. updateSession clones the whole sessions Map per mutation
 `src/renderer/stores/sessionStore.ts:335-344` — every position/title/status
