@@ -137,12 +137,11 @@ function createWindow(): void {
     mainWindow!.webContents.setVisualZoomLevelLimits(1, 1)
   })
 
-  // Block Ctrl+=/Ctrl+-/Ctrl+0 keyboard shortcuts that trigger native zoom
-  mainWindow.webContents.on('before-input-event', (_event, input) => {
-    if ((input.control || input.meta) && (input.key === '=' || input.key === '+' || input.key === '-' || input.key === '0')) {
-      _event.preventDefault()
-    }
-  })
+  // NOTE: no before-input-event blocker for Cmd+=/-/0. Chromium's native
+  // zoom only triggers through menu roles (we register none) and pinch
+  // zoom is disabled via setVisualZoomLevelLimits above — while blocking
+  // these keys here also prevented the renderer's own zoomIn/zoomOut/
+  // resetZoom shortcuts (bound to exactly these keys) from ever firing.
 
   if (process.env.NODE_ENV !== 'production' && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])

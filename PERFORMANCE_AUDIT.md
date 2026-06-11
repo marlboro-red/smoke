@@ -251,6 +251,39 @@ per context-collect. Read once into a shared map for the scoring pass.
   liveness. Chrome-click-doesn't-focus and minimap click-shielding are
   pre-existing (verified identical on the pre-Phase-2 build).
 
+## Measured results (post-optimization)
+
+Benchmark: `node scripts/perf-bench.mjs` (Playwright-driven, production
+build, 22 live shells + 4 notes = 26 canvas elements, 1600×1000 window,
+macOS). Frame stats over rAF sampling; `dropped` = frames > 33ms.
+
+| Scenario | avg | p95 | worst | dropped |
+|---|---|---|---|---|
+| Idle | 16.5ms | 17.6ms | 17.7ms | 0 |
+| Continuous pan | 16.6ms | 17.6ms | 17.7ms | 0 |
+| Zoom out/in across thumbnail threshold | 16.7ms | 17.6ms | 17.7ms | 0 |
+| Window drag (sinusoidal, 2.5s) | 16.7ms | 17.6ms | 17.7ms | 0 |
+| `seq 1 100000` flood while 21 shells idle | 16.6ms | 17.6ms | 17.7ms | 0 |
+| Typing during all of the above | 16.6ms | 17.6ms | 17.7ms | 0 |
+
+Startup to interactive: 380–580ms. Locked to the 60Hz vsync quantum with
+zero dropped frames in every scenario — at this scale the renderer is
+vsync-bound, not work-bound.
+
+Memory (after the flood, one terminal holding capped scrollback):
+main 175MB + GPU 146MB + utility 46MB + renderer 295MB = **~660MB**.
+~370MB of that is the Electron floor before any app code; marginal cost
+≈ 8–10MB per live terminal (10k-line scrollback). This is the
+architectural price of the canvas/web stack — interaction speed is
+solved; absolute memory footprint can only approach, never match,
+native terminals.
+
+Remaining levers if footprint matters more than features: scrollback
+10000 → 5000 default (≈ halves per-terminal renderer memory), LRU
+eviction in the terminal registry, code-splitting the 2.7MB renderer
+bundle (AI panel, replay, presentation, depgraph are eagerly loaded),
+and the walk fusion for workspace-open IO.
+
 ## Suggested execution order
 
 | Phase | Items | Theme |
