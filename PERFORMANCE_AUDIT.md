@@ -218,7 +218,23 @@ per context-collect. Read once into a shared map for the scoring pass.
   RelevanceScorer's import-proximity BFS shares graphBuilder's parse cache
   instead of re-reading files ContextCollector just read in the same
   request. Deferred (architectural): fusing the three full-repo walks
-  behind one walker + shared watcher; SearchIndex resident-memory diet.
+  behind one walker + shared watcher.
+- ✅ **SearchIndex memory diet shipped**: the index no longer holds the
+  entire repo's text in main-process memory — file text never crosses the
+  worker thread boundary (chunks carry only paths + postings), and search
+  reads candidate files lazily through a 64-file LRU. `search()` is async
+  end to end (handler, ContextCollector). Functionally verified in the
+  running app: 428-file index build + queries with correct ranked results
+  and line content. Also fixed: PresentationMode's dead rAF cancel guard
+  (rapid slide navigation leaked competing animation loops); NoteWindow
+  debounces Shiki re-highlighting (ran per keystroke).
+- Wontfix (judgment): graph-expand delta protocol — main is deliberately
+  stateless and the renderer is the source of truth for canvas graph
+  state; caching graph state in main to save ~85KB on a rare user action
+  (1-5×/session) trades correctness risk for little gain. immer-style
+  store updates remain blocked on adding a dependency through the
+  registry. aiStore.appendText was overstated (map reuses refs; one array
+  + one object per chunk).
 - ✅ **Phase 5 shipped**: `contain: layout paint` on window elements (they
   already clip via `overflow: hidden`, so containment is behavior-neutral
   and lets the compositor skip subtrees during viewport pans); focus-mode

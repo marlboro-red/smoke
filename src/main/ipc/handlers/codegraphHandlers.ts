@@ -94,7 +94,7 @@ export function registerCodegraphHandlers(
     return searchIndex.build(request.rootPath)
   })
 
-  ipcMain.handle(SEARCH_QUERY, (_event, request: SearchQueryRequest): SearchQueryResponse => {
+  ipcMain.handle(SEARCH_QUERY, (_event, request: SearchQueryRequest): Promise<SearchQueryResponse> => {
     return searchIndex.search(request.query, request.maxResults)
   })
 

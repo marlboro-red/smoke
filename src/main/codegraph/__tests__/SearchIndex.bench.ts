@@ -71,19 +71,19 @@ describe('SearchIndex query', () => {
     index?.dispose()
   })
 
-  bench('search single token — "handler"', () => {
-    index.search('handler')
+  bench('search single token — "handler"', async () => {
+    await index.search('handler')
   })
 
-  bench('search multi-token — "handler request"', () => {
-    index.search('handler request')
+  bench('search multi-token — "handler request"', async () => {
+    await index.search('handler request')
   })
 
-  bench('search with low hit rate — "nonexistent"', () => {
-    index.search('nonexistent')
+  bench('search with low hit rate — "nonexistent"', async () => {
+    await index.search('nonexistent')
   })
 
-  bench('search with filename match — "file42"', () => {
-    index.search('file42')
+  bench('search with filename match — "file42"', async () => {
+    await index.search('file42')
   })
 })

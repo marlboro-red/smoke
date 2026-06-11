@@ -39,7 +39,7 @@ describe('SearchIndex', () => {
     )
 
     await index.build(tmpDir)
-    const response = index.search('processPayment')
+    const response = await index.search('processPayment')
 
     expect(response.results.length).toBeGreaterThan(0)
     expect(response.results[0].filePath).toBe(path.join(tmpDir, 'app.ts'))
@@ -54,7 +54,7 @@ describe('SearchIndex', () => {
     )
 
     await index.build(tmpDir)
-    const response = index.search('userservice')
+    const response = await index.search('userservice')
 
     expect(response.results.length).toBeGreaterThan(0)
     expect(response.results[0].lineContent).toContain('UserService')
@@ -66,7 +66,7 @@ describe('SearchIndex', () => {
     await fs.writeFile(path.join(tmpDir, 'c.ts'), 'function noMatch() {}\n')
 
     await index.build(tmpDir)
-    const response = index.search('logger')
+    const response = await index.search('logger')
 
     // a.ts has "logger" twice on one line, b.ts has it once
     expect(response.totalMatches).toBe(3)
@@ -83,7 +83,7 @@ describe('SearchIndex', () => {
     }
 
     await index.build(tmpDir)
-    const response = index.search('const', 3)
+    const response = await index.search('const', 3)
 
     expect(response.results.length).toBe(3)
     expect(response.totalMatches).toBe(10)
@@ -96,7 +96,7 @@ describe('SearchIndex', () => {
     )
 
     await index.build(tmpDir)
-    const response = index.search('calculate')
+    const response = await index.search('calculate')
 
     expect(response.results.length).toBe(1)
     const r = response.results[0]
@@ -108,7 +108,7 @@ describe('SearchIndex', () => {
     await fs.writeFile(path.join(tmpDir, 'empty.ts'), 'const x = 1\n')
 
     await index.build(tmpDir)
-    const response = index.search('nonexistent_xyz_123')
+    const response = await index.search('nonexistent_xyz_123')
 
     expect(response.results.length).toBe(0)
     expect(response.totalMatches).toBe(0)
@@ -124,7 +124,7 @@ describe('SearchIndex', () => {
     await index.build(tmpDir)
 
     expect(index.getStats().fileCount).toBe(1)
-    const response = index.search('secret')
+    const response = await index.search('secret')
     expect(response.results.length).toBe(1)
     expect(path.basename(response.results[0].filePath)).toBe('public.ts')
   })
@@ -141,7 +141,7 @@ describe('SearchIndex', () => {
     await index.addFile(newFile)
 
     expect(index.getStats().fileCount).toBe(2)
-    const response = index.search('added')
+    const response = await index.search('added')
     expect(response.results.length).toBe(1)
   })
 
@@ -155,7 +155,7 @@ describe('SearchIndex', () => {
     index.removeFile(path.join(tmpDir, 'remove.ts'))
     expect(index.getStats().fileCount).toBe(1)
 
-    const response = index.search('remove')
+    const response = await index.search('remove')
     expect(response.results.length).toBe(0)
   })
 
@@ -163,7 +163,7 @@ describe('SearchIndex', () => {
     await fs.writeFile(path.join(tmpDir, 'a.ts'), 'const x = 1\n')
     await index.build(tmpDir)
 
-    const response = index.search('const')
+    const response = await index.search('const')
     expect(response.durationMs).toBeGreaterThanOrEqual(0)
   })
 
@@ -174,7 +174,7 @@ describe('SearchIndex', () => {
     )
 
     await index.build(tmpDir)
-    const response = index.search('processPayment')
+    const response = await index.search('processPayment')
 
     // Both lines contain "processPayment" as substring
     expect(response.results.length).toBe(2)

@@ -14,11 +14,17 @@ function easeInOut(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) * (-2 * t + 2) / 2
 }
 
+// Module-level handle: a new slide animation must cancel the previous one.
+// A function-local handle made the cancel guard dead code — rapid slide
+// navigation left multiple rAF loops fighting over the viewport.
+let activeAnimationFrame: number | null = null
+
 function animateToBookmark(panX: number, panY: number, zoom: number): void {
   const startPan = getCurrentPan()
   const startZoom = getCurrentZoom()
   const startTime = performance.now()
-  let frame: number | null = null
+
+  if (activeAnimationFrame !== null) cancelAnimationFrame(activeAnimationFrame)
 
   function tick(now: number): void {
     const elapsed = now - startTime
@@ -32,13 +38,10 @@ function animateToBookmark(panX: number, panY: number, zoom: number): void {
     setZoomTo(currentZoom)
     setPanTo(currentX, currentY)
 
-    if (progress < 1) {
-      frame = requestAnimationFrame(tick)
-    }
+    activeAnimationFrame = progress < 1 ? requestAnimationFrame(tick) : null
   }
 
-  if (frame !== null) cancelAnimationFrame(frame)
-  frame = requestAnimationFrame(tick)
+  activeAnimationFrame = requestAnimationFrame(tick)
 }
 
 export default function PresentationMode(): JSX.Element | null {

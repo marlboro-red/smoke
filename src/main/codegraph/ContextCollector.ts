@@ -132,7 +132,7 @@ export async function collectContext(
   // ── Step 2: Search index queries ──
 
   const searchStart = performance.now()
-  const searchCandidates = searchForCandidates(
+  const searchCandidates = await searchForCandidates(
     searchIndex, parsedTask, projectRoot,
   )
   timing.search = performance.now() - searchStart
@@ -239,11 +239,11 @@ export async function collectContext(
 // Step 2: Search index queries
 // ---------------------------------------------------------------------------
 
-function searchForCandidates(
+async function searchForCandidates(
   searchIndex: SearchIndex,
   parsedTask: ParsedTask,
   projectRoot: string,
-): string[] {
+): Promise<string[]> {
   const stats = searchIndex.getStats()
   if (!stats.rootPath || stats.fileCount === 0) return []
   // Index built for a different project — its candidates would bleed
@@ -254,7 +254,7 @@ function searchForCandidates(
 
   // Search for each keyword
   for (const keyword of parsedTask.keywords) {
-    const response = searchIndex.search(keyword, MAX_SEARCH_RESULTS_PER_KEYWORD)
+    const response = await searchIndex.search(keyword, MAX_SEARCH_RESULTS_PER_KEYWORD)
     for (const result of response.results) {
       const prev = fileScores.get(result.filePath) ?? 0
       fileScores.set(result.filePath, prev + result.score)
@@ -263,7 +263,7 @@ function searchForCandidates(
 
   // Search for file patterns (likely filenames)
   for (const pattern of parsedTask.filePatterns) {
-    const response = searchIndex.search(pattern, MAX_SEARCH_RESULTS_PER_KEYWORD)
+    const response = await searchIndex.search(pattern, MAX_SEARCH_RESULTS_PER_KEYWORD)
     for (const result of response.results) {
       // Boost file pattern matches — they're stronger signals
       const prev = fileScores.get(result.filePath) ?? 0

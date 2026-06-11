@@ -154,32 +154,39 @@ export default React.memo(function NoteWindow({
     }
   }, [isFocused, editing, hasHighlighting])
 
-  // Generate syntax-highlighted HTML when language is present
+  // Generate syntax-highlighted HTML when language is present.
+  // Debounced: this effect re-runs on every keystroke while editing, and
+  // Shiki highlighting is far too heavy to run per character.
   useEffect(() => {
     if (!hasHighlighting) {
       setHighlightedHtml(null)
       return
     }
     let cancelled = false
-    const code = extractCodeContent(session.content)
-    codeToHtml(code, {
-      lang: session.language!,
-      theme: shikiTheme,
-    })
-      .then((html) => {
-        if (!cancelled) setHighlightedHtml(html)
+    const timer = setTimeout(() => {
+      const code = extractCodeContent(session.content)
+      codeToHtml(code, {
+        lang: session.language!,
+        theme: shikiTheme,
       })
-      .catch(() => {
-        // Fallback to plain text if language not supported
-        codeToHtml(code, { lang: 'text', theme: shikiTheme })
-          .then((html) => {
-            if (!cancelled) setHighlightedHtml(html)
-          })
-          .catch(() => {
-            if (!cancelled) setHighlightedHtml(null)
-          })
-      })
-    return () => { cancelled = true }
+        .then((html) => {
+          if (!cancelled) setHighlightedHtml(html)
+        })
+        .catch(() => {
+          // Fallback to plain text if language not supported
+          codeToHtml(code, { lang: 'text', theme: shikiTheme })
+            .then((html) => {
+              if (!cancelled) setHighlightedHtml(html)
+            })
+            .catch(() => {
+              if (!cancelled) setHighlightedHtml(null)
+            })
+        })
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [session.content, session.language, hasHighlighting, shikiTheme])
 
   // Exit edit mode when note loses focus

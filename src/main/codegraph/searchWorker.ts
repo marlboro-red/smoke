@@ -45,7 +45,8 @@ interface FilePostingEntry {
 
 interface SerializedIndex {
   files: string[]
-  fileLines: Record<string, string[]>
+  // NOTE: file text deliberately does NOT cross the thread boundary —
+  // the main process reads match context lazily at search time.
   index: Record<string, FilePostingEntry[]>
 }
 
@@ -146,7 +147,6 @@ async function buildIndex(rootPath: string): Promise<void> {
     // message so a large repo never produces one repo-sized
     // structured-clone payload.
     const indexedFiles: string[] = []
-    const fileLines: Record<string, string[]> = {}
     const index: Record<string, FilePostingEntry[]> = {}
 
     await Promise.all(
@@ -159,7 +159,6 @@ async function buildIndex(rootPath: string): Promise<void> {
           const lines = content.split('\n')
 
           indexedFiles.push(filePath)
-          fileLines[filePath] = lines
 
           // Build token → line mapping for this file
           const tokenLines = new Map<string, Set<number>>()
@@ -192,7 +191,7 @@ async function buildIndex(rootPath: string): Promise<void> {
 
     send({
       type: 'chunk',
-      data: { files: indexedFiles, fileLines, index },
+      data: { files: indexedFiles, index },
     })
 
     const indexed = Math.min(i + BATCH_SIZE, total)

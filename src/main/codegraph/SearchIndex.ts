@@ -92,8 +92,14 @@ interface PostingEntry {
 export class SearchIndex {
   /** Inverted index: lowercase token → posting list. */
   private index = new Map<string, PostingEntry[]>()
-  /** File content cache for context retrieval. Lines keyed by absolute path. */
-  private fileLines = new Map<string, string[]>()
+  /**
+   * Small LRU of file lines for match scanning. The index used to hold the
+   * ENTIRE repo's text in fileLines permanently (~repo-size main-process
+   * memory); now candidate files are read lazily at search time and only a
+   * bounded working set stays cached.
+   */
+  private lineCache = new Map<string, string[]>()
+  private static readonly LINE_CACHE_MAX_FILES = 64
   /** All indexed file paths. */
   private indexedFiles = new Set<string>()
   /** Tokens per file, so removeFile doesn't sweep the whole inverted index. */
@@ -151,7 +157,7 @@ export class SearchIndex {
 
       // Fresh maps; chunks merge in as they arrive
       this.index.clear()
-      this.fileLines.clear()
+      this.lineCache.clear()
       this.indexedFiles.clear()
       this.fileTokens.clear()
 
@@ -161,21 +167,17 @@ export class SearchIndex {
             this.sendProgress(msg.indexed, msg.total)
             break
 
-          // Per-batch chunk: bounds structured-clone size instead of
-          // shipping the entire repo's text in one message.
+          // Per-batch chunk: only file names + index postings cross the
+          // thread boundary — file text stays out of main-process memory
+          // and out of the structured-clone payload entirely.
           case 'chunk': {
             const data = msg.data as {
               files: string[]
-              fileLines: Record<string, string[]>
               index: Record<string, PostingEntry[]>
             }
 
             for (const filePath of data.files) {
               this.indexedFiles.add(filePath)
-            }
-
-            for (const [filePath, lines] of Object.entries(data.fileLines)) {
-              this.fileLines.set(filePath, lines)
             }
 
             // Each file appears in exactly one chunk, so postings append
@@ -273,11 +275,37 @@ export class SearchIndex {
     }
   }
 
+  /** Read a file's lines through the bounded LRU cache. */
+  private async getFileLines(filePath: string): Promise<string[] | null> {
+    const cached = this.lineCache.get(filePath)
+    if (cached) {
+      // Refresh LRU position
+      this.lineCache.delete(filePath)
+      this.lineCache.set(filePath, cached)
+      return cached
+    }
+
+    let lines: string[]
+    try {
+      const content = await fs.readFile(filePath, 'utf-8')
+      lines = content.split('\n')
+    } catch {
+      return null
+    }
+
+    this.lineCache.set(filePath, lines)
+    while (this.lineCache.size > SearchIndex.LINE_CACHE_MAX_FILES) {
+      const oldest = this.lineCache.keys().next().value as string
+      this.lineCache.delete(oldest)
+    }
+    return lines
+  }
+
   /**
    * Search the index for a query string.
    * Supports multi-word queries (all words must match in the same file).
    */
-  search(query: string, maxResults = 100): SearchResponse {
+  async search(query: string, maxResults = 100): Promise<SearchResponse> {
     const start = performance.now()
 
     const tokens = this.tokenize(query)
@@ -293,7 +321,7 @@ export class SearchIndex {
     const queryLower = query.toLowerCase()
 
     for (const filePath of candidateFiles) {
-      const lines = this.fileLines.get(filePath)
+      const lines = await this.getFileLines(filePath)
       if (!lines) continue
 
       for (let i = 0; i < lines.length; i++) {
@@ -382,7 +410,7 @@ export class SearchIndex {
     }
 
     this.fileTokens.delete(absolutePath)
-    this.fileLines.delete(absolutePath)
+    this.lineCache.delete(absolutePath)
     this.indexedFiles.delete(absolutePath)
   }
 
@@ -401,7 +429,7 @@ export class SearchIndex {
       this.debounceTimer = null
     }
     this.index.clear()
-    this.fileLines.clear()
+    this.lineCache.clear()
     this.indexedFiles.clear()
     this.fileTokens.clear()
     this.pendingUpdates.clear()
@@ -424,7 +452,11 @@ export class SearchIndex {
     }
 
     const lines = content.split('\n')
-    this.fileLines.set(filePath, lines)
+    // Refresh the cache slot if this file is in the hot set; otherwise
+    // don't retain its text (the LRU fills at search time)
+    if (this.lineCache.has(filePath)) {
+      this.lineCache.set(filePath, lines)
+    }
     this.indexedFiles.add(filePath)
 
     const tokenLines = new Map<string, Set<number>>()
