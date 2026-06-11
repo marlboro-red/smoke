@@ -15,7 +15,7 @@ import { sessionStore, findFileSessionByPath, type FileViewerSession } from '../
 import { connectorStore } from '../stores/connectorStore'
 import { gridStore } from '../stores/gridStore'
 import { regionStore } from '../stores/regionStore'
-import { preferencesStore } from '../stores/preferencesStore'
+import { preferencesStore, getProjectRoot } from '../stores/preferencesStore'
 import {
   setCachedImports,
   registerGraphNode,
@@ -200,7 +200,7 @@ function createRegionsFromGraph(
  * Shows all files that import the given file, with inward-pointing arrows.
  */
 export async function buildDependentsGraph(rootSession: FileViewerSession): Promise<void> {
-  const projectRoot = preferencesStore.getState().launchCwd
+  const projectRoot = getProjectRoot()
   if (!projectRoot) return
 
   const generation = ++buildGeneration
@@ -228,7 +228,7 @@ export async function buildDependentsGraph(rootSession: FileViewerSession): Prom
  * file viewer sessions and arrow connectors on the canvas.
  */
 export async function buildDepGraph(rootSession: FileViewerSession): Promise<void> {
-  const projectRoot = preferencesStore.getState().launchCwd
+  const projectRoot = getProjectRoot()
   if (!projectRoot) return
 
   const generation = ++buildGeneration
@@ -258,7 +258,7 @@ export async function buildDepGraph(rootSession: FileViewerSession): Promise<voi
  * Only creates new sessions and repositions existing ones with animation.
  */
 export async function expandDepGraph(expandPath: string): Promise<void> {
-  const projectRoot = preferencesStore.getState().launchCwd
+  const projectRoot = getProjectRoot()
   if (!projectRoot) return
 
   const generation = ++buildGeneration

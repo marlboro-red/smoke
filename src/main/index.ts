@@ -6,8 +6,13 @@ import { registerIpcHandlers, type IpcCleanup } from './ipc/ipcHandlers'
 import { configStore, flushConfigWrites } from './config/ConfigStore'
 import { WORKSPACE_OPENED } from './ipc/channels'
 
-// Capture before Electron changes cwd
-const launchCwd = process.cwd()
+// Capture before Electron changes cwd. Finder/Dock launches start at '/',
+// which is not a meaningful project directory — treat it as unset so
+// nothing (file tree, dep graph, indexers) ever uses the filesystem root
+// as a project root and crawls into TCC-protected folders (Desktop,
+// Documents, iCloud Drive), spraying permission prompts.
+const cwdAtLaunch = process.cwd()
+const launchCwd = cwdAtLaunch === '/' ? '' : cwdAtLaunch
 
 const ptyManager = new PtyManager()
 let mainWindow: BrowserWindow | null = null

@@ -70,8 +70,12 @@ export function registerAppHandlers(
   const gitBranchCache = memoizeAsyncWithTTL(
     async (): Promise<string | null> => {
       try {
+        // launchCwd is '' for Finder launches — show the workspace's branch
+        const cwd = launchCwd
+          || configStore.get('preferences', defaultPreferences).defaultCwd
+        if (!cwd) return null
         const { stdout } = await execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
-          cwd: launchCwd,
+          cwd,
           timeout: 3000,
         })
         return stdout.trim()

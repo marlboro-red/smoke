@@ -123,8 +123,15 @@ export class SearchIndex {
    * Falls back to main-thread indexing if the worker file is unavailable.
    */
   async build(projectRoot: string): Promise<{ fileCount: number; tokenCount: number }> {
+    // Never index the filesystem root — a leaked '/' root would walk the
+    // whole disk through TCC-protected folders (permission prompt storm).
+    const resolved = path.resolve(projectRoot || '/')
+    if (resolved === path.parse(resolved).root) {
+      throw new Error(`Refusing to index filesystem root: ${resolved}`)
+    }
+
     this.dispose()
-    this.projectRoot = path.resolve(projectRoot)
+    this.projectRoot = resolved
     this.isIndexing = true
 
     const workerPath = path.join(__dirname, 'searchWorker.js')

@@ -24,7 +24,7 @@ import {
 import { sessionStore, findFileSessionByPath, type FileViewerSession } from '../stores/sessionStore'
 import { connectorStore } from '../stores/connectorStore'
 import { gridStore } from '../stores/gridStore'
-import { preferencesStore } from '../stores/preferencesStore'
+import { preferencesStore, getProjectRoot } from '../stores/preferencesStore'
 
 const CONNECTOR_COLOR = '#4A90D9'
 const HORIZONTAL_SPACING = 720
@@ -121,7 +121,7 @@ async function handleFileChanged(
   const oldPaths = oldEntry?.resolvedPaths ?? []
 
   // 2. Re-parse imports via IPC
-  const projectRoot = preferencesStore.getState().launchCwd
+  const projectRoot = getProjectRoot()
   let newPaths: string[]
 
   try {

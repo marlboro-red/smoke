@@ -11,6 +11,7 @@
  */
 
 import * as fs from 'fs/promises'
+import * as path from 'path'
 import { CodeGraph } from './CodeGraph'
 import { parseImports, detectLanguage } from '../imports/importParser'
 import { resolveAllImports, loadPathAliases, type PathAliases } from './importResolver'
@@ -42,6 +43,15 @@ let buildingRoot = ''
  * filesystem.
  */
 export async function ensureIndex(projectRoot: string): Promise<FilenameIndex> {
+  // Defense in depth: never index the filesystem root. A '/' project root
+  // (e.g. a Finder-launched cwd leaking through) would recursively walk
+  // the whole disk — including TCC-protected folders, spraying macOS
+  // permission prompts for Desktop/Documents/iCloud Drive.
+  const resolvedRoot = path.resolve(projectRoot || '/')
+  if (resolvedRoot === path.parse(resolvedRoot).root) {
+    throw new Error(`Refusing to index filesystem root: ${resolvedRoot}`)
+  }
+
   if (filenameIndex && indexedRoot === projectRoot) {
     return filenameIndex
   }

@@ -79,3 +79,14 @@ export const usePreference = <K extends keyof Preferences>(key: K): Preferences[
 
 export const usePreferencesStore = <T>(selector: (state: PreferencesStore) => T): T =>
   useStore(preferencesStore, selector)
+
+/**
+ * The project root for codegraph/indexing features: the explicitly opened
+ * workspace, falling back to the directory the app was launched from.
+ * Returns '' when neither exists (e.g. Finder launch, no workspace yet) —
+ * callers must skip indexing in that case rather than scan a broad root.
+ */
+export function getProjectRoot(): string {
+  const { preferences, launchCwd } = preferencesStore.getState()
+  return preferences.defaultCwd || launchCwd || ''
+}

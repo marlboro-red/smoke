@@ -49,7 +49,12 @@ export function registerFsHandlers(
   function getAllowedReadBoundaries(): { homedir: string; allowed: string[] } {
     const homedir = os.homedir()
     const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
-    const allowed = [homedir, launchCwd]
+    const allowed = [homedir]
+    // launchCwd is '' for Finder launches — never add an empty boundary
+    // (it would resolve to the process cwd)
+    if (launchCwd) {
+      allowed.push(launchCwd)
+    }
     if (defaultCwd && isSafeExtraBoundary(defaultCwd, homedir)) {
       allowed.push(defaultCwd)
     }

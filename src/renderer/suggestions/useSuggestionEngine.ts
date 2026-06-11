@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { sessionStore, useFocusedId } from '../stores/sessionStore'
 import type { FileViewerSession } from '../stores/sessionStore'
 import { suggestionStore, type FileSuggestion } from '../stores/suggestionStore'
-import { preferencesStore } from '../stores/preferencesStore'
+import { getProjectRoot } from '../stores/preferencesStore'
 
 const DEBOUNCE_MS = 800
 const MAX_SUGGESTIONS = 5
@@ -59,8 +59,9 @@ function getOpenFilePaths(): Set<string> {
  * and relevance scorer, then returns suggestion candidates.
  */
 async function fetchRelatedFiles(filePath: string): Promise<FileSuggestion[]> {
-  const { launchCwd } = preferencesStore.getState()
-  const projectRoot = launchCwd
+  // Workspace first, launch dir second; '' (Finder launch, no workspace)
+  // disables suggestions instead of indexing a filesystem-wide root.
+  const projectRoot = getProjectRoot()
   if (!projectRoot) return []
 
   const openPaths = getOpenFilePaths()
