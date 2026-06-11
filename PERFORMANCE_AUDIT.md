@@ -1,0 +1,144 @@
+# Performance Audit — June 2026
+
+Deep static audit across six subsystems: canvas/render hot paths, terminal data
+pipeline, state architecture, main process, memory, and startup. Findings are
+ranked by user-perceived impact within each tier. `file:line` references are
+approximate (audit snapshot at commit `0fd5a2f`).
+
+## Tier 1 — Highest impact (jank you can feel)
+
+### 1. Layout restore is fully sequential
+`src/renderer/layout/useLayoutPersistence.ts:326-486` — `restoreLayout` awaits
+each file read and image decode **inside** the session loop. 5 files + 2 images
+≈ 550ms serialized; one missing image blocks everything behind it. PTY spawns
+are already fire-and-forget; file/image sessions should load with bounded
+concurrency (e.g., 4 parallel) and create sessions as results land.
+**Est. win: 400–1500ms time-to-interactive.**
+
+### 2. Auto-save double-serializes and double-writes every 2s
+`src/renderer/layout/useLayoutPersistence.ts:260-264` — every session/canvas
+change schedules a save that serializes the entire layout and issues **two**
+IPC saves (`__tab__<id>` + `__default__`), each a synchronous electron-store
+disk write **on the main process** — blocking all IPC (keystrokes, PTY output)
+for the duration. Fix: write one key (keep `__default__` as a pointer or write
+it only on quit), and batch electron-store writes (see #3).
+
+### 3. electron-store writes are synchronous on the main thread
+`src/main/ipc/handlers/configHandlers.ts` — `LAYOUT_SAVE`, `CONFIG_SET`,
+`BOOKMARK_SAVE`, `TAB_SAVE_STATE` all call `configStore.set()` which writes the
+whole JSON file synchronously. With layout autosave every 2s this is a recurring
+5–50ms main-process stall. Fix: a write-behind queue (collect mutations, flush
+every ~500ms with `atomically`-style async write, flush on quit).
+
+### 4. Every window subscribes to every selection-ish store
+`TerminalWindow.tsx:35-48` (and FileViewer/Note/Webview/Image/Snippet windows) —
+each window subscribes to `useFocusedId`, `useHighlightedId`, `useSelectedIds`,
+`useFocusModeActiveIds`, `useBroadcastGroupId`. One focus change re-runs
+selectors in all N windows; with 30+ windows each click pays N re-render checks.
+Fix: a per-session derived hook (`useWindowFlags(sessionId)`) returning a stable
+小 object via `useShallow`, or compute flags in Canvas and pass primitives.
+
+### 5. updateSession clones the whole sessions Map per mutation
+`src/renderer/stores/sessionStore.ts:335-344` — every position/title/status
+update allocates a new Map of all sessions and notifies every subscriber.
+Cascades into: viewport-culling index rebuild (`useViewportCulling.ts:124`,
+O(n) per change), file-watch re-sync, event recording, group validation — all
+subscribed at store level with no selector filtering. Fix: immer middleware (or
+mutative), plus selector-scoped subscriptions (`subscribeWithSelector`) so
+position-only changes don't run file-watcher/group logic.
+
+### 6. PTY batching window too small under load
+`src/main/pty/PtyDataBatcher.ts` — `BATCH_MS = 4`, `MAX_PENDING = 8`. Heavy
+output produces 250+ IPC messages/sec and frequent pause/resume backpressure
+cycles. Raising to ~16ms / 16 pending cuts IPC ~75% with imperceptible echo
+latency. Pair with renderer-side write coalescing in `usePty` (queue chunks,
+flush per tick) so xterm.js parses fewer, larger writes.
+
+## Tier 2 — High impact
+
+### 7. ConnectorLayer rebuilds its session map per session change
+`ConnectorLayer.tsx:96-100` — `useSessionList()` returns a fresh array each
+store tick, so the memoized Map rebuilds on every mutation (60×/s during a
+drag). Pass the store's stable `sessions` Map (or subscribe to position slices).
+
+### 8. SnapPreview: five separate store subscriptions
+`SnapPreview.tsx` — five `useSnapPreview` selectors, updated per pointer-move
+during drags. Collapse to one `useShallow` selector.
+
+### 9. useWindowDrag queries the DOM per selected peer at drag start
+`useWindowDrag.ts:211` — `querySelector('[data-session-id=…]')` per selected
+session. Cache element refs (WeakMap keyed by session id, registered by each
+window on mount).
+
+### 10. WebGL addon thrash on culling boundaries
+`terminalRegistry.ts` — addon disposed after 60s hidden, recreated on re-enter;
+context creation is 10–50ms and visible as jank when panning back and forth.
+Consider 5-minute timeout + cap on simultaneously-live WebGL contexts (LRU).
+
+### 11. Broadcast mode scans all sessions per keystroke
+`usePty.ts` + `sessionStore.getGroupSessionIds` — O(all sessions) Map iteration
+on every keystroke while broadcasting. Maintain a `groupId → Set<sessionId>`
+reverse index in the store.
+
+### 12. Hidden-buffer flush does one giant join+write
+`terminalRegistry.ts:flushHiddenBuffer` — up to 5MB joined and written in one
+synchronous xterm parse on reattach (100–300ms stall). Write in slices across
+frames, or trim to the last N lines the user can actually scroll to.
+
+### 13. Main process: three separate full-repo walks + two recursive watchers
+`FilenameIndex`, `SearchIndex` (worker), `StructureAnalyzer` each walk the tree
+on workspace open; `SearchIndex` and `FilenameIndex` both hold recursive
+`fs.watch`ers with separate debounces. Fuse into one walk that feeds all three,
+and one shared watcher service.
+
+### 14. SearchIndex holds the entire repo text in main-process RAM
+`SearchIndex.ts` `fileLines` — ~repo-size memory held forever, scanned with
+per-line `toLowerCase()` per query. Options: store lazily (read matched files
+on demand for context), keep only token index in memory, or move search itself
+into the worker and keep nothing on main.
+
+### 15. assertReadAllowed does multiple realpath walks per FS read
+`fsHandlers.ts` — every readfile/readdir resolves realpath for target + home +
+each boundary. Memoize the realpaths of home/launchCwd/defaultCwd (they don't
+change mid-session) and only resolve the target per call.
+
+### 16. RelevanceScorer re-reads each candidate file 2–3×
+`RelevanceScorer.ts:177-207,351-365` — content keyword scoring, recency stat,
+and import proximity each open the file. 50–200 candidates → up to 600 reads
+per context-collect. Read once into a shared map for the scoring pass.
+
+## Tier 3 — Worth doing
+
+- **MCP bridge + plugin scan block window creation** (`ipcHandlers.ts:32-57`):
+  `mcpBridge.start()` and `pluginLoader.loadAll()` are awaited before
+  `createWindow()`. Start both lazily/after `ready-to-show`. ~150–500ms.
+- **PresentationMode rAF guard is dead code** (`PresentationMode.tsx:21,40`):
+  `frame` is function-local so concurrent slide animations fight each other.
+  Hoist the frame handle so a new animation cancels the previous one.
+- **Resize drag sends 10–20 PTY resize IPCs** (`useTerminal.ts` ResizeObserver
+  debounce 50ms): debounce harder during drag, send final on pointer-up.
+- **Terminal registry never evicts** — every terminal ever opened stays alive
+  with full scrollback (+ up to 5MB hidden buffer). Add an LRU cap.
+- **focusModeStore.useFocusModeActiveIds** allocates a new Set per call and
+  subscribes to all connectors. Memoize on (focusedId, connectors) identity.
+- **aiStore.appendText maps the whole message array per stream chunk** — use a
+  Map or immer; streams emit many chunks/sec.
+- **SearchIndex.search has no per-file early cap** — O(candidates × lines) with
+  per-line lowercase; cap matches per file and lowercase lazily.
+- **FilenameIndex.scanDirectory unbounded parallel recursion** — bound it.
+- **NoteWindow re-runs Shiki highlight on every content change** — debounce.
+- **Layout serialization spreads per session** (`serializeCurrentLayout`) —
+  cheap individually, runs every autosave; tidy when touching #2.
+
+## Suggested execution order
+
+| Phase | Items | Theme |
+|---|---|---|
+| 1 | #1, #2, #3 | Startup + main-process stalls (biggest absolute wins) |
+| 2 | #4, #5, #7, #8, #9 | Render/store fan-out (drag & click smoothness) |
+| 3 | #6, #11, #12, #10 | Terminal throughput + typing latency |
+| 4 | #13, #14, #15, #16 | Indexing/main-process efficiency |
+| 5 | Tier 3 | Cleanup batch |
+
+Each phase is independently shippable and verifiable (profile before/after with
+50 sessions + chatty terminals).
