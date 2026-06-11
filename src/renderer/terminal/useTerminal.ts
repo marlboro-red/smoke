@@ -209,7 +209,10 @@ export function useTerminal(
         } catch {
           // fit may fail if container has zero dimensions
         }
-      }, 50)
+        // 150ms: a resize drag emits ResizeObserver events continuously;
+        // at 50ms this fired 10-20 fit + store-update + PTY-resize IPC
+        // rounds per drag. The PTY only needs the dimensions it ends at.
+      }, 150)
     })
     resizeObserver.observe(container)
 

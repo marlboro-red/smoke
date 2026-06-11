@@ -669,6 +669,7 @@ export interface SmokeAPI {
     ) => Promise<CodeGraphResult>
     getImports: (filePath: string) => Promise<CodeGraphImportEntry[]>
     resolveImport: (specifier: string, importerPath: string, projectRoot: string) => Promise<string | null>
+    resolveImports: (specifiers: string[], importerPath: string, projectRoot: string) => Promise<Array<string | null>>
     indexStats: () => Promise<CodeGraphIndexStats | null>
     invalidateIndex: () => Promise<void>
     planWorkspace: (files: WorkspaceFileInput[]) => Promise<WorkspaceLayoutResult>

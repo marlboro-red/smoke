@@ -454,15 +454,31 @@ export const useIsSelected = (id: string): boolean =>
 export const useIsBroadcasting = (groupId: string | undefined): boolean =>
   useStore(sessionStore, (state) => !!(groupId && state.broadcastGroupId === groupId))
 
+// Cache the group → member-ids mapping per sessions-Map identity. This is
+// on the broadcast keystroke path: without the cache every keystroke in
+// broadcast mode scanned the entire sessions Map. Each store mutation
+// produces a new Map reference, which naturally invalidates the cache.
+let groupCacheSource: SessionStore['sessions'] | null = null
+let groupCache: Map<string, string[]> | null = null
+
 export function getGroupSessionIds(groupId: string): string[] {
   const sessions = sessionStore.getState().sessions
-  const ids: string[] = []
-  for (const [id, session] of sessions) {
-    if (session.type === 'terminal' && session.groupId === groupId) {
-      ids.push(id)
+  if (sessions !== groupCacheSource) {
+    const cache = new Map<string, string[]>()
+    for (const [id, session] of sessions) {
+      if (session.type === 'terminal' && session.groupId) {
+        let ids = cache.get(session.groupId)
+        if (!ids) {
+          ids = []
+          cache.set(session.groupId, ids)
+        }
+        ids.push(id)
+      }
     }
+    groupCacheSource = sessions
+    groupCache = cache
   }
-  return ids
+  return groupCache!.get(groupId) ?? []
 }
 
 export function findFileSessionByPath(filePath: string): FileViewerSession | undefined {

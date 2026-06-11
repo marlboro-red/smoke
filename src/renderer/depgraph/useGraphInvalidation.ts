@@ -127,17 +127,15 @@ async function handleFileChanged(
   try {
     const importEntries = await window.smokeAPI.codegraph.getImports(filePath)
 
-    // Resolve each import specifier to a file path
-    const resolved = await Promise.all(
-      importEntries.map(async (entry) => {
-        if (!projectRoot) return null
-        return window.smokeAPI.codegraph.resolveImport(
-          entry.specifier,
+    // Resolve all specifiers in one IPC call — per-specifier round-trips
+    // were 20-50 invokes per file save.
+    const resolved = projectRoot && importEntries.length > 0
+      ? await window.smokeAPI.codegraph.resolveImports(
+          importEntries.map((entry) => entry.specifier),
           filePath,
           projectRoot,
         )
-      }),
-    )
+      : []
 
     newPaths = resolved.filter((p): p is string => p !== null)
   } catch {

@@ -19,6 +19,7 @@ import {
   CODEGRAPH_EXPAND,
   CODEGRAPH_GET_IMPORTS,
   CODEGRAPH_RESOLVE_IMPORT,
+  CODEGRAPH_RESOLVE_IMPORTS,
   CODEGRAPH_INDEX_STATS,
   CODEGRAPH_INVALIDATE,
   CODEGRAPH_GET_DEPENDENTS,
@@ -48,6 +49,8 @@ import {
   type CodeGraphGetImportsResponse,
   type CodeGraphResolveImportRequest,
   type CodeGraphResolveImportResponse,
+  type CodeGraphResolveImportsRequest,
+  type CodeGraphResolveImportsResponse,
   type CodeGraphIndexStats,
   type CodeGraphGetDependentsRequest,
   type CodeGraphGetDependentsResponse,
@@ -174,6 +177,33 @@ export function registerCodegraphHandlers(
     }
   )
 
+  // Batched resolution: renderer hooks resolve every import of a changed
+  // file — one IPC round-trip per specifier was 20-50 calls per file save.
+  ipcMain.handle(
+    CODEGRAPH_RESOLVE_IMPORTS,
+    async (_event, request: CodeGraphResolveImportsRequest): Promise<CodeGraphResolveImportsResponse> => {
+      const importerPath = path.resolve(request.importerPath)
+      const language = detectLanguage(importerPath)
+      if (!language) {
+        return { resolvedPaths: request.specifiers.map(() => null) }
+      }
+
+      const index = await ensureIndex(request.projectRoot)
+      const aliases = await loadPathAliases(request.projectRoot)
+      const resolvedPaths = request.specifiers.map(
+        (specifier) =>
+          resolveImport(
+            { specifier, type: 'import', line: 0 },
+            importerPath,
+            language,
+            index,
+            aliases
+          ).resolvedPath
+      )
+      return { resolvedPaths }
+    }
+  )
+
   ipcMain.handle(CODEGRAPH_INDEX_STATS, (): CodeGraphIndexStats | null => {
     return getIndexStats()
   })
@@ -247,6 +277,7 @@ export function registerCodegraphHandlers(
       ipcMain.removeHandler(CODEGRAPH_EXPAND)
       ipcMain.removeHandler(CODEGRAPH_GET_IMPORTS)
       ipcMain.removeHandler(CODEGRAPH_RESOLVE_IMPORT)
+      ipcMain.removeHandler(CODEGRAPH_RESOLVE_IMPORTS)
       ipcMain.removeHandler(CODEGRAPH_INDEX_STATS)
       ipcMain.removeHandler(CODEGRAPH_INVALIDATE)
       ipcMain.removeHandler(CODEGRAPH_GET_DEPENDENTS)

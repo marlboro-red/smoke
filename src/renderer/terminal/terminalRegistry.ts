@@ -14,6 +14,10 @@ interface TerminalEntry {
 // 60s off-screen caused visible jank when panning back and forth.
 const WEBGL_DISPOSE_TIMEOUT = 300_000
 const HIDDEN_BUFFER_MAX_CHARS = 5 * 1024 * 1024 // ~5MB cap per session
+// Cap what gets replayed into xterm on reattach. Scrollback holds ~10k
+// lines (≲1MB of text), so parsing more than this is pure wasted CPU at
+// the exact moment the terminal scrolls back into view.
+const FLUSH_MAX_CHARS = 1 * 1024 * 1024
 
 interface HiddenBuffer {
   chunks: string[]
@@ -228,6 +232,12 @@ export function reattachTerminal(
 export function flushHiddenBuffer(sessionId: string, terminal: Terminal): void {
   const buffer = hiddenBuffers.get(sessionId)
   if (buffer && buffer.chunks.length > 0) {
+    // Drop the oldest data beyond the flush cap — it would scroll straight
+    // out of xterm's scrollback anyway.
+    while (buffer.totalChars > FLUSH_MAX_CHARS && buffer.chunks.length > 1) {
+      const oldest = buffer.chunks.shift()!
+      buffer.totalChars -= oldest.length
+    }
     terminal.write(buffer.chunks.join(''))
   }
   hiddenBuffers.delete(sessionId)

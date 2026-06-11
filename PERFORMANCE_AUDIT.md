@@ -204,6 +204,14 @@ per context-collect. Read once into a shared map for the scoring pass.
   membership didn't change. Remaining from this phase: immer-style store
   updates (deferred — new dependency) and drag-start peer element registry
   (minor: one query per selected peer per drag start).
+- ✅ **Phase 3 shipped**: broadcast keystrokes now use a group→members cache
+  invalidated by Map identity (was O(all sessions) per keystroke); hidden
+  terminal reattach flushes at most 1MB into the xterm parser (older data
+  scrolls out of scrollback anyway); PTY resize debounce 50ms→150ms (was
+  10-20 fit + IPC rounds per resize drag); new batched
+  `codegraph:resolve-imports` channel — graph invalidation and the
+  suggestion engine resolve all of a file's imports in one IPC round-trip
+  instead of one per specifier (20-50 invokes per file save).
 
 ## Suggested execution order
 

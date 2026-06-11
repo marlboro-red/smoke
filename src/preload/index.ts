@@ -182,6 +182,9 @@ const smokeAPI: SmokeAPI = {
     resolveImport: (specifier, importerPath, projectRoot) =>
       ipcRenderer.invoke('codegraph:resolve-import', { specifier, importerPath, projectRoot })
         .then((r: { resolvedPath: string | null }) => r.resolvedPath),
+    resolveImports: (specifiers, importerPath, projectRoot) =>
+      ipcRenderer.invoke('codegraph:resolve-imports', { specifiers, importerPath, projectRoot })
+        .then((r: { resolvedPaths: Array<string | null> }) => r.resolvedPaths),
     indexStats: () => ipcRenderer.invoke('codegraph:index-stats'),
     invalidateIndex: () => ipcRenderer.invoke('codegraph:invalidate'),
     planWorkspace: (files: WorkspaceFileInput[]) =>

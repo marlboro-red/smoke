@@ -106,6 +106,7 @@ export const CODEGRAPH_BUILD = 'codegraph:build' as const
 export const CODEGRAPH_EXPAND = 'codegraph:expand' as const
 export const CODEGRAPH_GET_IMPORTS = 'codegraph:get-imports' as const
 export const CODEGRAPH_RESOLVE_IMPORT = 'codegraph:resolve-import' as const
+export const CODEGRAPH_RESOLVE_IMPORTS = 'codegraph:resolve-imports' as const
 export const CODEGRAPH_INDEX_STATS = 'codegraph:index-stats' as const
 export const CODEGRAPH_INVALIDATE = 'codegraph:invalidate' as const
 export const CODEGRAPH_PLAN_WORKSPACE = 'codegraph:plan-workspace' as const
@@ -509,6 +510,18 @@ export interface CodeGraphResolveImportRequest {
 
 export interface CodeGraphResolveImportResponse {
   resolvedPath: string | null
+}
+
+/** Batched form: resolve many specifiers from one importer in one IPC call. */
+export interface CodeGraphResolveImportsRequest {
+  specifiers: string[]
+  importerPath: string
+  projectRoot: string
+}
+
+export interface CodeGraphResolveImportsResponse {
+  /** Resolved paths, index-aligned with the request specifiers. */
+  resolvedPaths: Array<string | null>
 }
 
 export interface CodeGraphIndexStats {

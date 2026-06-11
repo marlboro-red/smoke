@@ -74,17 +74,20 @@ async function fetchRelatedFiles(filePath: string): Promise<FileSuggestion[]> {
   // 1. Get direct imports
   try {
     const imports = await window.smokeAPI.codegraph.getImports(filePath)
-    for (const imp of imports) {
-      if (imp.specifier.startsWith('/') || imp.specifier.startsWith('.')) {
-        // Resolve relative import
-        const resolved = await window.smokeAPI.codegraph.resolveImport(
-          imp.specifier,
-          filePath,
-          projectRoot
-        )
-        if (resolved && !openPaths.has(resolved) && !seen.has(resolved)) {
-          seen.add(resolved)
-          candidates.push({ filePath: resolved, score: 0.9, reason: 'import' })
+    const relativeSpecifiers = imports
+      .map((imp) => imp.specifier)
+      .filter((s) => s.startsWith('/') || s.startsWith('.'))
+    if (relativeSpecifiers.length > 0) {
+      // Resolve all specifiers in one IPC call instead of one per import
+      const resolved = await window.smokeAPI.codegraph.resolveImports(
+        relativeSpecifiers,
+        filePath,
+        projectRoot
+      )
+      for (const resolvedPath of resolved) {
+        if (resolvedPath && !openPaths.has(resolvedPath) && !seen.has(resolvedPath)) {
+          seen.add(resolvedPath)
+          candidates.push({ filePath: resolvedPath, score: 0.9, reason: 'import' })
         }
       }
     }
