@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { useConnectorList } from '../stores/connectorStore'
 import type { Connector } from '../stores/connectorStore'
-import { useSessionList } from '../stores/sessionStore'
+import { useSessionStore } from '../stores/sessionStore'
 import type { Session } from '../stores/sessionStore'
 import { useFocusModeActiveIds } from '../stores/focusModeStore'
 
@@ -90,14 +90,10 @@ ConnectorPath.displayName = 'ConnectorPath'
 
 const ConnectorLayer: React.FC = React.memo(() => {
   const connectors = useConnectorList()
-  const sessions = useSessionList()
+  // The store already keys sessions by id — subscribe to its Map directly
+  // instead of converting to an array and rebuilding a Map per change.
+  const sessionMap = useSessionStore((s) => s.sessions)
   const focusModeActiveIds = useFocusModeActiveIds()
-
-  const sessionMap = useMemo(() => {
-    const map = new Map<string, Session>()
-    for (const s of sessions) map.set(s.id, s)
-    return map
-  }, [sessions])
 
   if (connectors.length === 0) return null
 

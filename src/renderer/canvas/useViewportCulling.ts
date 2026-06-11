@@ -62,10 +62,22 @@ export function useViewportCulling(
   const recalcTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const spatialIndexRef = useRef<SpatialIndex | null>(null)
   const pinnedIdsRef = useRef<string[]>([])
+  const geometrySigRef = useRef('')
 
-  // Rebuild spatial index when sessions change
-  const rebuildIndex = useCallback(() => {
+  // Rebuild spatial index when session GEOMETRY changes. The store notifies
+  // on every mutation (focus, selection, title...), so compare a cheap
+  // signature of the geometry-relevant fields and skip rebuilds when only
+  // non-spatial state changed. Returns whether geometry actually changed.
+  const rebuildIndex = useCallback((): boolean => {
     const sessions = sessionStore.getState().sessions
+
+    let sig = ''
+    for (const [id, s] of sessions) {
+      sig += `${id}:${s.position.x},${s.position.y},${s.size.width},${s.size.height},${s.isPinned ? 1 : 0};`
+    }
+    if (sig === geometrySigRef.current) return false
+    geometrySigRef.current = sig
+
     spatialIndexRef.current = buildSpatialIndex(sessions)
     // Cache pinned IDs separately (always visible, not in spatial index)
     const pinned: string[] = []
@@ -73,6 +85,7 @@ export function useViewportCulling(
       if (session.isPinned) pinned.push(id)
     }
     pinnedIdsRef.current = pinned
+    return true
   }, [])
 
   const recalculate = useCallback(() => {
@@ -109,7 +122,21 @@ export function useViewportCulling(
       }
     }
 
-    setVisibleIds(newVisible)
+    // Keep the previous Set when membership is unchanged — a fresh Set
+    // reference re-renders every visibleIds consumer for nothing.
+    setVisibleIds((prev) => {
+      if (prev.size === newVisible.size) {
+        let same = true
+        for (const id of newVisible) {
+          if (!prev.has(id)) {
+            same = false
+            break
+          }
+        }
+        if (same) return prev
+      }
+      return newVisible
+    })
     setIsThumbnailMode(zoom < THUMBNAIL_THRESHOLD)
     setIsClusterMode(zoom < CLUSTER_THRESHOLD)
   }, [panRef, zoomRef, rootRef])
@@ -122,8 +149,9 @@ export function useViewportCulling(
   // Subscribe to session store changes (create/delete/move) — rebuild index + recalc
   useEffect(() => {
     const unsub = sessionStore.subscribe(() => {
-      rebuildIndex()
-      debouncedRecalculate()
+      if (rebuildIndex()) {
+        debouncedRecalculate()
+      }
     })
     return unsub
   }, [rebuildIndex, debouncedRecalculate])

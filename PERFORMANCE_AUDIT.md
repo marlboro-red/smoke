@@ -192,6 +192,18 @@ per context-collect. Read once into a shared map for the scoring pass.
 - ✅ **Quick wins shipped**: PTY batch window 4ms→16ms with deeper backpressure
   allowance; WebGL dispose timeout 60s→5min; SnapPreview collapsed to a
   single store subscription.
+- ✅ **Phase 2 shipped**: per-window boolean selectors (`useIsFocused`/
+  `useIsHighlighted`/`useIsSelected`/`useIsBroadcasting`/
+  `useIsDimmedByFocusMode`) across all 7 window components + TerminalWidget —
+  a focus/selection change now re-renders only the windows whose state
+  flipped, not all N; pointer handlers read selection via `getState()`;
+  `useFocusModeActiveIds` is inert while focus mode is off; ConnectorLayer
+  subscribes to the store's session Map directly (no per-change array→Map
+  rebuild); viewport culling skips spatial-index rebuilds when geometry is
+  unchanged (signature guard) and keeps the previous `visibleIds` Set when
+  membership didn't change. Remaining from this phase: immer-style store
+  updates (deferred — new dependency) and drag-start peer element registry
+  (minor: one query per selected peer per drag start).
 
 ## Suggested execution order
 

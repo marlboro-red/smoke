@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useTerminal } from './useTerminal'
 import { usePty } from './usePty'
 import { useCrispZoom } from './useCrispZoom'
-import { useFocusedId, sessionStore } from '../stores/sessionStore'
+import { useIsFocused, sessionStore } from '../stores/sessionStore'
 import { resolveShortcut } from '../shortcuts/shortcutMap'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'
@@ -22,8 +22,8 @@ export default function TerminalWidget({ sessionId, cols, rows, isFocused: isFoc
   usePty(sessionId, terminalRef)
   useCrispZoom(containerRef, terminalRef)
 
-  const focusedId = useFocusedId()
-  const derivedFocused = isFocusedProp !== undefined ? isFocusedProp : focusedId === sessionId
+  const isSessionFocused = useIsFocused(sessionId)
+  const derivedFocused = isFocusedProp !== undefined ? isFocusedProp : isSessionFocused
 
   // Expose getSnapshot to parent
   useEffect(() => {

@@ -437,6 +437,23 @@ export const useBroadcastGroupId = (): string | null =>
 export const useSelectedIds = (): Set<string> =>
   useStore(sessionStore, useShallow((state) => state.selectedIds))
 
+// ── Per-window boolean selectors ──
+// Selecting primitives means a window re-renders only when ITS flag flips.
+// Selecting focusedId/selectedIds directly re-rendered every window on any
+// focus or selection change (N re-render checks per click with N windows).
+
+export const useIsFocused = (id: string): boolean =>
+  useStore(sessionStore, (state) => state.focusedId === id)
+
+export const useIsHighlighted = (id: string): boolean =>
+  useStore(sessionStore, (state) => state.highlightedId === id)
+
+export const useIsSelected = (id: string): boolean =>
+  useStore(sessionStore, (state) => state.selectedIds.has(id))
+
+export const useIsBroadcasting = (groupId: string | undefined): boolean =>
+  useStore(sessionStore, (state) => !!(groupId && state.broadcastGroupId === groupId))
+
 export function getGroupSessionIds(groupId: string): string[] {
   const sessions = sessionStore.getState().sessions
   const ids: string[] = []

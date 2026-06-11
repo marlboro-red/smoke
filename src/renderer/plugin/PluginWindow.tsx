@@ -2,12 +2,12 @@ import { useCallback, useState } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
-  useFocusedId,
-  useHighlightedId,
-  useSelectedIds,
+  useIsFocused,
+  useIsHighlighted,
+  useIsSelected,
   type PluginSession,
 } from '../stores/sessionStore'
-import { useFocusModeActiveIds } from '../stores/focusModeStore'
+import { useIsDimmedByFocusMode } from '../stores/focusModeStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from '../fileviewer/useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -24,17 +24,12 @@ export default function PluginWindow({
   zoom,
   gridSize,
 }: PluginWindowProps): JSX.Element {
-  const focusedId = useFocusedId()
-  const highlightedId = useHighlightedId()
-  const selectedIds = useSelectedIds()
-  const focusModeActiveIds = useFocusModeActiveIds()
   const [pluginStatus, setPluginStatus] = useState<'running' | 'exited'>('running')
 
-  const isFocused = focusedId === session.id
-  const isHighlighted = highlightedId === session.id
-  const isSelected = selectedIds.has(session.id)
-  const isDimmedByFocusMode =
-    focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
+  const isFocused = useIsFocused(session.id)
+  const isHighlighted = useIsHighlighted(session.id)
+  const isSelected = useIsSelected(session.id)
+  const isDimmedByFocusMode = useIsDimmedByFocusMode(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -56,6 +51,7 @@ export default function PluginWindow({
         sessionStore.getState().toggleSelectSession(session.id)
         return
       }
+      const { selectedIds } = sessionStore.getState()
       if (selectedIds.has(session.id) && selectedIds.size > 1) {
         sessionStore.getState().bringToFront(session.id)
         sessionStore.getState().focusSession(session.id)
@@ -65,7 +61,7 @@ export default function PluginWindow({
       sessionStore.getState().bringToFront(session.id)
       sessionStore.getState().focusSession(session.id)
     },
-    [session.id, selectedIds]
+    [session.id]
   )
 
   const handleTitleChange = useCallback(

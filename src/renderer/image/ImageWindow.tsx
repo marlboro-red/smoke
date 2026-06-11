@@ -2,9 +2,9 @@ import React, { useCallback } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
-  useFocusedId,
-  useHighlightedId,
-  useSelectedIds,
+  useIsFocused,
+  useIsHighlighted,
+  useIsSelected,
   type ImageSession,
 } from '../stores/sessionStore'
 import { useWindowDrag } from '../window/useWindowDrag'
@@ -26,13 +26,9 @@ export default React.memo(function ImageWindow({
   zoom,
   gridSize,
 }: ImageWindowProps): JSX.Element {
-  const focusedId = useFocusedId()
-  const highlightedId = useHighlightedId()
-  const selectedIds = useSelectedIds()
-
-  const isFocused = focusedId === session.id
-  const isHighlighted = highlightedId === session.id
-  const isSelected = selectedIds.has(session.id)
+  const isFocused = useIsFocused(session.id)
+  const isHighlighted = useIsHighlighted(session.id)
+  const isSelected = useIsSelected(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -53,6 +49,7 @@ export default React.memo(function ImageWindow({
       sessionStore.getState().toggleSelectSession(session.id)
       return
     }
+    const { selectedIds } = sessionStore.getState()
     if (selectedIds.has(session.id) && selectedIds.size > 1) {
       sessionStore.getState().bringToFront(session.id)
       sessionStore.getState().focusSession(session.id)
@@ -61,7 +58,7 @@ export default React.memo(function ImageWindow({
     sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id, selectedIds])
+  }, [session.id])
 
   const handleTitleChange = useCallback(
     (title: string) => {

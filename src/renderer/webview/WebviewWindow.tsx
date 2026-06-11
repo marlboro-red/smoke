@@ -2,12 +2,12 @@ import React, { useCallback, useRef, useState, useEffect } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
-  useFocusedId,
-  useHighlightedId,
-  useSelectedIds,
+  useIsFocused,
+  useIsHighlighted,
+  useIsSelected,
   type WebviewSession,
 } from '../stores/sessionStore'
-import { useFocusModeActiveIds } from '../stores/focusModeStore'
+import { useIsDimmedByFocusMode } from '../stores/focusModeStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useWebviewResize } from './useWebviewResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -30,9 +30,6 @@ export default React.memo(function WebviewWindow({
   zoom,
   gridSize,
 }: WebviewWindowProps): JSX.Element {
-  const focusedId = useFocusedId()
-  const highlightedId = useHighlightedId()
-  const selectedIds = useSelectedIds()
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
   // The webview src attribute is intentionally uncontrolled: it holds the
   // initial URL only. Re-assigning src on every store update would force a
@@ -43,12 +40,10 @@ export default React.memo(function WebviewWindow({
   const [isLoading, setIsLoading] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
 
-  const focusModeActiveIds = useFocusModeActiveIds()
-
-  const isFocused = focusedId === session.id
-  const isHighlighted = highlightedId === session.id
-  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
-  const isSelected = selectedIds.has(session.id)
+  const isFocused = useIsFocused(session.id)
+  const isHighlighted = useIsHighlighted(session.id)
+  const isDimmedByFocusMode = useIsDimmedByFocusMode(session.id)
+  const isSelected = useIsSelected(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -69,6 +64,7 @@ export default React.memo(function WebviewWindow({
       sessionStore.getState().toggleSelectSession(session.id)
       return
     }
+    const { selectedIds } = sessionStore.getState()
     if (selectedIds.has(session.id) && selectedIds.size > 1) {
       sessionStore.getState().bringToFront(session.id)
       sessionStore.getState().focusSession(session.id)
@@ -77,7 +73,7 @@ export default React.memo(function WebviewWindow({
     sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id, selectedIds])
+  }, [session.id])
 
   const handleTitleChange = useCallback(
     (title: string) => {

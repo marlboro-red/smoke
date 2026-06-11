@@ -3,12 +3,12 @@ import { codeToHtml } from '../shiki/highlighter'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
-  useFocusedId,
-  useHighlightedId,
-  useSelectedIds,
+  useIsFocused,
+  useIsHighlighted,
+  useIsSelected,
   type NoteSession,
 } from '../stores/sessionStore'
-import { useFocusModeActiveIds } from '../stores/focusModeStore'
+import { useIsDimmedByFocusMode } from '../stores/focusModeStore'
 import { usePreference } from '../stores/preferencesStore'
 import { getTheme } from '../themes/themes'
 import { useWindowDrag } from '../window/useWindowDrag'
@@ -41,23 +41,19 @@ export default React.memo(function NoteWindow({
   zoom,
   gridSize,
 }: NoteWindowProps): JSX.Element {
-  const focusedId = useFocusedId()
-  const highlightedId = useHighlightedId()
-  const selectedIds = useSelectedIds()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [editing, setEditing] = useState(false)
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null)
 
-  const focusModeActiveIds = useFocusModeActiveIds()
   const themePref = usePreference('theme')
   const shikiTheme = getTheme(themePref || 'dark').shikiTheme
 
   const hasHighlighting = !!session.language && session.language !== 'text' && session.language !== 'markdown'
 
-  const isFocused = focusedId === session.id
-  const isHighlighted = highlightedId === session.id
-  const isSelected = selectedIds.has(session.id)
-  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
+  const isFocused = useIsFocused(session.id)
+  const isHighlighted = useIsHighlighted(session.id)
+  const isSelected = useIsSelected(session.id)
+  const isDimmedByFocusMode = useIsDimmedByFocusMode(session.id)
 
   const { onDragStart } = useWindowDrag({
     sessionId: session.id,
@@ -78,6 +74,7 @@ export default React.memo(function NoteWindow({
       sessionStore.getState().toggleSelectSession(session.id)
       return
     }
+    const { selectedIds } = sessionStore.getState()
     if (selectedIds.has(session.id) && selectedIds.size > 1) {
       sessionStore.getState().bringToFront(session.id)
       sessionStore.getState().focusSession(session.id)
@@ -86,7 +83,7 @@ export default React.memo(function NoteWindow({
     sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id, selectedIds])
+  }, [session.id])
 
   const handleTitleChange = useCallback(
     (title: string) => {

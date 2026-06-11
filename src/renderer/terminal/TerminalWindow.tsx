@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useEffect, useMemo } from 'react'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
-import { sessionStore, useFocusedId, useHighlightedId, useSelectedIds, useBroadcastGroupId, type TerminalSession } from '../stores/sessionStore'
-import { useFocusModeActiveIds } from '../stores/focusModeStore'
+import { sessionStore, useIsFocused, useIsHighlighted, useIsSelected, useIsBroadcasting, type TerminalSession } from '../stores/sessionStore'
+import { useIsDimmedByFocusMode } from '../stores/focusModeStore'
 import { snapshotStore } from '../stores/snapshotStore'
 import { findAgentBySessionGroupId } from '../stores/agentStore'
 import { splitPaneStore, useSplitPaneStore } from '../stores/splitPaneStore'
@@ -32,20 +32,14 @@ export default React.memo(function TerminalWindow({
   gridSize,
   hidden,
 }: TerminalWindowProps): JSX.Element {
-  const focusedId = useFocusedId()
-  const highlightedId = useHighlightedId()
-  const selectedIds = useSelectedIds()
-  const broadcastGroupId = useBroadcastGroupId()
   const charDimsRef = useRef({ width: 8, height: 16 })
   const getSnapshotRef = useRef<(() => string[]) | null>(null)
 
-  const focusModeActiveIds = useFocusModeActiveIds()
-
-  const isFocused = focusedId === session.id
-  const isHighlighted = highlightedId === session.id
-  const isSelected = selectedIds.has(session.id)
-  const isBroadcasting = !!(session.groupId && broadcastGroupId === session.groupId)
-  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
+  const isFocused = useIsFocused(session.id)
+  const isHighlighted = useIsHighlighted(session.id)
+  const isSelected = useIsSelected(session.id)
+  const isBroadcasting = useIsBroadcasting(session.groupId)
+  const isDimmedByFocusMode = useIsDimmedByFocusMode(session.id)
 
   // Split pane state
   const splitTree = useSplitPaneStore((s) => s.getTree(session.id))
@@ -80,6 +74,7 @@ export default React.memo(function TerminalWindow({
       return
     }
     // If clicking a selected element without modifier, keep selection for drag
+    const { selectedIds } = sessionStore.getState()
     if (selectedIds.has(session.id) && selectedIds.size > 1) {
       sessionStore.getState().bringToFront(session.id)
       sessionStore.getState().focusSession(session.id)
@@ -88,7 +83,7 @@ export default React.memo(function TerminalWindow({
     sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id, selectedIds])
+  }, [session.id])
 
   const handleTitleChange = useCallback(
     (title: string) => {

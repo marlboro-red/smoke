@@ -4,12 +4,12 @@ import { EditorView } from '@codemirror/view'
 import { getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import {
   sessionStore,
-  useFocusedId,
-  useHighlightedId,
-  useSelectedIds,
+  useIsFocused,
+  useIsHighlighted,
+  useIsSelected,
   type FileViewerSession,
 } from '../stores/sessionStore'
-import { useFocusModeActiveIds } from '../stores/focusModeStore'
+import { useIsDimmedByFocusMode } from '../stores/focusModeStore'
 import { useWindowDrag } from '../window/useWindowDrag'
 import { useFileViewerResize } from './useFileViewerResize'
 import { CHROME_HEIGHT } from '../window/useSnapping'
@@ -41,9 +41,6 @@ export default React.memo(function FileViewerWindow({
   hidden,
   className: extraClassName,
 }: FileViewerWindowProps): JSX.Element {
-  const focusedId = useFocusedId()
-  const highlightedId = useHighlightedId()
-  const selectedIds = useSelectedIds()
   const editing = session.editing ?? false
   const goToLineSessionId = useGoToLineSessionId()
   const showGoToLine = goToLineSessionId === session.id
@@ -54,12 +51,10 @@ export default React.memo(function FileViewerWindow({
   const scrollToLineRef = useRef<((line: number) => void) | null>(null)
   const [extractButton, setExtractButton] = useState<{ x: number; y: number } | null>(null)
 
-  const focusModeActiveIds = useFocusModeActiveIds()
-
-  const isFocused = focusedId === session.id
-  const isHighlighted = highlightedId === session.id
-  const isSelected = selectedIds.has(session.id)
-  const isDimmedByFocusMode = focusModeActiveIds !== null && !focusModeActiveIds.has(session.id)
+  const isFocused = useIsFocused(session.id)
+  const isHighlighted = useIsHighlighted(session.id)
+  const isSelected = useIsSelected(session.id)
+  const isDimmedByFocusMode = useIsDimmedByFocusMode(session.id)
 
   // Focus input when go-to-line activates
   useEffect(() => {
@@ -146,6 +141,7 @@ export default React.memo(function FileViewerWindow({
       sessionStore.getState().toggleSelectSession(session.id)
       return
     }
+    const { selectedIds } = sessionStore.getState()
     if (selectedIds.has(session.id) && selectedIds.size > 1) {
       sessionStore.getState().bringToFront(session.id)
       sessionStore.getState().focusSession(session.id)
@@ -154,7 +150,7 @@ export default React.memo(function FileViewerWindow({
     sessionStore.getState().clearSelection()
     sessionStore.getState().bringToFront(session.id)
     sessionStore.getState().focusSession(session.id)
-  }, [session.id, selectedIds])
+  }, [session.id])
 
   const handleTitleChange = useCallback(
     (title: string) => {
