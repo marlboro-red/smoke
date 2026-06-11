@@ -278,6 +278,31 @@ architectural price of the canvas/web stack — interaction speed is
 solved; absolute memory footprint can only approach, never match,
 native terminals.
 
+### Worst-case contention: 12 simultaneous floods
+
+`node scripts/perf-bench-flood.mjs` — 12 visible terminals each running
+`seq 1 200000` at the same time (2.4M lines total through the full
+PTY → main-batching → IPC → xterm-parse → WebGL pipeline):
+
+| Scenario | avg | p95 | worst | dropped |
+|---|---|---|---|---|
+| 12× simultaneous flood | 16.6ms | 17.6ms | 32.7ms | 0 |
+| Panning during the flood | 16.6ms | 17.5ms | 17.7ms | 0 |
+| Typing during the flood | 16.6ms | 17.6ms | 34.0ms | 1 |
+
+All 2.4M lines drained in 10.9s (~220k lines/s aggregate). **This
+empirically settles the per-terminal-process-isolation question**: the
+shared renderer thread, arbitrated by end-to-end flow control (PTY
+pause at 16 unacked batches → 16ms main-process batching → xterm's
+frame-budgeted write buffer), holds 60fps under 12 concurrent
+firehoses. Process-per-terminal would add ~30-60MB per terminal, the
+out-of-process compositing lag during pan (the exact problem webviews
+have), and break cross-terminal features (canvas search, snapshots,
+extract-to-note) — for no measurable responsiveness gain. The shells
+themselves are already separate OS processes. Memory peaked at 922MB
+during the 12-way flood (scrollback retention), which argues for the
+scrollback/LRU levers below, not process isolation.
+
 Remaining levers if footprint matters more than features: scrollback
 10000 → 5000 default (≈ halves per-terminal renderer memory), LRU
 eviction in the terminal registry, code-splitting the 2.7MB renderer
