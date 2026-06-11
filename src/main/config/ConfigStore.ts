@@ -125,3 +125,74 @@ try {
 }
 
 export { configStore }
+
+// ---------------------------------------------------------------------------
+// Write-behind persistence
+// ---------------------------------------------------------------------------
+
+/**
+ * electron-store writes the whole config file to disk SYNCHRONOUSLY on every
+ * `set`, blocking the main process (and therefore all IPC, including
+ * keystrokes and PTY output) for 5–50ms per call. With layout autosave every
+ * 2s plus preference updates, that's a recurring stall.
+ *
+ * DeferredConfigWriter coalesces mutations in memory and flushes them in one
+ * disk write after a short delay. Reads check pending mutations first (and
+ * flush on root-key overlap) so callers always see their own writes.
+ *
+ * Call `flushConfigWrites()` on before-quit so nothing is lost.
+ */
+const CONFIG_FLUSH_DELAY_MS = 500
+
+class DeferredConfigWriter {
+  private pending = new Map<string, unknown>()
+  private timer: ReturnType<typeof setTimeout> | null = null
+
+  set(key: string, value: unknown): void {
+    this.pending.set(key, value)
+    if (!this.timer) {
+      this.timer = setTimeout(() => this.flush(), CONFIG_FLUSH_DELAY_MS)
+    }
+  }
+
+  /**
+   * Read a key, seeing pending writes. Dotted-path writes (e.g.
+   * `preferences.theme`) overlap whole-object reads (`preferences`), so any
+   * root-segment overlap forces a flush before reading from the store.
+   */
+  get<T>(key: string, defaultValue: T): T {
+    if (this.pending.size > 0) {
+      if (this.pending.has(key)) {
+        return this.pending.get(key) as T
+      }
+      const root = key.split('.')[0]
+      for (const pendingKey of this.pending.keys()) {
+        if (pendingKey.split('.')[0] === root) {
+          this.flush()
+          break
+        }
+      }
+    }
+    return configStore.get(key as never, defaultValue as never) as T
+  }
+
+  /** Apply all pending mutations in a single disk write. */
+  flush(): void {
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
+    if (this.pending.size === 0) return
+    const batch = Object.fromEntries(this.pending)
+    this.pending.clear()
+    // electron-store applies all entries to its in-memory state and writes
+    // the file once for the object form.
+    configStore.set(batch as never)
+  }
+}
+
+export const deferredConfig = new DeferredConfigWriter()
+
+export function flushConfigWrites(): void {
+  deferredConfig.flush()
+}

@@ -149,43 +149,47 @@ vi.mock('electron', () => ({
 // Mock configStore
 const mockConfig: Record<string, any> = {}
 
-vi.mock('../../config/ConfigStore', () => ({
-  configStore: {
-    get: vi.fn((key: string, defaultVal?: any) => {
-      const parts = key.split('.')
-      let val: any = mockConfig
-      for (const p of parts) {
-        val = val?.[p]
+vi.mock('../../config/ConfigStore', () => {
+  const get = vi.fn((key: string, defaultVal?: any) => {
+    const parts = key.split('.')
+    let val: any = mockConfig
+    for (const p of parts) {
+      val = val?.[p]
+    }
+    return val ?? defaultVal
+  })
+  const set = vi.fn((key: string, value: any) => {
+    const parts = key.split('.')
+    if (parts.length === 1) {
+      mockConfig[key] = value
+    } else {
+      let obj: any = mockConfig
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!obj[parts[i]]) obj[parts[i]] = {}
+        obj = obj[parts[i]]
       }
-      return val ?? defaultVal
-    }),
-    set: vi.fn((key: string, value: any) => {
-      const parts = key.split('.')
-      if (parts.length === 1) {
-        mockConfig[key] = value
-      } else {
-        let obj: any = mockConfig
-        for (let i = 0; i < parts.length - 1; i++) {
-          if (!obj[parts[i]]) obj[parts[i]] = {}
-          obj = obj[parts[i]]
-        }
-        obj[parts[parts.length - 1]] = value
-      }
-    }),
-    onDidChange: vi.fn(),
-  },
-  defaultPreferences: {
-    defaultShell: '',
-    autoLaunchClaude: false,
-    claudeCommand: 'claude',
-    gridSize: 20,
-    sidebarPosition: 'left',
-    sidebarWidth: 240,
-    theme: 'dark',
-    defaultCwd: '',
-    startupCommand: '',
-  },
-}))
+      obj[parts[parts.length - 1]] = value
+    }
+  })
+  return {
+    configStore: { get, set, onDidChange: vi.fn() },
+    // The write-behind wrapper shares the same semantics in tests
+    // (writes apply immediately, no flush delay)
+    deferredConfig: { get, set, flush: vi.fn() },
+    flushConfigWrites: vi.fn(),
+    defaultPreferences: {
+      defaultShell: '',
+      autoLaunchClaude: false,
+      claudeCommand: 'claude',
+      gridSize: 20,
+      sidebarPosition: 'left',
+      sidebarWidth: 240,
+      theme: 'dark',
+      defaultCwd: '',
+      startupCommand: '',
+    },
+  }
+})
 
 import { registerIpcHandlers, type IpcCleanup } from '../ipcHandlers'
 import { PtyManager } from '../../pty/PtyManager'

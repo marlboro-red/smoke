@@ -130,6 +130,69 @@ per context-collect. Read once into a shared map for the scoring pass.
 - **Layout serialization spreads per session** (`serializeCurrentLayout`) —
   cheap individually, runs every autosave; tidy when touching #2.
 
+## Round 2 findings — compositing, xterm config, IPC payloads
+
+### Compositing & CSS (paint cost while panning N windows)
+
+- **`backdrop-filter: blur(12px)` on every `.terminal-window`**
+  (`styles/window.css:6` via `--terminal-backdrop`): blur compositing per
+  window per frame while the viewport layer moves. The single most expensive
+  style on the canvas. Apply it only when terminal opacity < 1 (or replace
+  with a more opaque solid background).
+- **xterm `allowTransparency: true` unconditionally**
+  (`terminal/useTerminal.ts:111`): forces an alpha WebGL context and loses
+  fast-path text rendering even when opacity is 1. Make it conditional.
+- **Grid re-snap animates `left/top/width/height`** (`styles/canvas.css:79-84`):
+  layout+paint per frame for 300ms across all windows. Animate `transform`
+  instead, or accept a snap without transition.
+- **No `contain` on window elements**: add `contain: paint` (or
+  `layout paint`) to `.terminal-window` so the compositor can skip subtree
+  walks during viewport pans.
+- **Heavy multi-layer `box-shadow`s** on window base/focused/highlighted/
+  broadcasting states (`window.css`, `canvas.css:71`): rasterized per state
+  change; simplify to outline + small shadow.
+- **`filter: grayscale(0.6)` on focus-mode-dimmed windows**
+  (`window.css:30-32`): per-pixel filter on up to N-1 windows; opacity alone
+  reads nearly the same.
+- **Sidebar collapse transitions `width`** (`sidebar.css:13`): full app
+  re-layout per frame; use `transform: translateX`.
+- **xterm options** (`useTerminal.ts:18-26`): `scrollback: 10000` (memory +
+  canvas-search cost per terminal — consider 5000), `cursorBlink: true`
+  (steady repaint per visible terminal — consider default off/configurable).
+- **`backdrop-filter` on minimap and toasts** — small but constant; solid
+  backgrounds suffice.
+
+### IPC payloads & protocols
+
+- **`codegraph.resolveImport` called per import in loops**
+  (`useGraphInvalidation.ts:131-140`, `useSuggestionEngine.ts:75-89`): 20-50
+  round-trips per file change. Add a batched `resolveImports(specifiers[],
+  importer, root)` channel.
+- **Graph expand ships the whole graph both ways**
+  (`buildDepGraph.ts:expandDepGraph` + `expandCodeGraph`): renderer
+  reconstructs and uploads the full graph, main returns the full graph again
+  (~85KB round trip for 40 nodes). Return a delta (new nodes/edges + moved
+  positions); cache graph state on main keyed by a version.
+- **`ContextCollectResponse` always embeds the full `structureMap`**
+  (50–150KB on monorepos) though the renderer only uses module ids for
+  grouping. Make it opt-in or send `{moduleId, moduleName}` per file.
+- **`search.query` returns `lineContent` per result** to a consumer
+  (AssemblyPreview) that only needs file paths. Add a lean mode or drop the
+  field from this call site.
+- **Graph/suggestion flows `fs.readfile` files already open on the canvas**
+  (`buildDepGraph.ts:ensureFileSession` checks; `useGraphInvalidation`
+  createNodeSession path doesn't always) — check `sessionStore` first.
+
+## Progress
+
+- ✅ **Phase 1 shipped**: layout restore parallelized (bounded concurrency 4);
+  write-behind config persistence (`deferredConfig`, one coalesced disk write
+  ≤1/500ms, flush on quit); autosave no longer double-saves `__default__`
+  (refreshed at most once/minute).
+- ✅ **Quick wins shipped**: PTY batch window 4ms→16ms with deeper backpressure
+  allowance; WebGL dispose timeout 60s→5min; SnapPreview collapsed to a
+  single store subscription.
+
 ## Suggested execution order
 
 | Phase | Items | Theme |

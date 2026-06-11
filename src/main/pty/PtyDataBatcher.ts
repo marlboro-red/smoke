@@ -30,14 +30,18 @@ interface SessionState {
 export class PtyDataBatcher {
   private sessions = new Map<string, SessionState>()
 
-  /** Batch window in milliseconds. */
-  static readonly BATCH_MS = 4
+  /**
+   * Batch window in milliseconds. 16ms (~one frame) keeps keystroke echo
+   * imperceptible while coalescing chatty output into ~4x fewer IPC
+   * messages than the previous 4ms window.
+   */
+  static readonly BATCH_MS = 16
 
   /** Pause PTY when this many batches are unacknowledged. */
-  static readonly MAX_PENDING = 8
+  static readonly MAX_PENDING = 16
 
   /** Resume PTY when unacked count drops to this. */
-  static readonly RESUME_THRESHOLD = 3
+  static readonly RESUME_THRESHOLD = 6
 
   constructor(private readonly callbacks: PtyDataBatcherCallbacks) {}
 

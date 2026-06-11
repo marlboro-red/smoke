@@ -10,7 +10,9 @@ interface TerminalEntry {
   charDims: { width: number; height: number }
 }
 
-const WEBGL_DISPOSE_TIMEOUT = 60_000
+// 5 minutes: WebGL context creation costs 10-50ms, so disposing after only
+// 60s off-screen caused visible jank when panning back and forth.
+const WEBGL_DISPOSE_TIMEOUT = 300_000
 const HIDDEN_BUFFER_MAX_CHARS = 5 * 1024 * 1024 // ~5MB cap per session
 
 interface HiddenBuffer {

@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { configStore, defaultPreferences } from '../../config/ConfigStore'
+import { deferredConfig, defaultPreferences } from '../../config/ConfigStore'
 import type { Layout, Bookmark, Preferences, SmokeConfig } from '../../config/ConfigStore'
 import {
   LAYOUT_SAVE,
@@ -30,54 +30,54 @@ export function registerConfigHandlers(): ConfigHandlersCleanup {
   // Layout persistence handlers
   ipcMain.handle(LAYOUT_SAVE, (_event, request: LayoutSaveRequest): void => {
     if (request.name === '__default__') {
-      configStore.set('defaultLayout', request.layout)
+      deferredConfig.set('defaultLayout', request.layout)
     } else {
-      const layouts = configStore.get('namedLayouts', {})
+      const layouts = deferredConfig.get<Record<string, Layout>>('namedLayouts', {})
       layouts[request.name] = request.layout
-      configStore.set('namedLayouts', layouts)
+      deferredConfig.set('namedLayouts', layouts)
     }
   })
 
   ipcMain.handle(LAYOUT_LOAD, (_event, request: LayoutLoadRequest): Layout | null => {
     if (request.name === '__default__') {
-      return configStore.get('defaultLayout', null)
+      return deferredConfig.get('defaultLayout', null)
     }
-    const layouts = configStore.get('namedLayouts', {})
+    const layouts = deferredConfig.get<Record<string, Layout>>('namedLayouts', {})
     return layouts[request.name] ?? null
   })
 
   ipcMain.handle(LAYOUT_LIST, (): string[] => {
-    const layouts = configStore.get('namedLayouts', {})
+    const layouts = deferredConfig.get<Record<string, Layout>>('namedLayouts', {})
     return Object.keys(layouts)
   })
 
   ipcMain.handle(LAYOUT_DELETE, (_event, request: LayoutDeleteRequest): void => {
-    const layouts = configStore.get('namedLayouts', {})
+    const layouts = deferredConfig.get<Record<string, Layout>>('namedLayouts', {})
     delete layouts[request.name]
-    configStore.set('namedLayouts', layouts)
+    deferredConfig.set('namedLayouts', layouts)
   })
 
   // Bookmark persistence handlers
   ipcMain.handle(BOOKMARK_SAVE, (_event, request: BookmarkSaveRequest): void => {
-    const bookmarks = configStore.get('canvasBookmarks', {})
+    const bookmarks = deferredConfig.get<Record<string, Bookmark>>('canvasBookmarks', {})
     bookmarks[request.name] = request.bookmark
-    configStore.set('canvasBookmarks', bookmarks)
+    deferredConfig.set('canvasBookmarks', bookmarks)
   })
 
   ipcMain.handle(BOOKMARK_LIST, (): Bookmark[] => {
-    const bookmarks = configStore.get('canvasBookmarks', {})
+    const bookmarks = deferredConfig.get<Record<string, Bookmark>>('canvasBookmarks', {})
     return Object.values(bookmarks)
   })
 
   ipcMain.handle(BOOKMARK_DELETE, (_event, request: BookmarkDeleteRequest): void => {
-    const bookmarks = configStore.get('canvasBookmarks', {})
+    const bookmarks = deferredConfig.get<Record<string, Bookmark>>('canvasBookmarks', {})
     delete bookmarks[request.name]
-    configStore.set('canvasBookmarks', bookmarks)
+    deferredConfig.set('canvasBookmarks', bookmarks)
   })
 
   // Config handlers
   ipcMain.handle(CONFIG_GET, (): Preferences => {
-    return configStore.get('preferences', defaultPreferences)
+    return deferredConfig.get('preferences', defaultPreferences)
   })
 
   ipcMain.handle(CONFIG_SET, (_event, request: ConfigSetRequest): void => {
@@ -90,19 +90,19 @@ export function registerConfigHandlers(): ConfigHandlersCleanup {
     ]
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig
-    configStore.set(key, request.value as never)
+    deferredConfig.set(key, request.value as never)
   })
 
   // Tab state handlers
   ipcMain.handle(TAB_GET_STATE, (): TabStateData => {
-    const tabs = configStore.get('tabs', [{ id: 'default', name: 'Canvas 1' }])
-    const activeTabId = configStore.get('activeTabId', 'default')
+    const tabs = deferredConfig.get('tabs', [{ id: 'default', name: 'Canvas 1' }])
+    const activeTabId = deferredConfig.get('activeTabId', 'default')
     return { tabs, activeTabId }
   })
 
   ipcMain.handle(TAB_SAVE_STATE, (_event, state: TabStateData): void => {
-    configStore.set('tabs', state.tabs)
-    configStore.set('activeTabId', state.activeTabId)
+    deferredConfig.set('tabs', state.tabs)
+    deferredConfig.set('activeTabId', state.activeTabId)
   })
 
   return {

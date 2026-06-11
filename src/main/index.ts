@@ -3,7 +3,7 @@ import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'path'
 import { PtyManager } from './pty/PtyManager'
 import { registerIpcHandlers, type IpcCleanup } from './ipc/ipcHandlers'
-import { configStore } from './config/ConfigStore'
+import { configStore, flushConfigWrites } from './config/ConfigStore'
 import { WORKSPACE_OPENED } from './ipc/channels'
 
 // Capture before Electron changes cwd
@@ -194,6 +194,8 @@ app.whenReady().then(async () => {
 app.on('before-quit', () => {
   ipcCleanup?.dispose()
   ptyManager.killAll()
+  // Persist any pending write-behind config mutations before exit
+  flushConfigWrites()
 })
 
 app.on('window-all-closed', () => {

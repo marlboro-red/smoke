@@ -89,6 +89,84 @@ function serializeCurrentLayout(name: string): Layout {
 
 export { serializeCurrentLayout }
 
+type LayoutSession = Layout['sessions'][number]
+
+const RESTORE_CONCURRENCY = 4
+
+/** Run `fn` over items with at most `limit` in flight at once. */
+async function mapWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>
+): Promise<void> {
+  let next = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++]
+      await fn(item)
+    }
+  })
+  await Promise.all(workers)
+}
+
+interface PrefetchedImage {
+  dataUrl: string
+  width: number
+  height: number
+}
+
+interface PrefetchedAssets {
+  files: Map<LayoutSession, { content: string } | null>
+  images: Map<LayoutSession, PrefetchedImage | null>
+}
+
+/**
+ * Load file contents and decode images for all saved sessions with bounded
+ * concurrency BEFORE the session-creation loop. Awaiting each read/decode
+ * inside the loop serialized all I/O, multiplying restore time by the
+ * session count (and one missing image stalled everything behind it).
+ */
+async function prefetchSessionAssets(sessions: LayoutSession[]): Promise<PrefetchedAssets> {
+  const files = new Map<LayoutSession, { content: string } | null>()
+  const images = new Map<LayoutSession, PrefetchedImage | null>()
+
+  const tasks = sessions.filter(
+    (s) => (s.type === 'file' || s.type === 'image') && s.filePath
+  )
+
+  await mapWithConcurrency(tasks, RESTORE_CONCURRENCY, async (saved) => {
+    try {
+      if (saved.type === 'file') {
+        const result = await window.smokeAPI?.fs.readfile(saved.filePath!)
+        files.set(saved, result ? { content: result.content } : null)
+      } else {
+        const result = await window.smokeAPI?.fs.readfileBase64(saved.filePath!)
+        if (!result) {
+          images.set(saved, null)
+          return
+        }
+        const img = new window.Image()
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve()
+          img.onerror = () => reject(new Error('Failed to load image'))
+          img.src = result.dataUrl
+        })
+        images.set(saved, {
+          dataUrl: result.dataUrl,
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+        })
+      }
+    } catch {
+      // File/image may no longer exist — session is skipped at creation
+      if (saved.type === 'file') files.set(saved, null)
+      else images.set(saved, null)
+    }
+  })
+
+  return { files, images }
+}
+
 /**
  * Restore a layout into the current stores (non-hook version for tab switching).
  * Assumes sessions have already been cleared by the caller.
@@ -102,6 +180,9 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
   canvasStore.getState().setGridSize(layout.gridSize)
 
   const gs = layout.gridSize
+
+  // Load file/image assets in parallel, then create sessions in order
+  const assets = await prefetchSessionAssets(layout.sessions)
 
   // Create sessions from layout
   for (const saved of layout.sessions) {
@@ -131,24 +212,18 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
         break
       }
       case 'file': {
-        if (saved.filePath) {
-          try {
-            const result = await window.smokeAPI?.fs.readfile(saved.filePath)
-            if (result) {
-              const session = sessionStore.getState().createFileSession(
-                saved.filePath,
-                result.content,
-                saved.language || 'text',
-                pos
-              )
-              sessionStore.getState().updateSession(session.id, {
-                title: saved.title,
-                size: { ...saved.size, width: size.width, height: size.height },
-              })
-            }
-          } catch {
-            // File may no longer exist
-          }
+        const result = saved.filePath ? assets.files.get(saved) : null
+        if (saved.filePath && result) {
+          const session = sessionStore.getState().createFileSession(
+            saved.filePath,
+            result.content,
+            saved.language || 'text',
+            pos
+          )
+          sessionStore.getState().updateSession(session.id, {
+            title: saved.title,
+            size: { ...saved.size, width: size.width, height: size.height },
+          })
         }
         break
       }
@@ -177,31 +252,19 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
         break
       }
       case 'image': {
-        if (saved.filePath) {
-          try {
-            const result = await window.smokeAPI?.fs.readfileBase64(saved.filePath)
-            if (result) {
-              const img = new window.Image()
-              await new Promise<void>((resolve, reject) => {
-                img.onload = () => resolve()
-                img.onerror = () => reject(new Error('Failed to load image'))
-                img.src = result.dataUrl
-              })
-              const session = sessionStore.getState().createImageSession(
-                saved.filePath,
-                result.dataUrl,
-                img.naturalWidth,
-                img.naturalHeight,
-                pos
-              )
-              sessionStore.getState().updateSession(session.id, {
-                title: saved.title,
-                size: { ...saved.size, width: size.width, height: size.height },
-              })
-            }
-          } catch {
-            // Image file may no longer exist
-          }
+        const img = saved.filePath ? assets.images.get(saved) : null
+        if (saved.filePath && img) {
+          const session = sessionStore.getState().createImageSession(
+            saved.filePath,
+            img.dataUrl,
+            img.width,
+            img.height,
+            pos
+          )
+          sessionStore.getState().updateSession(session.id, {
+            title: saved.title,
+            size: { ...saved.size, width: size.width, height: size.height },
+          })
         }
         break
       }
@@ -249,8 +312,12 @@ export async function restoreTabLayout(layout: Layout): Promise<void> {
   }
 }
 
+/** Refresh the backward-compat __default__ layout at most this often. */
+const DEFAULT_LAYOUT_SAVE_INTERVAL_MS = 60_000
+
 export function useLayoutAutoSave(): void {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastDefaultSaveRef = useRef(0)
 
   useEffect(() => {
     const scheduleAutoSave = (): void => {
@@ -260,21 +327,22 @@ export function useLayoutAutoSave(): void {
         const tabKey = `__tab__${activeTabId}`
         const layout = serializeCurrentLayout(tabKey)
         window.smokeAPI?.layout.save(tabKey, layout)
-        // Also save as __default__ for backward compatibility
-        window.smokeAPI?.layout.save('__default__', { ...layout, name: '__default__' })
+        // Refresh __default__ (backward compatibility) only occasionally —
+        // saving it on every autosave doubled the IPC payload and the
+        // main-process disk writes for no steady-state benefit.
+        const now = Date.now()
+        if (now - lastDefaultSaveRef.current >= DEFAULT_LAYOUT_SAVE_INTERVAL_MS) {
+          lastDefaultSaveRef.current = now
+          window.smokeAPI?.layout.save('__default__', { ...layout, name: '__default__' })
+        }
       }, 2000)
     }
 
     const unsubSession = sessionStore.subscribe(scheduleAutoSave)
     const unsubCanvas = canvasStore.subscribe(scheduleAutoSave)
-
-    const unsubRegion = regionStore.subscribe(() => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        const layout = serializeCurrentLayout('__default__')
-        window.smokeAPI?.layout.save('__default__', layout)
-      }, 2000)
-    })
+    // Regions serialize into the same layout — share the scheduler instead
+    // of running a separate save path.
+    const unsubRegion = regionStore.subscribe(scheduleAutoSave)
 
     return () => {
       unsubSession()
@@ -322,6 +390,9 @@ export function useLayoutRestore(): {
       }
     }
 
+    // Load file/image assets in parallel, then create sessions in order
+    const assets = await prefetchSessionAssets(layout.sessions)
+
     // Create sessions from layout
     for (const saved of layout.sessions) {
       const elementType = saved.type ?? 'terminal'
@@ -353,26 +424,20 @@ export function useLayoutRestore(): {
           break
         }
         case 'file': {
-          if (saved.filePath) {
-            try {
-              const result = await window.smokeAPI?.fs.readfile(saved.filePath)
-              if (result) {
-                const session = sessionStore.getState().createFileSession(
-                  saved.filePath,
-                  result.content,
-                  saved.language || 'text',
-                  pos
-                )
-                createdId = session.id
-                sessionStore.getState().updateSession(session.id, {
-                  title: saved.title,
-                  size: { ...saved.size, width: size.width, height: size.height },
-                  ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
-                })
-              }
-            } catch {
-              // File may no longer exist — skip silently
-            }
+          const result = saved.filePath ? assets.files.get(saved) : null
+          if (saved.filePath && result) {
+            const session = sessionStore.getState().createFileSession(
+              saved.filePath,
+              result.content,
+              saved.language || 'text',
+              pos
+            )
+            createdId = session.id
+            sessionStore.getState().updateSession(session.id, {
+              title: saved.title,
+              size: { ...saved.size, width: size.width, height: size.height },
+              ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
+            })
           }
           break
         }
@@ -405,33 +470,21 @@ export function useLayoutRestore(): {
           break
         }
         case 'image': {
-          if (saved.filePath) {
-            try {
-              const result = await window.smokeAPI?.fs.readfileBase64(saved.filePath)
-              if (result) {
-                const img = new window.Image()
-                await new Promise<void>((resolve, reject) => {
-                  img.onload = () => resolve()
-                  img.onerror = () => reject(new Error('Failed to load image'))
-                  img.src = result.dataUrl
-                })
-                const session = sessionStore.getState().createImageSession(
-                  saved.filePath,
-                  result.dataUrl,
-                  img.naturalWidth,
-                  img.naturalHeight,
-                  pos
-                )
-                createdId = session.id
-                sessionStore.getState().updateSession(session.id, {
-                  title: saved.title,
-                  size: { ...saved.size, width: size.width, height: size.height },
-                  ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
-                })
-              }
-            } catch {
-              // Image file may no longer exist — skip silently
-            }
+          const img = saved.filePath ? assets.images.get(saved) : null
+          if (saved.filePath && img) {
+            const session = sessionStore.getState().createImageSession(
+              saved.filePath,
+              img.dataUrl,
+              img.width,
+              img.height,
+              pos
+            )
+            createdId = session.id
+            sessionStore.getState().updateSession(session.id, {
+              title: saved.title,
+              size: { ...saved.size, width: size.width, height: size.height },
+              ...(saved.isPinned ? { isPinned: true, pinnedViewportPos: saved.pinnedViewportPos } : {}),
+            })
           }
           break
         }

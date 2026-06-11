@@ -1,11 +1,18 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useSnapPreview } from '../stores/snapPreviewStore'
 
 export default function SnapPreview(): JSX.Element | null {
-  const visible = useSnapPreview((s) => s.visible)
-  const x = useSnapPreview((s) => s.x)
-  const y = useSnapPreview((s) => s.y)
-  const width = useSnapPreview((s) => s.width)
-  const height = useSnapPreview((s) => s.height)
+  // Single subscription — the store updates on every pointer-move during a
+  // drag, and five separate selectors meant five subscription checks per move.
+  const { visible, x, y, width, height } = useSnapPreview(
+    useShallow((s) => ({
+      visible: s.visible,
+      x: s.x,
+      y: s.y,
+      width: s.width,
+      height: s.height,
+    }))
+  )
 
   if (!visible) return null
 
