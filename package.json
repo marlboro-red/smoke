@@ -13,6 +13,7 @@
     "rebuild": "node scripts/patch-node-pty-spectre.js && electron-rebuild -f -w node-pty",
     "postinstall": "electron-vite build && node scripts/patch-node-pty-spectre.js && electron-rebuild",
     "package:mac": "npm run build && electron-builder --mac",
+    "sign:local": "bash scripts/sign-local.sh",
     "package:win": "npm run build && electron-builder --win",
     "package:all": "npm run build && electron-builder --mac --win",
     "test:e2e": "npm run build && npx playwright test",
