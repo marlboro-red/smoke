@@ -14,7 +14,7 @@
 
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { ensureIndex } from './graphBuilder'
+import { ensureIndex, readFileContent } from './graphBuilder'
 import { CodeGraph } from './CodeGraph'
 import { parseImports, detectLanguage } from '../imports/importParser'
 import { resolveAllImports, loadPathAliases, type PathAliases } from './importResolver'
@@ -240,19 +240,10 @@ async function scoreImportProximity(
     const { filePath, depth } = queue.shift()!
     if (depth >= 3) continue
 
-    let content: string
-    try {
-      const fd = await fs.open(filePath, 'r')
-      try {
-        const buf = Buffer.alloc(4096)
-        const { bytesRead } = await fd.read(buf, 0, 4096, 0)
-        content = buf.toString('utf-8', 0, bytesRead)
-      } finally {
-        await fd.close()
-      }
-    } catch {
-      continue
-    }
+    // Shared parse cache: ContextCollector's graph expansion has usually
+    // already read these exact files in the same request.
+    const content = await readFileContent(filePath)
+    if (!content) continue
 
     const language = detectLanguage(filePath)
     const parsed = parseImports(content, language)

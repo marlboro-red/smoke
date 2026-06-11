@@ -212,6 +212,19 @@ per context-collect. Read once into a shared map for the scoring pass.
   `codegraph:resolve-imports` channel — graph invalidation and the
   suggestion engine resolve all of a file's imports in one IPC round-trip
   instead of one per specifier (20-50 invokes per file save).
+- ✅ **Phase 4 (contained items) shipped**: FS read boundary checks memoize
+  the boundary realpaths (home/launchCwd/defaultCwd are session-stable) —
+  one realpath walk per read instead of 3-6 syscall chains per IPC call;
+  RelevanceScorer's import-proximity BFS shares graphBuilder's parse cache
+  instead of re-reading files ContextCollector just read in the same
+  request. Deferred (architectural): fusing the three full-repo walks
+  behind one walker + shared watcher; SearchIndex resident-memory diet.
+- ✅ **Functionally verified** (Playwright-driven Electron, isolated config):
+  PTY keystroke round-trip + 8k-line output flood, focus flipping, drag →
+  autosave → write-behind flush on disk, two-session restore with seeded
+  file sessions + a missing file (skipped without stalling), restored PTY
+  liveness. Chrome-click-doesn't-focus and minimap click-shielding are
+  pre-existing (verified identical on the pre-Phase-2 build).
 
 ## Suggested execution order
 

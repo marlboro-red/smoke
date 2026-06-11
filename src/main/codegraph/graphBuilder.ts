@@ -288,8 +288,12 @@ export async function buildDependentsGraph(
   }
 }
 
-/** Read file content with caching, limited to IMPORT_SCAN_LIMIT bytes. */
-async function readFileContent(filePath: string): Promise<string | null> {
+/**
+ * Read file content with caching, limited to IMPORT_SCAN_LIMIT bytes.
+ * Exported so other import-graph consumers (RelevanceScorer's proximity
+ * BFS) share the cache instead of re-reading the same files per request.
+ */
+export async function readFileContent(filePath: string): Promise<string | null> {
   const cached = parseCache.get(filePath)
   if (cached !== undefined) return cached
 

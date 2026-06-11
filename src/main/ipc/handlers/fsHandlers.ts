@@ -6,7 +6,6 @@ import { configStore, defaultPreferences } from '../../config/ConfigStore'
 import { FileWatcher } from '../../watcher/FileWatcher'
 import {
   assertWithinHome,
-  assertWithinAny,
   isSafeExtraBoundary,
   isWithinBoundary,
   resolveNearestReal,
@@ -57,6 +56,20 @@ export function registerFsHandlers(
     return { homedir, allowed }
   }
 
+  // Boundary realpaths are stable for the session (home/launchCwd never
+  // change; defaultCwd entries are keyed by value), so cache them. Without
+  // this every single file read/readdir re-walked realpath for the target
+  // PLUS every boundary — 3-6 stat syscall chains per IPC call.
+  const boundaryRealPaths = new Map<string, string>()
+  async function realBoundary(boundary: string): Promise<string> {
+    let real = boundaryRealPaths.get(boundary)
+    if (!real) {
+      real = await resolveNearestReal(boundary)
+      boundaryRealPaths.set(boundary, real)
+    }
+    return real
+  }
+
   /**
    * Assert a path is readable: within an allowed boundary, and not inside
    * a hidden top-level home directory (~/.ssh, ~/.aws, ...) unless that
@@ -64,20 +77,25 @@ export function registerFsHandlers(
    */
   async function assertReadAllowed(targetPath: string): Promise<void> {
     const { homedir, allowed } = getAllowedReadBoundaries()
-    await assertWithinAny(targetPath, allowed)
 
+    // One realpath walk for the target (the only mutable part), cached
+    // realpaths for the boundaries.
     const realPath = await resolveNearestReal(targetPath)
-    const realHome = await resolveNearestReal(homedir)
+    const realBoundaries = await Promise.all(allowed.map(realBoundary))
+    if (!realBoundaries.some((b) => isWithinBoundary(realPath, b))) {
+      throw new Error('Access denied: path must be within an allowed directory')
+    }
+
+    const realHome = await realBoundary(homedir)
     const rel = path.relative(realHome, realPath)
     if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return
     const topSegment = rel.split(path.sep)[0]
     if (!topSegment.startsWith('.')) return
 
     // Hidden home directory — only allow if a non-home boundary covers it
-    for (const boundary of allowed) {
-      if (boundary === homedir) continue
-      const realBoundary = await resolveNearestReal(boundary)
-      if (isWithinBoundary(realPath, realBoundary)) return
+    for (let i = 0; i < allowed.length; i++) {
+      if (allowed[i] === homedir) continue
+      if (isWithinBoundary(realPath, realBoundaries[i])) return
     }
     throw new Error('Access denied: hidden configuration directories are not readable')
   }
