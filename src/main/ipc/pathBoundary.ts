@@ -60,6 +60,24 @@ export async function resolveNearestReal(filePath: string): Promise<string> {
 }
 
 /**
+ * Whether a *configurable* extra boundary directory is acceptable.
+ *
+ * `defaultCwd` is renderer-settable via CONFIG_SET, so a value like '/'
+ * or '/Users' would silently erase the FS read boundary. Reject the
+ * filesystem root and any proper ancestor of the home directory — such a
+ * boundary would grant everything home grants plus more.
+ */
+export function isSafeExtraBoundary(dir: string, homedir: string): boolean {
+  const resolved = path.resolve(dir)
+  if (resolved === path.parse(resolved).root) return false
+  const resolvedHome = path.resolve(homedir)
+  if (resolved !== resolvedHome && isWithinBoundary(resolvedHome, resolved)) {
+    return false
+  }
+  return true
+}
+
+/**
  * Assert that a file path is safely within the user's home directory.
  * Resolves symlinks on the nearest existing ancestor to prevent symlink escapes.
  * Throws a descriptive error if the path is outside the boundary.

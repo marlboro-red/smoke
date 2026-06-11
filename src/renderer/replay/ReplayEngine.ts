@@ -1,7 +1,8 @@
 import { replayStore } from './replayStore'
 import { sessionStore } from '../stores/sessionStore'
-import { canvasStore } from '../stores/canvasStore'
+import { connectorStore } from '../stores/connectorStore'
 import { snapshotStore } from '../stores/snapshotStore'
+import { setPanTo, setZoomTo, getCurrentPan, getCurrentZoom } from '../canvas/useCanvasControls'
 import { eventRecorder } from '../recording/EventRecorder'
 import type { CanvasEvent, CanvasEventPayloadMap } from '../recording/types'
 
@@ -10,6 +11,7 @@ class ReplayEngine {
   private lastFrameTime: number | null = null
   /** Session state before replay started, for restoration */
   private savedSessions: ReturnType<typeof sessionStore.getState>['sessions'] | null = null
+  private savedConnectors: ReturnType<typeof connectorStore.getState>['connectors'] | null = null
   private savedSnapshots: ReturnType<typeof snapshotStore.getState>['snapshots'] | null = null
   private savedPan: { x: number; y: number } | null = null
   private savedZoom: number | null = null
@@ -19,11 +21,14 @@ class ReplayEngine {
     const state = replayStore.getState()
     if (!state.active || state.events.length === 0) return
 
-    // Save current state for restoration
+    // Save current state for restoration. Connectors must be snapshotted
+    // too: removing sessions below cascades into removeConnectorsForElement,
+    // which would otherwise permanently delete them.
     this.savedSessions = new Map(sessionStore.getState().sessions)
+    this.savedConnectors = new Map(connectorStore.getState().connectors)
     this.savedSnapshots = new Map(snapshotStore.getState().snapshots)
-    this.savedPan = { x: canvasStore.getState().panX, y: canvasStore.getState().panY }
-    this.savedZoom = canvasStore.getState().zoom
+    this.savedPan = getCurrentPan()
+    this.savedZoom = getCurrentZoom()
 
     // Pause event recording during replay
     this.wasRecording = eventRecorder.recording
@@ -53,6 +58,10 @@ class ReplayEngine {
       }
       this.savedSessions = null
     }
+    if (this.savedConnectors) {
+      connectorStore.setState({ connectors: new Map(this.savedConnectors) })
+      this.savedConnectors = null
+    }
     if (this.savedSnapshots) {
       for (const [id, lines] of this.savedSnapshots) {
         snapshotStore.getState().setSnapshot(id, lines)
@@ -60,11 +69,11 @@ class ReplayEngine {
       this.savedSnapshots = null
     }
     if (this.savedPan) {
-      canvasStore.getState().setPan(this.savedPan.x, this.savedPan.y)
+      setPanTo(this.savedPan.x, this.savedPan.y)
       this.savedPan = null
     }
     if (this.savedZoom != null) {
-      canvasStore.getState().setZoom(this.savedZoom)
+      setZoomTo(this.savedZoom)
       this.savedZoom = null
     }
 
@@ -214,8 +223,8 @@ class ReplayEngine {
       }
       case 'viewport_changed': {
         const p = event.payload as CanvasEventPayloadMap['viewport_changed']
-        canvasStore.getState().setPan(p.panX, p.panY)
-        canvasStore.getState().setZoom(p.zoom)
+        setPanTo(p.panX, p.panY)
+        setZoomTo(p.zoom)
         break
       }
       case 'ai_message':

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { searchContent, canvasSearchStore, type SearchMatch } from '../searchStore'
 import { sessionStore } from '../../stores/sessionStore'
 
@@ -158,8 +158,11 @@ describe('searchContent', () => {
   })
 })
 
-describe('canvasSearchStore', () => {
+describe("canvasSearchStore", () => {
   beforeEach(() => {
+    // setQuery debounces the search — fake timers + runAllTimers make it
+    // synchronous for assertions
+    vi.useFakeTimers()
     // Reset store state
     canvasSearchStore.setState({
       isOpen: false,
@@ -178,6 +181,10 @@ describe('canvasSearchStore', () => {
     })
 
     mockedGetTerminal.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   function addFileSession(id: string, title: string, content: string) {
@@ -240,6 +247,7 @@ describe('canvasSearchStore', () => {
       addTerminalSession('t1', 'Terminal 1', ['npm error: build failed', 'done'])
 
       canvasSearchStore.getState().setQuery('error')
+      vi.runAllTimers()
       const { results } = canvasSearchStore.getState()
 
       expect(results).toHaveLength(3)
@@ -281,6 +289,7 @@ describe('canvasSearchStore', () => {
       mockedGetTerminal.mockReturnValue(null as any)
 
       canvasSearchStore.getState().setQuery('hello')
+      vi.runAllTimers()
       const { results } = canvasSearchStore.getState()
 
       expect(results).toHaveLength(1)
@@ -294,6 +303,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f2', 'b.ts', 'foo')
 
       canvasSearchStore.getState().setQuery('foo')
+      vi.runAllTimers()
       const { results } = canvasSearchStore.getState()
 
       expect(results).toHaveLength(2)
@@ -308,6 +318,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f2', 'b.ts', 'world')
 
       canvasSearchStore.getState().setQuery('hello')
+      vi.runAllTimers()
       const { results } = canvasSearchStore.getState()
 
       expect(results).toHaveLength(1)
@@ -317,6 +328,7 @@ describe('canvasSearchStore', () => {
     it('returns empty results for whitespace-only query', () => {
       addFileSession('f1', 'a.ts', 'hello')
       canvasSearchStore.getState().setQuery('   ')
+      vi.runAllTimers()
       expect(canvasSearchStore.getState().results).toHaveLength(0)
     })
   })
@@ -326,6 +338,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f1', 'code.ts', 'const value = 42')
 
       canvasSearchStore.getState().setQuery('value')
+      vi.runAllTimers()
       const match = canvasSearchStore.getState().results[0].matches[0]
 
       expect(match.matchStart).toBe(6)
@@ -337,6 +350,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f1', 'code.ts', 'test test test')
 
       canvasSearchStore.getState().setQuery('test')
+      vi.runAllTimers()
       const matches = canvasSearchStore.getState().results[0].matches
 
       expect(matches).toHaveLength(3)
@@ -354,6 +368,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f1', 'code.ts', 'Hello\nhello\nHELLO')
 
       canvasSearchStore.getState().setQuery('hello')
+      vi.runAllTimers()
       expect(canvasSearchStore.getState().results[0].matches).toHaveLength(3)
     })
 
@@ -361,6 +376,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f1', 'code.ts', 'Hello\nhello\nHELLO')
 
       canvasSearchStore.getState().setQuery('hello')
+      vi.runAllTimers()
       expect(canvasSearchStore.getState().results[0].matches).toHaveLength(3)
 
       canvasSearchStore.getState().toggleCaseSensitive()
@@ -373,6 +389,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f1', 'code.ts', 'Hello\nhello')
 
       canvasSearchStore.getState().setQuery('hello')
+      vi.runAllTimers()
       canvasSearchStore.getState().toggleCaseSensitive() // now sensitive
       expect(canvasSearchStore.getState().results[0].matches).toHaveLength(1)
 
@@ -387,6 +404,7 @@ describe('canvasSearchStore', () => {
 
       canvasSearchStore.getState().toggleRegex()
       canvasSearchStore.getState().setQuery('error \\d{3}')
+      vi.runAllTimers()
 
       const matches = canvasSearchStore.getState().results[0].matches
       expect(matches).toHaveLength(2)
@@ -397,6 +415,7 @@ describe('canvasSearchStore', () => {
 
       canvasSearchStore.getState().toggleRegex()
       canvasSearchStore.getState().setQuery('[unclosed')
+      vi.runAllTimers()
 
       expect(canvasSearchStore.getState().results).toHaveLength(0)
     })
@@ -406,6 +425,7 @@ describe('canvasSearchStore', () => {
 
       // Without regex, search for literal "d+"
       canvasSearchStore.getState().setQuery('d+')
+      vi.runAllTimers()
       expect(canvasSearchStore.getState().results[0].matches).toHaveLength(1)
 
       // Toggle regex on — "d+" now matches one or more 'd' chars
@@ -426,6 +446,7 @@ describe('canvasSearchStore', () => {
       addFileSession('f1', 'code.ts', 'hello')
       canvasSearchStore.getState().open()
       canvasSearchStore.getState().setQuery('hello')
+      vi.runAllTimers()
       expect(canvasSearchStore.getState().results).toHaveLength(1)
 
       canvasSearchStore.getState().close()
@@ -445,6 +466,7 @@ describe('canvasSearchStore', () => {
     it('search action re-runs search for stored query', () => {
       addFileSession('f1', 'code.ts', 'hello world')
       canvasSearchStore.getState().setQuery('hello')
+      vi.runAllTimers()
       expect(canvasSearchStore.getState().results).toHaveLength(1)
 
       // Add new content and re-search

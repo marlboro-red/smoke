@@ -85,6 +85,9 @@ function AddFileSearch(): JSX.Element {
     debounceRef.current = setTimeout(async () => {
       const resp = await window.smokeAPI?.search.query(q, 20)
       if (!resp) return
+      // Stale guard: a slow response for an older query must not overwrite
+      // results for what the user is typing now.
+      if (assemblyPreviewStore.getState().addSearchQuery !== q) return
       // Deduplicate file paths and filter out already-added files
       const existingPaths = new Set(
         assemblyPreviewStore.getState().files.map((f) => f.filePath),

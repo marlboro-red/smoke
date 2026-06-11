@@ -202,10 +202,13 @@ export function useSuggestionEngine(): void {
 
     // Don't re-fetch if same file
     if (filePath === lastFilePath.current) return
-    lastFilePath.current = filePath
 
-    // Debounce the fetch
+    // Debounce the fetch. lastFilePath must only be recorded once the
+    // debounce actually fires: if focus moves away first, the cleanup
+    // cancels this timer, and a pre-recorded path would make the re-fetch
+    // guard above permanently suppress this file's suggestions.
     debounceRef.current = setTimeout(async () => {
+      lastFilePath.current = filePath
       suggestionStore.getState().setLoading(true)
 
       try {

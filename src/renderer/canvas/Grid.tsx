@@ -8,9 +8,10 @@ interface GridProps {
 }
 
 const Grid: React.FC<GridProps> = React.memo(({ zoom, gridSize }) => {
+  const themeId = usePreference('theme')
+
   if (zoom < 0.3) return null
 
-  const themeId = usePreference('theme')
   const isDark = getTheme(themeId).isDark
   const dotFill = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)'
 

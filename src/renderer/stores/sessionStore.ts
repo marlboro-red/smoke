@@ -42,6 +42,8 @@ export interface FileViewerSession extends BaseSession {
   language: string
   isDirty?: boolean
   editing?: boolean
+  /** Unsaved editor text preserved when toggling out of edit mode. */
+  editDraft?: string
 }
 
 export interface SourceRef {

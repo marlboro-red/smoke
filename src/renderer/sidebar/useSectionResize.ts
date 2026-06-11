@@ -77,7 +77,7 @@ export function useSectionResize(
 
         // Collect final sizes and persist
         const sizes: SidebarSectionSizes = {}
-        for (const key of ['fileTree', 'layouts', 'recordings'] as SectionKey[]) {
+        for (const key of ['fileTree', 'layouts', 'bookmarks', 'recordings'] as SectionKey[]) {
           const el = sectionRefs[key]?.current
           if (el) {
             sizes[key] = Math.round(el.getBoundingClientRect().height)

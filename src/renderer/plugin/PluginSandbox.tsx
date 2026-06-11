@@ -4,6 +4,26 @@ import { createHostBridge, buildSandboxHtml } from './pluginBridge'
 import type { HostBridge } from './pluginBridge'
 import PluginErrorBoundary from './PluginErrorBoundary'
 
+/** Per-plugin persistent storage, namespaced in localStorage. */
+function readPluginStorage(pluginId: string): Record<string, unknown> {
+  try {
+    const raw = localStorage.getItem(`smoke-plugin-storage:${pluginId}`)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function writePluginStorage(pluginId: string, data: Record<string, unknown>): void {
+  try {
+    localStorage.setItem(`smoke-plugin-storage:${pluginId}`, JSON.stringify(data))
+  } catch {
+    // Quota exceeded or storage unavailable — drop silently
+  }
+}
+
 interface PluginSandboxProps {
   /** Session ID for this plugin instance */
   sessionId: string
@@ -75,13 +95,19 @@ export default function PluginSandbox({
     const bridge = createHostBridge(iframe, sessionId)
     bridgeRef.current = bridge
 
+    // Tracks whether the plugin has reported ready (or errored) so the
+    // init timeout below doesn't fire against a stale `state` closure.
+    let settled = false
+
     // Handle messages from the plugin
     const unsubMessage = bridge.onMessage((type, payload) => {
       switch (type) {
         case '__ready':
+          settled = true
           setState('ready')
           break
         case '__error': {
+          settled = true
           const err = payload as { message: string; stack?: string; phase?: string }
           handleError({
             message: err.message,
@@ -98,6 +124,28 @@ export default function PluginSandbox({
         case '__requestResize': {
           const p = payload as { width: number; height: number }
           onResizeRequest?.(p.width, p.height)
+          break
+        }
+        case '__storage:get': {
+          const p = payload as { key: string; reqId: string }
+          const data = readPluginStorage(manifest.name)
+          bridge.send(`__storage:result:${p.reqId}`, { reqId: p.reqId, value: data[p.key] })
+          break
+        }
+        case '__storage:set': {
+          const p = payload as { key: string; value: unknown; reqId: string }
+          const data = readPluginStorage(manifest.name)
+          data[p.key] = p.value
+          writePluginStorage(manifest.name, data)
+          bridge.send(`__storage:result:${p.reqId}`, { reqId: p.reqId })
+          break
+        }
+        case '__storage:delete': {
+          const p = payload as { key: string; reqId: string }
+          const data = readPluginStorage(manifest.name)
+          delete data[p.key]
+          writePluginStorage(manifest.name, data)
+          bridge.send(`__storage:result:${p.reqId}`, { reqId: p.reqId })
           break
         }
         default:
@@ -117,7 +165,7 @@ export default function PluginSandbox({
 
     // Timeout — if plugin doesn't report ready within 10s, mark as error
     const timeout = setTimeout(() => {
-      if (state === 'loading') {
+      if (!settled) {
         handleError({
           message: 'Plugin timed out during initialization',
           phase: 'load',

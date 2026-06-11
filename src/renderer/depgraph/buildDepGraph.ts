@@ -35,6 +35,10 @@ const REGION_PADDING = 40
 // Exported for testing
 export const graphRegionIds = new Set<string>()
 
+// Monotonic build token: a build that finishes after a newer one started
+// must not clear caches or materialize over the newer graph.
+let buildGeneration = 0
+
 function detectLanguage(filePath: string): string {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   const langMap: Record<string, string> = {
@@ -199,14 +203,20 @@ export async function buildDependentsGraph(rootSession: FileViewerSession): Prom
   const projectRoot = preferencesStore.getState().launchCwd
   if (!projectRoot) return
 
-  clearActiveGraph()
-  clearImportCache()
-  clearGraphRegions()
+  const generation = ++buildGeneration
 
+  // Await the IPC BEFORE clearing anything: clearing first would destroy
+  // the current graph even if the build fails, and a slow response could
+  // interleave with file-change invalidation against empty caches.
   const result: CodeGraphResult = await window.smokeAPI.codegraph.buildDependents(
     rootSession.filePath,
     projectRoot,
   )
+  if (generation !== buildGeneration) return
+
+  clearActiveGraph()
+  clearImportCache()
+  clearGraphRegions()
 
   await materializeGraph(result, rootSession)
 }
@@ -221,16 +231,22 @@ export async function buildDepGraph(rootSession: FileViewerSession): Promise<voi
   const projectRoot = preferencesStore.getState().launchCwd
   if (!projectRoot) return
 
-  // Reset graph cache and regions for fresh build
-  clearActiveGraph()
-  clearImportCache()
-  clearGraphRegions()
+  const generation = ++buildGeneration
 
-  // Build graph via IPC — returns nodes, edges, and layout positions
+  // Build graph via IPC — returns nodes, edges, and layout positions.
+  // Await BEFORE clearing: clearing first would destroy the current graph
+  // even if the build fails, and a slow response could interleave with
+  // file-change invalidation against empty caches.
   const result: CodeGraphResult = await window.smokeAPI.codegraph.build(
     rootSession.filePath,
     projectRoot,
   )
+  if (generation !== buildGeneration) return
+
+  // Reset graph cache and regions for fresh build
+  clearActiveGraph()
+  clearImportCache()
+  clearGraphRegions()
 
   markNodeExpanded(rootSession.filePath)
   await materializeGraph(result, rootSession)
@@ -245,6 +261,8 @@ export async function expandDepGraph(expandPath: string): Promise<void> {
   const projectRoot = preferencesStore.getState().launchCwd
   if (!projectRoot) return
 
+  const generation = ++buildGeneration
+
   // Build existing graph state from GraphCache
   const existingGraph = buildExistingGraphState()
   const existingPositions = buildExistingPositions()
@@ -255,6 +273,7 @@ export async function expandDepGraph(expandPath: string): Promise<void> {
     expandPath,
     projectRoot,
   )
+  if (generation !== buildGeneration) return
 
   markNodeExpanded(expandPath)
   await materializeIncrementalGraph(result, existingPositions)

@@ -55,9 +55,11 @@ export default function StatusBar(): JSX.Element {
   const zoom = useCanvasStore((s) => s.zoom)
   const sessions = useSessionList()
   const [gitBranch, setGitBranch] = useState<string | null>(null)
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [showZoomMenu, setShowZoomMenu] = useState(false)
   const zoomMenuRef = useRef<HTMLDivElement>(null)
+  // Cursor position writes straight to the DOM — setState here would
+  // re-render the whole status bar on every mousemove.
+  const cursorPosRef = useRef<HTMLDivElement>(null)
 
   // Indexing progress
   const isIndexing = useIsIndexing()
@@ -74,11 +76,18 @@ export default function StatusBar(): JSX.Element {
     return () => clearInterval(interval)
   }, [])
 
-  // Track mouse position on canvas
+  // Track mouse position on canvas (rAF-throttled, direct DOM write)
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent): void => {
+    let frame: number | null = null
+    let lastEvent: MouseEvent | null = null
+
+    const update = (): void => {
+      frame = null
+      const e = lastEvent
+      if (!e) return
       const root = getCanvasRootElement()
-      if (!root) return
+      const el = cursorPosRef.current
+      if (!root || !el) return
       const rect = root.getBoundingClientRect()
       if (
         e.clientX < rect.left || e.clientX > rect.right ||
@@ -90,10 +99,20 @@ export default function StatusBar(): JSX.Element {
       const z = getCurrentZoom()
       const canvasX = Math.round((e.clientX - rect.left - pan.x) / z)
       const canvasY = Math.round((e.clientY - rect.top - pan.y) / z)
-      setCursorPos({ x: canvasX, y: canvasY })
+      el.textContent = `${canvasX}, ${canvasY}`
+    }
+
+    const handleMouseMove = (e: MouseEvent): void => {
+      lastEvent = e
+      if (frame === null) {
+        frame = requestAnimationFrame(update)
+      }
     }
     document.addEventListener('mousemove', handleMouseMove)
-    return () => document.removeEventListener('mousemove', handleMouseMove)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
   }, [])
 
   // Close zoom menu on outside click
@@ -195,11 +214,7 @@ export default function StatusBar(): JSX.Element {
         )}
       </div>
       <div className="status-bar-right">
-        {cursorPos && (
-          <div className="status-bar-item status-bar-dim">
-            {cursorPos.x}, {cursorPos.y}
-          </div>
-        )}
+        <div ref={cursorPosRef} className="status-bar-item status-bar-dim" />
         {gitBranch && (
           <>
             <div className="status-bar-separator" />

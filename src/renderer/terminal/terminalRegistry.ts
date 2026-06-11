@@ -114,6 +114,10 @@ export function markHidden(sessionId: string): void {
         if (!hiddenUnsubs.has(sessionId)) return
         appendToHiddenBuffer(buffer, event.data)
         activityStore.getState().markActive(sessionId)
+        // Acknowledge receipt — the main process pauses the PTY after a few
+        // unacked batches, so without this a chatty hidden terminal would
+        // deadlock and never resume.
+        window.smokeAPI.pty.ack(event.id)
       }
     })
     hiddenUnsubs.set(sessionId, unsub)
@@ -225,6 +229,20 @@ export function flushHiddenBuffer(sessionId: string, terminal: Terminal): void {
     terminal.write(buffer.chunks.join(''))
   }
   hiddenBuffers.delete(sessionId)
+}
+
+/**
+ * Write data to a session's terminal regardless of visibility.
+ * While the terminal is hidden, data goes through the hidden buffer so it
+ * stays correctly ordered with PTY output that is awaiting flush.
+ */
+export function writeToSession(sessionId: string, data: string): void {
+  const buffer = hiddenBuffers.get(sessionId)
+  if (buffer) {
+    appendToHiddenBuffer(buffer, data)
+    return
+  }
+  registry.get(sessionId)?.terminal.write(data)
 }
 
 export function getRegistrySize(): number {

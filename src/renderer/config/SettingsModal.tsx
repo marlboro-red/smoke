@@ -39,16 +39,20 @@ export default function SettingsModal(): JSX.Element | null {
     return () => document.removeEventListener('keydown', onKey, { capture: true })
   }, [isOpen])
 
+  // Sliders fire onChange on every tick of a drag. Cheap visual feedback
+  // (store update, CSS variables) applies immediately; the expensive work
+  // (config IPC + disk write, full-canvas re-snap) is debounced per key.
+  const persistTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  const PERSIST_DEBOUNCE_MS = 300
+
   const updatePref = useCallback(
-    async <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
+    <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
       preferencesStore.getState().updatePreference(key, value)
-      await window.smokeAPI?.config.set(key, value)
 
       if (key === 'gridSize') {
         const size = value as number
         gridStore.getState().setGridSize(size)
         canvasStore.getState().setGridSize(size)
-        reSnapAllElements(size)
       }
 
       if (key === 'fontFamily' || key === 'fontSize' || key === 'lineHeight') {
@@ -59,6 +63,20 @@ export default function SettingsModal(): JSX.Element | null {
       if (key === 'terminalOpacity') {
         applyTerminalOpacity(value as number)
       }
+
+      const timers = persistTimersRef.current
+      const existing = timers.get(key)
+      if (existing) clearTimeout(existing)
+      timers.set(
+        key,
+        setTimeout(() => {
+          timers.delete(key)
+          window.smokeAPI?.config.set(key, value)
+          if (key === 'gridSize') {
+            reSnapAllElements(value as number)
+          }
+        }, PERSIST_DEBOUNCE_MS)
+      )
     },
     []
   )

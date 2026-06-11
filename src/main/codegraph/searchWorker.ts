@@ -24,9 +24,13 @@ interface ProgressMessage {
   total: number
 }
 
+interface ChunkMessage {
+  type: 'chunk'
+  data: SerializedIndex
+}
+
 interface CompleteMessage {
   type: 'complete'
-  data: SerializedIndex
 }
 
 interface ErrorMessage {
@@ -71,11 +75,17 @@ const BATCH_SIZE = 200
 
 // ---- Tokenizer ----
 
+/**
+ * Tokenize MIXED-CASE text. Lowercasing happens here, AFTER the camelCase
+ * split — callers must not pre-lowercase or the subword expansion
+ * (useWindowDrag → use/window/drag) can never fire.
+ * Must stay in sync with SearchIndex.tokenize.
+ */
 function tokenize(text: string): string[] {
   const tokens = text.split(/[^a-z0-9_]+/i).filter(t => t.length >= 2)
   const expanded: string[] = []
   for (const token of tokens) {
-    expanded.push(token)
+    expanded.push(token.toLowerCase())
     const parts = token.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(' ')
     if (parts.length > 1) {
       for (const part of parts) {
@@ -129,12 +139,15 @@ async function buildIndex(rootPath: string): Promise<void> {
 
   send({ type: 'progress', indexed: 0, total })
 
-  const indexedFiles: string[] = []
-  const fileLines: Record<string, string[]> = {}
-  const index: Record<string, FilePostingEntry[]> = {}
-
   for (let i = 0; i < filePaths.length; i += BATCH_SIZE) {
     const batch = filePaths.slice(i, i + BATCH_SIZE)
+
+    // Batch-local accumulators: each batch ships as its own 'chunk'
+    // message so a large repo never produces one repo-sized
+    // structured-clone payload.
+    const indexedFiles: string[] = []
+    const fileLines: Record<string, string[]> = {}
+    const index: Record<string, FilePostingEntry[]> = {}
 
     await Promise.all(
       batch.map(async (filePath) => {
@@ -152,7 +165,7 @@ async function buildIndex(rootPath: string): Promise<void> {
           const tokenLines = new Map<string, Set<number>>()
 
           for (let j = 0; j < lines.length; j++) {
-            const lineTokens = tokenize(lines[j].toLowerCase())
+            const lineTokens = tokenize(lines[j])
             for (const token of lineTokens) {
               if (!tokenLines.has(token)) {
                 tokenLines.set(token, new Set())
@@ -177,17 +190,19 @@ async function buildIndex(rootPath: string): Promise<void> {
       })
     )
 
+    send({
+      type: 'chunk',
+      data: { files: indexedFiles, fileLines, index },
+    })
+
     const indexed = Math.min(i + BATCH_SIZE, total)
     send({ type: 'progress', indexed, total })
   }
 
-  send({
-    type: 'complete',
-    data: { files: indexedFiles, fileLines, index },
-  })
+  send({ type: 'complete' })
 }
 
-function send(msg: ProgressMessage | CompleteMessage | ErrorMessage): void {
+function send(msg: ProgressMessage | ChunkMessage | CompleteMessage | ErrorMessage): void {
   parentPort!.postMessage(msg)
 }
 

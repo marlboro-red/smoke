@@ -31,26 +31,67 @@ let reverseIndex: ReverseIndex | null = null
 /** Parse cache: filePath → parsed content (avoids re-reading files). */
 const parseCache = new Map<string, string>()
 
+/** In-flight build, so concurrent ensureIndex calls share one FS scan. */
+let indexBuildPromise: Promise<FilenameIndex> | null = null
+let buildingRoot = ''
+
 /**
  * Ensure the filename index is built for the given project root.
- * Reuses cached index if the root hasn't changed.
+ * Reuses cached index if the root hasn't changed; concurrent calls for the
+ * same root await the same in-flight build instead of each scanning the
+ * filesystem.
  */
 export async function ensureIndex(projectRoot: string): Promise<FilenameIndex> {
   if (filenameIndex && indexedRoot === projectRoot) {
     return filenameIndex
   }
 
-  filenameIndex = new FilenameIndex()
-  await filenameIndex.build(projectRoot)
-  cachedAliases = await loadPathAliases(projectRoot)
-  indexedRoot = projectRoot
-  parseCache.clear()
+  if (indexBuildPromise && buildingRoot === projectRoot) {
+    return indexBuildPromise
+  }
 
-  // Start building reverse index in the background (non-blocking)
-  reverseIndex = new ReverseIndex()
-  reverseIndex.build(filenameIndex, cachedAliases)
+  buildingRoot = projectRoot
+  const buildPromise = (async (): Promise<FilenameIndex> => {
+    const newIndex = new FilenameIndex()
+    await newIndex.build(projectRoot)
+    const aliases = await loadPathAliases(projectRoot)
 
-  return filenameIndex
+    // A build for a different root may have superseded this one while we
+    // were scanning — don't clobber its result, just hand back our index.
+    if (buildingRoot !== projectRoot) {
+      newIndex.dispose()
+      return newIndex
+    }
+
+    // Dispose the previous index before replacing it: it holds recursive
+    // fs.watch handles that would otherwise leak on every project switch.
+    if (filenameIndex) {
+      filenameIndex.dispose()
+    }
+    filenameIndex = newIndex
+    cachedAliases = aliases
+    indexedRoot = projectRoot
+    parseCache.clear()
+
+    // Start building reverse index in the background (non-blocking)
+    if (reverseIndex) {
+      reverseIndex.invalidate()
+    }
+    reverseIndex = new ReverseIndex()
+    reverseIndex.build(newIndex, aliases)
+
+    return newIndex
+  })()
+
+  indexBuildPromise = buildPromise
+  try {
+    return await buildPromise
+  } finally {
+    if (indexBuildPromise === buildPromise) {
+      indexBuildPromise = null
+      buildingRoot = ''
+    }
+  }
 }
 
 /** Get current index stats (for debugging/UI). */
@@ -61,6 +102,9 @@ export function getIndexStats(): { root: string; fileCount: number } | null {
 
 /** Invalidate the index (e.g., on project switch). */
 export function invalidateIndex(): void {
+  if (filenameIndex) {
+    filenameIndex.dispose()
+  }
   filenameIndex = null
   indexedRoot = ''
   cachedAliases = {}

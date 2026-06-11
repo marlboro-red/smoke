@@ -34,6 +34,11 @@ export default React.memo(function WebviewWindow({
   const highlightedId = useHighlightedId()
   const selectedIds = useSelectedIds()
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
+  // The webview src attribute is intentionally uncontrolled: it holds the
+  // initial URL only. Re-assigning src on every store update would force a
+  // full page reload on each navigation/SPA route change (the did-navigate
+  // handler writes the new URL back to the store, which would loop).
+  const initialUrlRef = useRef(session.url)
   const [urlInput, setUrlInput] = useState(session.url)
   const [isLoading, setIsLoading] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
@@ -177,19 +182,13 @@ export default React.memo(function WebviewWindow({
       }
     }
 
+    // Navigation/popup blocking is enforced in the main process
+    // (web-contents-created + will-attach-webview in src/main/index.ts).
+    // The renderer-side will-navigate listener only surfaces feedback —
+    // preventDefault here is a no-op, and the 'new-window' webview event
+    // no longer exists in modern Electron.
     const onWillNavigate = (e: Electron.WillNavigateEvent): void => {
       if (!isAllowedUrl(e.url)) {
-        e.preventDefault()
-        setUrlError('Blocked: only http:// and https:// URLs are allowed')
-      }
-    }
-
-    const onNewWindow = (e: Electron.NewWindowEvent): void => {
-      e.preventDefault()
-      // Navigate in the same webview if it's an allowed URL, otherwise block
-      if (isAllowedUrl(e.url)) {
-        navigateTo(e.url)
-      } else {
         setUrlError('Blocked: only http:// and https:// URLs are allowed')
       }
     }
@@ -199,7 +198,6 @@ export default React.memo(function WebviewWindow({
     wv.addEventListener('did-start-loading', onDidStartLoading)
     wv.addEventListener('did-stop-loading', onDidStopLoading)
     wv.addEventListener('will-navigate', onWillNavigate as EventListener)
-    wv.addEventListener('new-window', onNewWindow as EventListener)
 
     return () => {
       wv.removeEventListener('did-navigate', onDidNavigate)
@@ -207,9 +205,8 @@ export default React.memo(function WebviewWindow({
       wv.removeEventListener('did-start-loading', onDidStartLoading)
       wv.removeEventListener('did-stop-loading', onDidStopLoading)
       wv.removeEventListener('will-navigate', onWillNavigate as EventListener)
-      wv.removeEventListener('new-window', onNewWindow as EventListener)
     }
-  }, [session.id, navigateTo])
+  }, [session.id])
 
   const classNames = [
     'terminal-window',
@@ -289,12 +286,12 @@ export default React.memo(function WebviewWindow({
         />
       </div>
       <div className="webview-body" style={{ height: bodyHeight }}>
+        {/* No allowpopups attribute: it is a boolean attribute, so even
+            allowpopups="false" would ENABLE popups. */}
         <webview
           ref={webviewRef as React.Ref<Electron.WebviewTag>}
-          src={session.url}
+          src={initialUrlRef.current}
           className="webview-frame"
-          /* @ts-expect-error -- Electron webview attributes not in React typings */
-          allowpopups="false"
         />
       </div>
       <ResizeHandle direction="e" onResizeStart={onResizeStart} />

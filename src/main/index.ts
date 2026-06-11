@@ -119,6 +119,17 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // Sanitize <webview> creation: never allow a preload/node integration to
+  // be injected via attributes, and only attach http(s) content.
+  mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+    delete webPreferences.preload
+    webPreferences.nodeIntegration = false
+    webPreferences.contextIsolation = true
+    if (params.src && !isAllowedWebviewUrl(params.src)) {
+      event.preventDefault()
+    }
+  })
+
   // Disable native Electron/Chromium zoom so Ctrl+scroll only controls the canvas
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow!.webContents.setVisualZoomLevelLimits(1, 1)
@@ -137,6 +148,32 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+/** Canvas webviews may only show http(s) content (mirrors renderer urlValidation). */
+function isAllowedWebviewUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url)
+}
+
+app.on('web-contents-created', (_event, contents) => {
+  if (contents.getType() !== 'webview') return
+
+  // These guards must live in the main process: the <webview> 'new-window'
+  // DOM event was removed in modern Electron, and calling preventDefault on
+  // the embedder-side 'will-navigate' event is a no-op.
+  contents.setWindowOpenHandler(({ url }) => {
+    // Open popups/new windows in the same webview when allowed
+    if (isAllowedWebviewUrl(url)) {
+      void contents.loadURL(url)
+    }
+    return { action: 'deny' }
+  })
+
+  contents.on('will-navigate', (event, url) => {
+    if (!isAllowedWebviewUrl(url)) {
+      event.preventDefault()
+    }
+  })
+})
 
 app.whenReady().then(async () => {
   // Set an explicit application menu to prevent macOS "representedObject is not a

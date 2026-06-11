@@ -55,11 +55,16 @@ export function closeSplitPane(sessionId: string): void {
   const focusedPaneId = paneStore.getFocusedPane(sessionId)
   const { remaining } = paneStore.closePane(sessionId, focusedPaneId)
 
-  // Kill the PTY for the closed pane (unless it's the main session ID)
+  // Kill the PTY for the closed pane
   if (focusedPaneId !== sessionId) {
     killPty(focusedPaneId)
     unregisterTerminal(focusedPaneId)
-  } else if (!remaining) {
+  } else if (remaining) {
+    // The main session pane was closed but other panes survive — the main
+    // PTY must die with it, or it would keep running unrendered.
+    killPty(sessionId)
+    unregisterTerminal(sessionId)
+  } else {
     // The main session pane was the last one — close the whole session
     closeSession(sessionId)
     return

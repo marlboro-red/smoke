@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSessionList, useFocusedId, useHighlightedId, useBroadcastGroupId, findFileSessionByPath } from '../stores/sessionStore'
 import type { Session } from '../stores/sessionStore'
 import { useGroupList } from '../stores/groupStore'
@@ -18,6 +18,7 @@ import { shortcutsOverlayStore } from '../shortcuts/shortcutsOverlayStore'
 import FileTree from './FileTree'
 import CreateMenu from './CreateMenu'
 import { useSectionResize } from './useSectionResize'
+import { usePreference } from '../stores/preferencesStore'
 import '../styles/sidebar.css'
 import '../styles/settings-modal.css'
 
@@ -50,6 +51,22 @@ export default function Sidebar(): JSX.Element {
   }, [])
 
   const { handleDividerMouseDown } = useSectionResize(sectionRefs, handleSizesChange)
+
+  // Apply persisted section sizes (saved on divider drag). Depends on the
+  // preference value so sizes are applied once async preference loading
+  // completes, not just on mount.
+  const sectionSizes = usePreference('sidebarSectionSizes')
+  useEffect(() => {
+    if (!sectionSizes) return
+    for (const key of ['fileTree', 'layouts', 'bookmarks', 'recordings'] as const) {
+      const px = sectionSizes[key]
+      const el = sectionRefs[key].current
+      if (px && el) {
+        el.style.height = `${px}px`
+        el.style.flex = 'none'
+      }
+    }
+  }, [sectionSizes, sectionRefs])
 
   const handleContextMenu = useCallback((sessionId: string, x: number, y: number) => {
     setContextMenu({ sessionId, x, y })

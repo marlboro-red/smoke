@@ -191,8 +191,17 @@ export const splitPaneStore = createStore<SplitPaneStore>((set, get) => ({
       const trees = new Map(state.trees)
       const focusedPanes = new Map(state.focusedPanes)
 
-      if (newTree.type === 'leaf') {
+      if (newTree.type === 'leaf' && newTree.paneId === sessionId) {
+        // Only the main pane remains — the window can revert to its
+        // unsplit form (TerminalWindow renders the session's own PTY).
         trees.delete(sessionId)
+        focusedPanes.set(sessionId, newTree.paneId)
+      } else if (newTree.type === 'leaf') {
+        // The surviving pane is NOT the main session pane. Keep the
+        // single-leaf tree: deleting it would make the window render the
+        // main PTY again (resurrecting the pane the user just closed) and
+        // orphan the survivor's PTY.
+        trees.set(sessionId, newTree)
         focusedPanes.set(sessionId, newTree.paneId)
       } else {
         trees.set(sessionId, newTree)

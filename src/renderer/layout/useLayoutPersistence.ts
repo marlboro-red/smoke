@@ -5,6 +5,7 @@ import { gridStore } from '../stores/gridStore'
 import { regionStore } from '../stores/regionStore'
 import { tabStore } from '../stores/tabStore'
 import { snapPosition, snapSize } from '../window/useSnapping'
+import { setPanTo, setZoomTo } from '../canvas/useCanvasControls'
 import { isPluginElementType, getPluginElementRegistration } from '../plugin/pluginElementRegistry'
 import type { PluginElementType } from '../stores/sessionStore'
 import type { Layout } from '../../preload/types'
@@ -93,9 +94,10 @@ export { serializeCurrentLayout }
  * Assumes sessions have already been cleared by the caller.
  */
 export async function restoreTabLayout(layout: Layout): Promise<void> {
-  // Restore viewport
-  canvasStore.getState().setPan(layout.viewport.panX, layout.viewport.panY)
-  canvasStore.getState().setZoom(layout.viewport.zoom)
+  // Restore viewport via the canonical canvas-controls path so the DOM
+  // transform (driven by refs) is updated, not just the store.
+  setPanTo(layout.viewport.panX, layout.viewport.panY)
+  setZoomTo(layout.viewport.zoom)
   gridStore.getState().setGridSize(layout.gridSize)
   canvasStore.getState().setGridSize(layout.gridSize)
 
@@ -303,9 +305,10 @@ export function useLayoutRestore(): {
     for (const id of existingRegions.keys()) {
       regionStore.getState().removeRegion(id)
     }
-    // Restore viewport
-    canvasStore.getState().setPan(layout.viewport.panX, layout.viewport.panY)
-    canvasStore.getState().setZoom(layout.viewport.zoom)
+    // Restore viewport via the canonical canvas-controls path so the DOM
+    // transform (driven by refs) is updated, not just the store.
+    setPanTo(layout.viewport.panX, layout.viewport.panY)
+    setZoomTo(layout.viewport.zoom)
     gridStore.getState().setGridSize(layout.gridSize)
     canvasStore.getState().setGridSize(layout.gridSize)
 
@@ -526,8 +529,8 @@ export function useLayoutRestore(): {
     }
 
     // Reset viewport to origin
-    canvasStore.getState().setPan(0, 0)
-    canvasStore.getState().setZoom(1.0)
+    setPanTo(0, 0)
+    setZoomTo(1.0)
     gridStore.getState().setGridSize(20)
     canvasStore.getState().setGridSize(20)
 

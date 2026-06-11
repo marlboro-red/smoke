@@ -143,6 +143,19 @@ function performSearch(query: string, caseSensitive: boolean, useRegex: boolean)
   return groups
 }
 
+// Debounce keystroke-driven searches: performSearch synchronously scans
+// every terminal's full scrollback, which is far too heavy to run on each
+// input event.
+const SEARCH_DEBOUNCE_MS = 150
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
+
+function cancelPendingSearch(): void {
+  if (searchDebounce) {
+    clearTimeout(searchDebounce)
+    searchDebounce = null
+  }
+}
+
 export const canvasSearchStore = createStore<CanvasSearchStore>((set, get) => ({
   isOpen: false,
   query: '',
@@ -151,13 +164,22 @@ export const canvasSearchStore = createStore<CanvasSearchStore>((set, get) => ({
   regex: false,
 
   open: () => set({ isOpen: true }),
-  close: () => set({ isOpen: false, query: '', results: [] }),
-  toggle: () =>
-    set((s) => (s.isOpen ? { isOpen: false, query: '', results: [] } : { isOpen: true })),
+  close: () => {
+    cancelPendingSearch()
+    set({ isOpen: false, query: '', results: [] })
+  },
+  toggle: () => {
+    cancelPendingSearch()
+    set((s) => (s.isOpen ? { isOpen: false, query: '', results: [] } : { isOpen: true }))
+  },
   setQuery: (query: string) => {
-    const { caseSensitive, regex } = get()
-    const results = performSearch(query, caseSensitive, regex)
-    set({ query, results })
+    set({ query })
+    cancelPendingSearch()
+    searchDebounce = setTimeout(() => {
+      searchDebounce = null
+      const { query: current, caseSensitive, regex } = get()
+      set({ results: performSearch(current, caseSensitive, regex) })
+    }, SEARCH_DEBOUNCE_MS)
   },
   search: (query: string) => {
     const { caseSensitive, regex } = get()

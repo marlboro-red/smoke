@@ -546,6 +546,25 @@
   cursor: default;
 }
 
+.context-menu-input-row {
+  cursor: default;
+}
+
+.context-menu-input-row:hover {
+  background: none;
+}
+
+.context-menu-input {
+  width: 100%;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  padding: 2px var(--space-sm);
+  outline: none;
+}
+
 /* Shell selector dropdown for "New" button */
 
 

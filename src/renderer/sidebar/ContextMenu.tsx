@@ -21,6 +21,9 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
   const [shellSubmenuOpen, setShellSubmenuOpen] = useState(false)
   const [shells, setShells] = useState<ShellInfo[]>([])
   const [shellsLoaded, setShellsLoaded] = useState(false)
+  // Inline editor for the startup command (window.prompt throws in Electron)
+  const [editingStartupCmd, setEditingStartupCmd] = useState(false)
+  const [startupCmdValue, setStartupCmdValue] = useState('')
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent): void {
@@ -77,22 +80,42 @@ export default function ContextMenu({ state, onClose, onCloseSession, onRenameSe
       >
         {sessionStore.getState().sessions.get(state.sessionId)?.locked ? 'Unlock Position' : 'Lock Position'}
       </button>
-      <button
-        className="context-menu-item"
-        onClick={() => {
-          const session = sessionStore.getState().sessions.get(state.sessionId)
-          if (session?.type !== 'terminal') return
-          const current = session.startupCommand || ''
-          const cmd = prompt('Startup command for this terminal:', current)
-          if (cmd !== null) {
-            sessionStore.getState().updateSession(state.sessionId, { startupCommand: cmd || undefined })
-          }
-          onClose()
-        }}
-        title="Command to run automatically when this terminal starts"
-      >
-        Set Startup Command
-      </button>
+      {editingStartupCmd ? (
+        <div className="context-menu-item context-menu-input-row">
+          <input
+            className="context-menu-input"
+            value={startupCmdValue}
+            onChange={(e) => setStartupCmdValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                sessionStore.getState().updateSession(state.sessionId, {
+                  startupCommand: startupCmdValue.trim() || undefined,
+                })
+                onClose()
+              } else if (e.key === 'Escape') {
+                e.stopPropagation()
+                setEditingStartupCmd(false)
+              }
+            }}
+            placeholder="Startup command…"
+            autoFocus
+            spellCheck={false}
+          />
+        </div>
+      ) : (
+        <button
+          className="context-menu-item"
+          onClick={() => {
+            const session = sessionStore.getState().sessions.get(state.sessionId)
+            if (session?.type !== 'terminal') return
+            setStartupCmdValue(session.startupCommand || '')
+            setEditingStartupCmd(true)
+          }}
+          title="Command to run automatically when this terminal starts"
+        >
+          Set Startup Command
+        </button>
+      )}
       <div
         className="context-menu-item context-menu-submenu-trigger"
         onMouseEnter={() => {

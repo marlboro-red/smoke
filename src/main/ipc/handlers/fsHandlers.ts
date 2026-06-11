@@ -1,9 +1,16 @@
 import { ipcMain, type BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
+import * as os from 'os'
 import * as path from 'path'
 import { configStore, defaultPreferences } from '../../config/ConfigStore'
 import { FileWatcher } from '../../watcher/FileWatcher'
-import { assertWithinHome, assertWithinAny } from '../pathBoundary'
+import {
+  assertWithinHome,
+  assertWithinAny,
+  isSafeExtraBoundary,
+  isWithinBoundary,
+  resolveNearestReal,
+} from '../pathBoundary'
 import {
   FS_READDIR,
   FS_READFILE,
@@ -35,15 +42,51 @@ export function registerFsHandlers(
 ): FsHandlersCleanup {
   const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB default max
 
+  /**
+   * Allowed read boundaries: home, launch cwd, current workspace.
+   * `defaultCwd` is renderer-settable, so it only counts when it doesn't
+   * widen the boundary past home (no '/', no ancestor of home).
+   */
+  function getAllowedReadBoundaries(): { homedir: string; allowed: string[] } {
+    const homedir = os.homedir()
+    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
+    const allowed = [homedir, launchCwd]
+    if (defaultCwd && isSafeExtraBoundary(defaultCwd, homedir)) {
+      allowed.push(defaultCwd)
+    }
+    return { homedir, allowed }
+  }
+
+  /**
+   * Assert a path is readable: within an allowed boundary, and not inside
+   * a hidden top-level home directory (~/.ssh, ~/.aws, ...) unless that
+   * location is covered by the launch-cwd/workspace boundary.
+   */
+  async function assertReadAllowed(targetPath: string): Promise<void> {
+    const { homedir, allowed } = getAllowedReadBoundaries()
+    await assertWithinAny(targetPath, allowed)
+
+    const realPath = await resolveNearestReal(targetPath)
+    const realHome = await resolveNearestReal(homedir)
+    const rel = path.relative(realHome, realPath)
+    if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) return
+    const topSegment = rel.split(path.sep)[0]
+    if (!topSegment.startsWith('.')) return
+
+    // Hidden home directory — only allow if a non-home boundary covers it
+    for (const boundary of allowed) {
+      if (boundary === homedir) continue
+      const realBoundary = await resolveNearestReal(boundary)
+      if (isWithinBoundary(realPath, realBoundary)) return
+    }
+    throw new Error('Access denied: hidden configuration directories are not readable')
+  }
+
   ipcMain.handle(FS_READDIR, async (_event, request: FsReaddirRequest): Promise<FsReaddirEntry[]> => {
     const dirPath = path.resolve(request.path)
 
     // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
-    const homedir = require('os').homedir()
-    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
-    const allowed = [homedir, launchCwd]
-    if (defaultCwd) allowed.push(defaultCwd)
-    await assertWithinAny(dirPath, allowed)
+    await assertReadAllowed(dirPath)
 
     const entries = await fs.readdir(dirPath, { withFileTypes: true })
     const CONCURRENCY = 16
@@ -87,11 +130,7 @@ export function registerFsHandlers(
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
 
     // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
-    const homedir = require('os').homedir()
-    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
-    const allowed = [homedir, launchCwd]
-    if (defaultCwd) allowed.push(defaultCwd)
-    await assertWithinAny(filePath, allowed)
+    await assertReadAllowed(filePath)
 
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {
@@ -118,11 +157,7 @@ export function registerFsHandlers(
     const maxSize = request.maxSize ?? MAX_FILE_SIZE
 
     // Safety: reject paths outside allowed directories (home, launch cwd, current workspace)
-    const homedir = require('os').homedir()
-    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
-    const allowed = [homedir, launchCwd]
-    if (defaultCwd) allowed.push(defaultCwd)
-    await assertWithinAny(filePath, allowed)
+    await assertReadAllowed(filePath)
 
     const stat = await fs.stat(filePath)
     if (stat.size > maxSize) {
@@ -163,13 +198,7 @@ export function registerFsHandlers(
   })
 
   // File watcher handlers — pass allowed boundaries for defense-in-depth validation
-  const fileWatcher = new FileWatcher(getMainWindow, () => {
-    const homedir = require('os').homedir()
-    const defaultCwd = configStore.get('preferences', defaultPreferences).defaultCwd
-    const allowed = [homedir, launchCwd]
-    if (defaultCwd) allowed.push(defaultCwd)
-    return allowed
-  })
+  const fileWatcher = new FileWatcher(getMainWindow, () => getAllowedReadBoundaries().allowed)
 
   ipcMain.handle(FS_WATCH, async (_event, request: FsWatchRequest): Promise<FsWatchResponse> => {
     return fileWatcher.watch(request.path)

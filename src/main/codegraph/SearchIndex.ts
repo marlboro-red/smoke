@@ -96,6 +96,8 @@ export class SearchIndex {
   private fileLines = new Map<string, string[]>()
   /** All indexed file paths. */
   private indexedFiles = new Set<string>()
+  /** Tokens per file, so removeFile doesn't sweep the whole inverted index. */
+  private fileTokens = new Map<string, string[]>()
   private projectRoot: string = ''
   private isIndexing = false
   private worker: Worker | null = null
@@ -147,23 +149,26 @@ export class SearchIndex {
     return new Promise((resolve, reject) => {
       this.worker = new Worker(workerPath)
 
+      // Fresh maps; chunks merge in as they arrive
+      this.index.clear()
+      this.fileLines.clear()
+      this.indexedFiles.clear()
+      this.fileTokens.clear()
+
       this.worker.on('message', (msg: any) => {
         switch (msg.type) {
           case 'progress':
             this.sendProgress(msg.indexed, msg.total)
             break
 
-          case 'complete': {
+          // Per-batch chunk: bounds structured-clone size instead of
+          // shipping the entire repo's text in one message.
+          case 'chunk': {
             const data = msg.data as {
               files: string[]
               fileLines: Record<string, string[]>
               index: Record<string, PostingEntry[]>
             }
-
-            // Load the index built by the worker
-            this.index.clear()
-            this.fileLines.clear()
-            this.indexedFiles.clear()
 
             for (const filePath of data.files) {
               this.indexedFiles.add(filePath)
@@ -173,10 +178,29 @@ export class SearchIndex {
               this.fileLines.set(filePath, lines)
             }
 
+            // Each file appears in exactly one chunk, so postings append
+            // without dedup. Also accumulate per-file token lists for
+            // incremental removal.
             for (const [token, postings] of Object.entries(data.index)) {
-              this.index.set(token, postings)
+              const existing = this.index.get(token)
+              if (existing) {
+                existing.push(...postings)
+              } else {
+                this.index.set(token, postings)
+              }
+              for (const posting of postings) {
+                let tokens = this.fileTokens.get(posting.filePath)
+                if (!tokens) {
+                  tokens = []
+                  this.fileTokens.set(posting.filePath, tokens)
+                }
+                tokens.push(token)
+              }
             }
+            break
+          }
 
+          case 'complete': {
             this.worker?.terminate()
             this.worker = null
             resolve()
@@ -256,7 +280,7 @@ export class SearchIndex {
   search(query: string, maxResults = 100): SearchResponse {
     const start = performance.now()
 
-    const tokens = this.tokenize(query.toLowerCase())
+    const tokens = this.tokenize(query)
     if (tokens.length === 0) {
       return { results: [], totalMatches: 0, durationMs: 0 }
     }
@@ -329,19 +353,35 @@ export class SearchIndex {
     await this.indexFile(absolutePath)
   }
 
-  /** Remove a file from the index. */
+  /** Remove a file from the index — touches only the file's own tokens. */
   removeFile(absolutePath: string): void {
     if (!this.indexedFiles.has(absolutePath)) return
 
-    for (const [token, postings] of this.index) {
-      const filtered = postings.filter(p => p.filePath !== absolutePath)
-      if (filtered.length === 0) {
-        this.index.delete(token)
-      } else {
-        this.index.set(token, filtered)
+    const tokens = this.fileTokens.get(absolutePath)
+    if (tokens) {
+      for (const token of tokens) {
+        const postings = this.index.get(token)
+        if (!postings) continue
+        const filtered = postings.filter(p => p.filePath !== absolutePath)
+        if (filtered.length === 0) {
+          this.index.delete(token)
+        } else {
+          this.index.set(token, filtered)
+        }
+      }
+    } else {
+      // No token list (shouldn't happen) — full sweep as a fallback
+      for (const [token, postings] of this.index) {
+        const filtered = postings.filter(p => p.filePath !== absolutePath)
+        if (filtered.length === 0) {
+          this.index.delete(token)
+        } else {
+          this.index.set(token, filtered)
+        }
       }
     }
 
+    this.fileTokens.delete(absolutePath)
     this.fileLines.delete(absolutePath)
     this.indexedFiles.delete(absolutePath)
   }
@@ -363,6 +403,7 @@ export class SearchIndex {
     this.index.clear()
     this.fileLines.clear()
     this.indexedFiles.clear()
+    this.fileTokens.clear()
     this.pendingUpdates.clear()
     this.projectRoot = ''
     this.isIndexing = false
@@ -389,7 +430,7 @@ export class SearchIndex {
     const tokenLines = new Map<string, Set<number>>()
 
     for (let i = 0; i < lines.length; i++) {
-      const lineTokens = this.tokenize(lines[i].toLowerCase())
+      const lineTokens = this.tokenize(lines[i])
       for (const token of lineTokens) {
         if (!tokenLines.has(token)) {
           tokenLines.set(token, new Set())
@@ -407,13 +448,19 @@ export class SearchIndex {
         lines: Array.from(lineNums),
       })
     }
+    this.fileTokens.set(filePath, Array.from(tokenLines.keys()))
   }
 
+  /**
+   * Tokenize MIXED-CASE text. Lowercasing happens here, AFTER the
+   * camelCase split — callers must not pre-lowercase or the subword
+   * expansion (useWindowDrag → use/window/drag) can never fire.
+   */
   private tokenize(text: string): string[] {
     const tokens = text.split(/[^a-z0-9_]+/i).filter(t => t.length >= 2)
     const expanded: string[] = []
     for (const token of tokens) {
-      expanded.push(token)
+      expanded.push(token.toLowerCase())
       const parts = token.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(' ')
       if (parts.length > 1) {
         for (const part of parts) {

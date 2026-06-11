@@ -191,8 +191,20 @@ export default React.memo(function FileViewerWindow({
   }, [session.id, session.isPinned, session.position.x, session.position.y])
 
   const handleToggleEdit = useCallback(() => {
-    sessionStore.getState().updateSession(session.id, { editing: !editing })
-  }, [session.id, editing])
+    if (editing) {
+      // Leaving edit mode: preserve unsaved edits as a draft so toggling
+      // back to Edit restores them (and isDirty stays truthful).
+      const doc = editorViewRef.current?.state.doc.toString()
+      const dirty = doc !== undefined && doc !== session.content
+      sessionStore.getState().updateSession(session.id, {
+        editing: false,
+        editDraft: dirty ? doc : undefined,
+        isDirty: dirty,
+      })
+    } else {
+      sessionStore.getState().updateSession(session.id, { editing: true })
+    }
+  }, [session.id, editing, session.content])
 
   const [importsLoading, setImportsLoading] = useState(false)
   const importsExpanded = isNodeExpanded(session.filePath)
@@ -233,8 +245,30 @@ export default React.memo(function FileViewerWindow({
   const handleSave = useCallback(
     async (content: string) => {
       try {
+        // Conflict check: session.content is the base this edit started
+        // from (the watch manager pauses reloads while dirty). If the disk
+        // no longer matches it, someone changed the file externally and a
+        // blind write would silently destroy their change.
+        try {
+          const disk = await window.smokeAPI.fs.readfile(session.filePath)
+          const base = sessionStore.getState().sessions.get(session.id) as
+            | FileViewerSession
+            | undefined
+          if (base && disk.content !== base.content) {
+            const overwrite = window.confirm(
+              'This file changed on disk since you started editing. Overwrite the external changes?'
+            )
+            if (!overwrite) return
+          }
+        } catch {
+          // File unreadable (deleted?) — proceed with the write
+        }
         await window.smokeAPI.fs.writefile(session.filePath, content)
-        sessionStore.getState().updateSession(session.id, { content, isDirty: false })
+        sessionStore.getState().updateSession(session.id, {
+          content,
+          isDirty: false,
+          editDraft: undefined,
+        })
         const fileName = session.filePath.split('/').pop() || session.filePath
         addToast(`Saved "${fileName}"`, 'success')
       } catch (err) {
@@ -425,7 +459,7 @@ export default React.memo(function FileViewerWindow({
         )}
         {editing ? (
           <FileEditorWidget
-            content={session.content}
+            content={session.editDraft ?? session.content}
             language={session.language}
             onSave={handleSave}
             onChange={handleEditorChange}

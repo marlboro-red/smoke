@@ -13,18 +13,25 @@ let _syncToStore: (() => void) | null = null
 let _rootRef: React.MutableRefObject<HTMLDivElement | null> | null = null
 
 export function setPanTo(x: number, y: number): void {
-  if (!_panRef) return
+  if (!_panRef) {
+    // Canvas not mounted yet — write the store directly; the canvas
+    // initializes its refs from the store on mount.
+    canvasStore.getState().setPan(x, y)
+    return
+  }
   _panRef.current = { x, y }
   _applyTransform?.()
   _syncToStore?.()
 }
 
 export function getCurrentPan(): { x: number; y: number } {
-  return _panRef?.current ?? { x: 0, y: 0 }
+  if (_panRef) return _panRef.current
+  const { panX, panY } = canvasStore.getState()
+  return { x: panX, y: panY }
 }
 
 export function getCurrentZoom(): number {
-  return _zoomRef?.current ?? 1
+  return _zoomRef?.current ?? canvasStore.getState().zoom
 }
 
 export function getCanvasRootElement(): HTMLDivElement | null {
@@ -36,7 +43,10 @@ const MIN_ZOOM_CONST = 0.1
 const MAX_ZOOM_CONST = 3.0
 
 export function setZoomTo(zoom: number): void {
-  if (!_zoomRef) return
+  if (!_zoomRef) {
+    canvasStore.getState().setZoom(zoom)
+    return
+  }
   _zoomRef.current = Math.max(MIN_ZOOM_CONST, Math.min(MAX_ZOOM_CONST, zoom))
   _applyTransform?.()
   _syncToStore?.()

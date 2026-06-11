@@ -240,6 +240,27 @@ function animateLayoutUpdate(sessionId: string): void {
   })
 }
 
+// Serialize per-path processing: rapid change events for the same file
+// would otherwise run handleFileChanged concurrently — both invalidate,
+// both await IPC, and the slower (older) response wins the cache while the
+// connector diffs interleave.
+const inFlightByPath = new Map<string, Promise<void>>()
+
+function queueFileChanged(filePath: string, visibleIds: Set<string>): void {
+  const prev = inFlightByPath.get(filePath) ?? Promise.resolve()
+  const next = prev
+    .then(() => handleFileChanged(filePath, visibleIds))
+    .catch(() => {
+      // Errors must not break the chain for subsequent events
+    })
+  inFlightByPath.set(filePath, next)
+  void next.finally(() => {
+    if (inFlightByPath.get(filePath) === next) {
+      inFlightByPath.delete(filePath)
+    }
+  })
+}
+
 /**
  * Hook: subscribe to file-changed events and update the dep graph cache.
  * Call once in Canvas.tsx alongside useFileWatchManager.
@@ -247,7 +268,7 @@ function animateLayoutUpdate(sessionId: string): void {
 export function useGraphInvalidation(visibleIds: Set<string>): void {
   useEffect(() => {
     const unsub = window.smokeAPI?.fs.onFileChanged((event) => {
-      handleFileChanged(event.path, visibleIds)
+      queueFileChanged(event.path, visibleIds)
     })
     return unsub
   }, [visibleIds])

@@ -84,9 +84,9 @@ export function registerConfigHandlers(): ConfigHandlersCleanup {
     const validKeys: Array<keyof Preferences> = [
       'defaultShell', 'autoLaunchClaude', 'claudeCommand', 'startupCommand',
       'gridSize', 'sidebarPosition', 'sidebarWidth', 'sidebarSectionSizes',
-      'theme', 'defaultCwd',
+      'sidebarCollapsed', 'theme', 'defaultCwd',
       'terminalOpacity', 'fontFamily', 'fontSize', 'lineHeight',
-      'customShortcuts',
+      'customShortcuts', 'skipAssemblyPreview',
     ]
     if (!validKeys.includes(request.key as keyof Preferences)) return
     const key = `preferences.${request.key}` as keyof SmokeConfig

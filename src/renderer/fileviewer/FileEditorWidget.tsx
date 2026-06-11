@@ -24,12 +24,29 @@ export default function FileEditorWidget({
   editorViewRef,
 }: FileEditorWidgetProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<EditorView | null>(null)
+  const contentRef = useRef(content)
   const onSaveRef = useRef(onSave)
   onSaveRef.current = onSave
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
   const themePref = usePreference('theme')
   const themeConfig = getTheme(themePref || 'dark')
+
+  // Reconcile external content updates (file changed on disk and the watch
+  // manager refreshed session.content) into the live editor — but only when
+  // the user hasn't modified the doc, so their edits are never clobbered.
+  useEffect(() => {
+    const view = viewRef.current
+    const previous = contentRef.current
+    contentRef.current = content
+    if (!view) return // editor not created yet — creation uses contentRef
+    const doc = view.state.doc.toString()
+    if (doc === content || doc !== previous) return
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: content },
+    })
+  }, [content])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -59,7 +76,7 @@ export default function FileEditorWidget({
       const cmThemeExtensions: Extension[] = themeConfig.isDark ? [oneDark] : []
 
       const state = EditorState.create({
-        doc: content,
+        doc: contentRef.current,
         extensions: [
           saveKeymap,
           basicSetup,
@@ -87,11 +104,13 @@ export default function FileEditorWidget({
         parent,
       })
 
+      viewRef.current = view
       if (editorViewRef) editorViewRef.current = view
       view.focus()
     })
 
     return () => {
+      viewRef.current = null
       if (editorViewRef) editorViewRef.current = null
       if (view) view.destroy()
     }

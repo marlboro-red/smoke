@@ -22,6 +22,8 @@ import SearchModal from './search/SearchModal'
 import PresentationMode from './presentation/PresentationMode'
 import AssemblyPreview from './assembly/AssemblyPreview'
 import TaskInput from './assembly/TaskInput'
+import { useAssemblyConfirm } from './assembly/useAssemblyConfirm'
+import { usePtyExitWatcher } from './terminal/usePtyExitWatcher'
 import ToastContainer from './toast/ToastContainer'
 import StatusBar from './statusbar/StatusBar'
 import { useIndexingProgress } from './statusbar/useIndexingProgress'
@@ -38,6 +40,8 @@ function App(): JSX.Element {
   useAiStream()
   useEventRecording()
   useIndexingProgress()
+  useAssemblyConfirm()
+  usePtyExitWatcher()
   const { restoreDefault } = useLayoutRestore()
   const restored = useRef(false)
   const sidebarPosition = usePreference('sidebarPosition')

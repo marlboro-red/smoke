@@ -140,8 +140,10 @@ export async function collectContext(
   // ── Step 3: Structure analysis ──
 
   const structureStart = performance.now()
+  // The analyzer holds a single cache slot — verify it belongs to THIS
+  // project, or a workspace switch would serve the old project's modules.
   let structureMap = structureAnalyzer.getCached()
-  if (!structureMap) {
+  if (!structureMap || structureMap.projectRoot !== path.resolve(projectRoot)) {
     structureMap = await structureAnalyzer.analyze(projectRoot)
   }
   const structureCandidates = findStructureCandidates(
@@ -244,6 +246,9 @@ function searchForCandidates(
 ): string[] {
   const stats = searchIndex.getStats()
   if (!stats.rootPath || stats.fileCount === 0) return []
+  // Index built for a different project — its candidates would bleed
+  // the previous workspace's files into this one's results.
+  if (stats.rootPath !== path.resolve(projectRoot)) return []
 
   const fileScores = new Map<string, number>()
 

@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import { sessionStore, getGroupSessionIds } from '../stores/sessionStore'
-import { addToast } from '../stores/toastStore'
 
 export function usePty(
   sessionId: string,
@@ -35,35 +34,12 @@ export function usePty(
       window.smokeAPI.pty.ack(event.id)
     })
 
-    // PTY exit -> display message + update session status
-    const unsubExit = window.smokeAPI.pty.onExit((event) => {
-      if (event.id !== sessionId) return
-
-      // Skip exit message and toast for user-initiated closes (X button, Cmd+W)
-      if (!event.userInitiated) {
-        const terminal = terminalRef.current
-        if (terminal) {
-          terminal.write(`\r\n\x1b[90m[Process exited with code ${event.exitCode}]\x1b[0m\r\n`)
-        }
-
-        const session = sessionStore.getState().sessions.get(sessionId)
-        const label = session?.title || sessionId
-        if (event.exitCode === 0) {
-          addToast(`"${label}" exited successfully`, 'success')
-        } else {
-          addToast(`"${label}" exited with code ${event.exitCode}`, 'error')
-        }
-      }
-
-      sessionStore.getState().updateSession(sessionId, {
-        status: 'exited',
-        exitCode: event.exitCode,
-      })
-    })
+    // PTY exit handling (exit message, toast, session status) lives in the
+    // app-level usePtyExitWatcher — it must survive this widget unmounting
+    // under viewport culling, or exits in thumbnail mode would be lost.
 
     return () => {
       unsubData()
-      unsubExit()
     }
   }, [sessionId, terminalRef])
 
